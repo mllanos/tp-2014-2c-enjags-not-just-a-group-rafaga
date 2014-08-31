@@ -1,0 +1,91 @@
+^Todas las system calls
+^
+^Malloc 0
+NOPP
+NOPP
+NOPP
+MALC
+NOPP
+NOPP
+XXXX
+^
+^Free 28
+NOPP
+NOPP
+FREE
+NOPP
+XXXX
+^
+^STD
+^Input numerico 48
+NOPP
+NOPP
+INNN
+XXXX
+^Input caracteres 64
+NOPP
+INNC
+XXXX
+^Out numerico 76
+NOPP
+NOPP
+NOPP
+NOPP
+OUTN
+NOPP
+NOPP
+XXXX
+^Out caracteres 108
+OUTC
+NOPP
+NOPP
+NOPP
+NOPP
+XXXX
+^
+^ Create Thread 132
+NOPP
+NOPP
+NOPP
+CREA
+NOPP
+NOPP
+NOPP
+XXXX
+^ Join Thread 164
+NOPP
+JOIN
+XXXX
+^
+^WAIT 176
+ADDR B,S^Obtiene la posicion del semaforo
+MOVR B,A^Guardar la posicion
+GETM D,B^ Levanta el valor del semaforo en D
+LOAD A,0
+CLEQ D,A^ Si el semaforo es menor o igual a 0
+DECR D
+SETM 1,B,D^ Actualiza el valor del semaforo
+JPNZ #Bloquear^ Si tiene, no tiene que bloquear a nadie
+XXXX^ Salir
+:Bloquear
+BLOK^ Bloquearlo por el semaforo
+XXXX
+^
+^SIGNAL 244
+ADDR B,S^Obtiene la posicion del semaforo
+MOVR B,A^Guardar la posicion
+GETM D,B^ Levanta el valor del semaforo en D
+LOAD A,0
+CLEQ D,A^ Si el valor es 0 o menor, es porque habia alguno bloqueado
+INCR D
+SETM 1,B,D^ Actualiza el valor del semaforo
+JPNZ #Levantar^ Si habia bloqueados
+XXXX
+:Levantar
+WAKE^ Levantelo
+XXXX
+^SETSEM 312
+ADDR B,S
+SETM 1,A,D
+XXXX
+^332
