@@ -8,11 +8,11 @@
 #ifndef DUMMYS_H_
 #define DUMMYS_H_
 
-int conectarAKernel(void){
+int conectar_a_kernel(void){
 	return 0;
 }
 
-int conectarAMSP(void){
+int conectar_a_msp(void){
 	return 0;
 }
 

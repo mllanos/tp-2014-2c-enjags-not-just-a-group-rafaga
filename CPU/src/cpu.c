@@ -11,33 +11,46 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "cpu.h"
+#include "funciones.h"
 #include "dummys.h"
+#define OPERATION_CODE_SIZE 4;
 
 int main(void) {
 
-	if(conectarAKernel() == -1){
-		log("error_conectar_kernel");
-		mostrarPorPantalla("Hubo un error al conectar al Kernel. Abortado.");	//imprimir el mensaje en la consola donde se ejecuta el proceso, no la consola remota
+	if(conectar_a_kernel() == -1){
+		//log("error_conectar_kernel");
+		puts("Hubo un error al conectar al Kernel. Abortado.");	//imprimir el mensaje en la consola donde se ejecuta el proceso, no la consola remota
 		exit(EXIT_FAILURE);
 	}
 
-	if(conectarAMSP() == -1){
-		log("error_conectar_msp");
-		mostrarPorPantalla("Hubo un error al conectar a la MSP. Abortado.");
+	if(conectar_a_msp() == -1){
+		//log("error_conectar_msp");
+		puts("Hubo un error al conectar a la MSP. Abortado.");
 		exit(EXIT_FAILURE);
 	}
 
-	hilo_t hilo;				//TAD hilo (por ahi conviene hacerlo módulo, como LA pila de Solá). Contiene el TCB y el quantum correspondiente.
-	int32_t A,B,C,D,E;			//registros de programación
+	size_t instruccion_size = 4;
 
 	while(1){
 
-		hilo_obtener(hilo);		//solicita un nuevo hilo para ejecutar (TCB y quantum) al Kernel, y lo carga en hilo.
-		hilo_ejecutar(hilo);	//ejecuta las instrucciones del hilo mientras haya quantum.
-		hilo_devolver(hilo);	//devuelve el hilo al kernel. Nota: como no necesita quantum restante, podría solo devolver el tcb.
+		//obtener_siguiente_hilo();		//solicita un nuevo hilo para ejecutar (TCB y quantum) al Kernel.
+
+		while(quantum || hilo.kernel_mode){
+
+			cargar_registros();
+			//instruccion_size = obtener_siguiente_instruccion();
+			//ejecutar_instruccion();
+			actualizar_registros_tcb();
+			avanzar_puntero_instruccion(instruccion_size);
+
+		}
+
+		//devolver_hilo();						//devuelve el hilo al kernel.
 
 	}
 
 	return EXIT_SUCCESS;
 
 }
+
+
