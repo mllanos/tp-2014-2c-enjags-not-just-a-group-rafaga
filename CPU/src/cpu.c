@@ -11,9 +11,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "cpu.h"
-#include "funciones.h"
+#include "execution_unit.h"
 #include "dummys.h"
-#define OPERATION_CODE_SIZE 4;
+
+t_hilo hilo;
+uint32_t quantum;
 
 int main(void) {
 
@@ -37,11 +39,13 @@ int main(void) {
 
 		while(quantum || hilo.kernel_mode){
 
-			cargar_registros();
-			//instruccion_size = obtener_siguiente_instruccion();
-			//ejecutar_instruccion();
-			actualizar_registros_tcb();
+			eu_cargar_registros();
+			////instruccion_size = obtener_siguiente_instruccion();
+			eu_fetch_instruccion();
+			eu_decode();
+			eu_ejecutar();
 			avanzar_puntero_instruccion(instruccion_size);
+			eu_actualizar_registros();
 
 		}
 
