@@ -73,23 +73,23 @@ void eu_ejecutar(void){
 
 }
 
-uint32_t fetch_operand(t_operandos tipo_operando){
+int fetch_operand(t_operandos tipo_operando){
 
 	switch(tipo_operando){
 	case REGISTRO:
 		unsigned char registro;
 		//recibir de msp y guardar en registro
-		return (uint32_t) registro;
+		return (char) registro;
 		break;
 	case NUMERO:
 		int32_t numero;
 		//recibir de msp y guardar en direccion
-		return numero;
+		return (int32_t) numero;
 		break;
 	case DIRECCION:
 		uint32_t direccion;
 		//recibir de msp y guardar en direccion
-		return direccion;
+		return (uint32_t) direccion;
 		break;
 	}
 

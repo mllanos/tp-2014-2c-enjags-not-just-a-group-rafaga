@@ -18,6 +18,9 @@ typedef struct {
 	uint32_t S; //Cursor de stack
 	uint32_t K; //Kernel Mode
 	uint32_t I; //PID
+	uint32_t flags;			//Agregar a tcb? de donde los saco, que hago con los flags!?
 } t_registros_cpu;
+
+enum {A,B,C,D,E} typedef t_registros_programacion;
 
 #endif /*EXECUTION_UNIT_H*/

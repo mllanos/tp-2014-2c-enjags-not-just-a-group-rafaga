@@ -117,8 +117,211 @@ void inicializar_tabla_instrucciones(void){
 */
 void load (void){
 
-	uint32_t numero_registro = fetch_operand(REGISTRO) - 'A';		//posicion del registro leido en el array registros
+	uint32_t i = fetch_operand(REGISTRO) - 'A';		//posicion del registro leido en el array registros
 
-	registros[numero_registro] = (int32_t) fetch_operand(NUMERO);
+	registros.registros_programacion[i] = (int32_t) fetch_operand(NUMERO);
 
 }
+
+void getm (void) {
+
+	uint32_t i = fetch_operand(REGISTRO) - 'A';
+	uint32_t j = fetch_operand(REGISTRO) - 'A';
+
+	registros.registros_programacion[i] = msp_solicitar_memoria(registros.I,registros.registros_programacion[j],sizeof(int32_t));	//4bytes? preguntar qué es "memoria apuntada"
+
+}
+
+void setm (void) {
+
+	size_t tamaño = fetch_operand(NUMERO);
+	uint32_t i = fetch_operand(REGISTRO) - 'A';
+	uint32_t j = fetch_operand(REGISTRO) - 'A';
+
+	msp_escribir_memoria(registros.I,registros.registros_programacion[i],registros.registros_programacion[j],tamaño);
+
+}
+
+void movr (void) {
+
+	uint32_t i = fetch_operand(REGISTRO) - 'A';
+	uint32_t j = fetch_operand(REGISTRO) - 'A';
+
+	registros.registros_programacion[i] = registros.registros_programacion[j];
+
+}
+
+void addr (void) {
+
+	uint32_t i = fetch_operand(REGISTRO) - 'A';
+	uint32_t j = fetch_operand(REGISTRO) - 'A';
+
+	registros.registros_programacion[A] = registros.registros_programacion[i] + registros.registros_programacion[j];
+
+}
+
+void subr (void) {
+
+	uint32_t i = fetch_operand(REGISTRO) - 'A';
+	uint32_t j = fetch_operand(REGISTRO) - 'A';
+
+	registros.registros_programacion[A] = registros.registros_programacion[i] - registros.registros_programacion[j];
+
+}
+
+void mulr (void) {
+
+	uint32_t i = fetch_operand(REGISTRO) - 'A';
+	uint32_t j = fetch_operand(REGISTRO) - 'A';
+
+	registros.registros_programacion[A] = registros.registros_programacion[i] * registros.registros_programacion[j];
+
+}
+
+void modr (void) {
+
+	uint32_t i = fetch_operand(REGISTRO) - 'A';
+	uint32_t j = fetch_operand(REGISTRO) - 'A';
+
+	registros.registros_programacion[A] = registros.registros_programacion[i] % registros.registros_programacion[j];
+
+}
+
+void divr (void) {
+
+	uint32_t i = fetch_operand(REGISTRO) - 'A';
+	uint32_t j = fetch_operand(REGISTRO) - 'A';
+
+	if(registros.registros_programacion[j])
+		registros.flags = 0;						//setear flag ZERO_DIV, cambiar por el valor que corresponde
+	else
+		registros.registros_programacion[A] = registros.registros_programacion[i] / registros.registros_programacion[j];
+
+}
+
+void incr (void) {
+
+	++registros.registros_programacion[fetch_operand(REGISTRO) - 'A'];
+
+}
+
+void decr (void) {
+
+	--registros.registros_programacion[fetch_operand(REGISTRO) - 'A'];
+
+}
+
+void comp (void) {
+
+	uint32_t i = fetch_operand(REGISTRO) - 'A';
+	uint32_t j = fetch_operand(REGISTRO) - 'A';
+
+	registros.registros_programacion[A] = registros.registros_programacion[i] == registros.registros_programacion[j];
+
+}
+
+void cgeq (void) {
+
+	uint32_t i = fetch_operand(REGISTRO) - 'A';
+	uint32_t j = fetch_operand(REGISTRO) - 'A';
+
+	registros.registros_programacion[A] = registros.registros_programacion[i] >= registros.registros_programacion[j];
+
+}
+
+void cleq (void) {
+
+	uint32_t i = fetch_operand(REGISTRO) - 'A';
+	uint32_t j = fetch_operand(REGISTRO) - 'A';
+
+	registros.registros_programacion[A] = registros.registros_programacion[i] <= registros.registros_programacion[j];
+
+}
+
+void eso_goto (void) {
+
+	uint32_t i = fetch_operand(REGISTRO) - 'A';
+
+	registros.P = registros.registros_programacion[i];
+
+}
+
+void jmpz (void) {
+
+	int32_t i = fetch_operand(REGISTRO) - 'A';
+
+	if(registros.registros_programacion[A] == 0)
+		registros.P = registros.registros_programacion[i];
+
+}
+
+void jpnz (void) {
+
+	int32_t i = fetch_operand(REGISTRO) - 'A';
+
+	if(registros.registros_programacion[A])
+		registros.P = registros.registros_programacion[i];
+
+}
+
+void inte (void) {
+
+	//implementacion pendiente
+
+}
+
+void flcl (void) {
+
+	registros.flags = 0;
+
+}
+
+void shif (void) {
+
+	//implementacion pendiente
+
+}
+
+void nopp (void) {
+
+}
+
+void push (void) {
+
+	size_t cantidad_bytes = fetch_operand(NUMERO);
+	uint32_t i = fetch_operand(REGISTRO) - 'A';
+
+	msp_escribir_memoria(registros.I,registros.S,registros.registros_programacion[i],cantidad_bytes);
+	registros.S += cantidad_bytes;
+
+}
+
+void take (void) {
+
+	size_t cantidad_bytes = fetch_operand(NUMERO);
+	uint32_t i = fetch_operand(REGISTRO) - 'A';
+
+	msp_solicitar_memoria(registros.I,registros.registros_programacion[i],cantidad_bytes);
+	registros.S -= cantidad_bytes;
+
+}
+
+void xxxx (void) {
+
+	//decir_al_kernel_que_el_hilo_finalizo_la_ejecucion
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
