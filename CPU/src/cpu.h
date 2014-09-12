@@ -17,4 +17,9 @@ void cambio_registros(t_registros_cpu registros);
 void ejecucion_hilo(t_hilo* hilo, uint32_t quantum);
 */
 
+#include <commons/config.h>
+#include <commons/log.h>
+
+#define PATH_ARCHIVO_CONF "Config/cpu.conf"
+
 #endif /* CPU_H_ */

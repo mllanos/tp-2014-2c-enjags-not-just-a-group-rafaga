@@ -16,8 +16,18 @@
 
 t_hilo hilo;
 uint32_t quantum;
+size_t instruccion_size;
 
 int main(void) {
+
+	//Levantar archivo de configuracion
+	t_config* config = config_create(PATH_ARCHIVO_CONF);
+	int puerto_kernel = config_get_int_value(config,"PUERTO_KERNEL");
+	char *direccionIP_kernel = config_get_string_value(config,"IP_KERNEL");
+	int puerto_msp = config_get_int_value(config,"PUERTO_MSP");
+	char *direccionIP_msp = config_get_string_value(config,"IP_MSP");
+	int retardo = config_get_int_value(config,"RETARDO");
+	//Fin levantar archivo de configuracion
 
 	if(conectar_a_kernel() == -1){
 		//log("error_conectar_kernel");
@@ -31,16 +41,13 @@ int main(void) {
 		exit(EXIT_FAILURE);
 	}
 
-	size_t instruccion_size = 4;
-
 	while(1){
 
 		//obtener_siguiente_hilo();		//solicita un nuevo hilo para ejecutar (TCB y quantum) al Kernel.
-
+		//aca va el delay con el retardo?
 		while(quantum || hilo.kernel_mode){
 
 			eu_cargar_registros();
-			////instruccion_size = obtener_siguiente_instruccion();
 			eu_fetch_instruccion();
 			eu_decode();
 			eu_ejecutar();

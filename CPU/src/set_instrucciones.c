@@ -250,8 +250,8 @@ void jmpz (void) {
 
 	int32_t i = fetch_operand(REGISTRO) - 'A';
 
-	if(registros.registros_programacion[A] == 0)
-		registros.P = registros.registros_programacion[i];
+	if(registros.registros_programacion[A] == 0)				//se puede optimizar si hago el if antes del fetch; la única consideración es que deberia adelantar el
+		registros.P = registros.registros_programacion[i];		//puntero de instruccion a mano, para saltear ese parametro que nunca leería
 
 }
 

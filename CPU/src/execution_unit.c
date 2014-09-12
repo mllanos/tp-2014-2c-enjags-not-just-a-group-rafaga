@@ -9,14 +9,14 @@
 #include "set_instrucciones.h"
 #include "panel.h"
 
-char oc_instruccion[5];
+char oc_instruccion[5];			//operation code
 int cursor_tabla,fin_tabla;
 t_registros_cpu registros;
 t_instruccion tabla_instrucciones[34];
 
 void avanzar_puntero_instruccion(size_t desplazamiento){
 
-	registros.P += desplazamiento;
+	registros.P += instruccion_size;
 
 }
 
@@ -49,6 +49,7 @@ void eu_cargar_registros(void){
 void eu_fetch_instruccion(void){
 
 	//recibir de msp y guardar en oc_instruccion
+	instruccion_size = 4;
 
 }
 
@@ -59,7 +60,7 @@ void eu_decode(void){
 	else
 		fin_tabla = 33;
 
-	for(cursor_tabla = 0;cursor_tabla > fin_tabla || strcmp(oc_instruccion,tabla_instrucciones[cursor_tabla].mnemonico);++cursor_tabla )
+	for(cursor_tabla = 0;cursor_tabla <= fin_tabla && strcmp(oc_instruccion,tabla_instrucciones[cursor_tabla].mnemonico);++cursor_tabla )
 		;//validar instruccion invalida;
 
 	//if(cursor_tabla > fin_tabla)
@@ -78,17 +79,20 @@ int fetch_operand(t_operandos tipo_operando){
 	switch(tipo_operando){
 	case REGISTRO:
 		unsigned char registro;
-		//recibir de msp y guardar en registro
+		//recibir un char de msp y guardar en registro
+		instruccion_size += 1;
 		return (char) registro;
 		break;
 	case NUMERO:
 		int32_t numero;
-		//recibir de msp y guardar en direccion
+		//recibir un int32 de msp y guardar en direccion
+		instruccion_size += 4;
 		return (int32_t) numero;
 		break;
 	case DIRECCION:
 		uint32_t direccion;
-		//recibir de msp y guardar en direccion
+		//recibir uint32 de msp y guardar en direccion
+		instruccion_size += 4;
 		return (uint32_t) direccion;
 		break;
 	}
