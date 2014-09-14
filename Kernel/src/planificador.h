@@ -1,13 +1,8 @@
-/*
- * planificador.h
- *
- *  Created on: 05/09/2014
- *      Author: utnso
- */
+#ifndef PLANIFICADOR_H
+#define PLANIFICADOR_H
 
-#ifndef PLANIFICADOR_H_
-#define PLANIFICADOR_H_
+#include <stdio.h>
 
+void *planificador(void *arg);
 
-
-#endif /* PLANIFICADOR_H_ */
+#endif

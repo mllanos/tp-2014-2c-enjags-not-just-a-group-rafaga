@@ -1,6 +1,5 @@
-#include <stdlib.h>
+#include "planificador.h"
 
-int main (){
-	return 0;
+void *planificador(void *arg) {
+	printf("Hello planificador\n");
 }
-
