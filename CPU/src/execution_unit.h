@@ -8,7 +8,15 @@
 #ifndef EXECUTION_UNIT_H
 #define EXECUTION_UNIT_H
 
+#include <stdint.h>
+#include <stddef.h>
+#include "panel.h"
+#include "set_instrucciones.h"
 #define OPERATION_CODE_SIZE 4;
+
+t_hilo hilo;
+uint32_t quantum;
+size_t instruccion_size;
 
 typedef struct {
 	int32_t registros_programacion[5]; //A, B, C, D y E
@@ -22,5 +30,26 @@ typedef struct {
 } t_registros_cpu;
 
 enum {A,B,C,D,E} typedef t_registros_programacion;
+
+
+t_registros_cpu registros;
+
+
+
+void obtener_siguiente_hilo (void);
+void avanzar_puntero_instruccion(size_t desplazamiento);
+void eu_actualizar_registros(void);
+void eu_cargar_registros(void);
+void eu_fetch_instruccion(void);
+void eu_decode(void);
+void eu_ejecutar(int retardo);
+int fetch_operand(t_operandos tipo_operando);
+
+
+
+int conectar_a_kernel(void);
+int conectar_a_msp(void);
+
+
 
 #endif /*EXECUTION_UNIT_H*/

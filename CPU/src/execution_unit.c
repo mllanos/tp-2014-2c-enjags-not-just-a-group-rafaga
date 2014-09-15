@@ -5,14 +5,24 @@
  *      Author: matias
  */
 
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
 #include "execution_unit.h"
 #include "set_instrucciones.h"
 #include "panel.h"
 
+
 char oc_instruccion[5];			//operation code
 int cursor_tabla,fin_tabla;
-t_registros_cpu registros;
-t_instruccion tabla_instrucciones[34];
+FILE *tcb;
+
+void obtener_siguiente_hilo (void) {
+
+	//cargar tcb en hilo
+	quantum = 5;
+
+}
 
 void avanzar_puntero_instruccion(size_t desplazamiento){
 
@@ -24,7 +34,7 @@ void eu_actualizar_registros(void){
 
 	int i;
 	for(i = 0;i < 5; ++i)
-		registros.registros_programacion[i] = hilo.registros[i];
+		hilo.registros[i] = registros.registros_programacion[i];
 
 	hilo.puntero_instruccion = registros.P;
 	hilo.cursor_stack = registros.S;
@@ -51,6 +61,8 @@ void eu_fetch_instruccion(void){
 	//recibir de msp y guardar en oc_instruccion
 	instruccion_size = 4;
 
+	fread(oc_instruccion,instruccion_size,1,tcb);
+
 }
 
 void eu_decode(void){
@@ -68,8 +80,9 @@ void eu_decode(void){
 
 }
 
-void eu_ejecutar(void){
+void eu_ejecutar(int retardo){
 
+	usleep(retardo * 1000);
 	tabla_instrucciones[cursor_tabla].rutina();
 
 }
@@ -77,21 +90,24 @@ void eu_ejecutar(void){
 int fetch_operand(t_operandos tipo_operando){
 
 	switch(tipo_operando){
-	case REGISTRO:
+	case REGISTRO:;
 		unsigned char registro;
 		//recibir un char de msp y guardar en registro
+		fread(&registro,sizeof(char),1,tcb);
 		instruccion_size += 1;
 		return (char) registro;
 		break;
-	case NUMERO:
+	case NUMERO:;
 		int32_t numero;
 		//recibir un int32 de msp y guardar en direccion
+		fread(&numero,sizeof(int32_t),1,tcb);
 		instruccion_size += 4;
 		return (int32_t) numero;
 		break;
-	case DIRECCION:
+	case DIRECCION:;
 		uint32_t direccion;
 		//recibir uint32 de msp y guardar en direccion
+		fread(&direccion,sizeof(uint32_t),1,tcb);
 		instruccion_size += 4;
 		return (uint32_t) direccion;
 		break;
@@ -100,3 +116,15 @@ int fetch_operand(t_operandos tipo_operando){
 	return 4000000000;
 
 }
+
+int conectar_a_kernel(void){
+	return 0;
+}
+
+int conectar_a_msp(void){
+
+	tcb = fopen("arithmetics.bc","r");
+
+	return 0;
+}
+

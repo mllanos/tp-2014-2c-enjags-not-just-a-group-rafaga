@@ -15,6 +15,8 @@ struct {
 
 enum {REGISTRO,NUMERO,DIRECCION} typedef t_operandos;
 
+t_instruccion tabla_instrucciones[34];
+
 void inicializar_tabla_instrucciones(void);
 
 #endif /* INSTRUCCIONES_ESO_H_ */
