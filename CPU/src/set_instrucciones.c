@@ -5,11 +5,9 @@
  *      Author: matias
  */
 
+#include <stdlib.h>
 #include "set_instrucciones.h"
 #include "execution_unit.h"
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
 
 void load (void){
 
@@ -319,15 +317,3 @@ void inicializar_tabla_instrucciones(void){
 	tabla_instrucciones[33].rutina = wake;
 */
 }
-
-
-
-
-
-
-
-
-
-
-
-

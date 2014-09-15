@@ -8,13 +8,14 @@
 #ifndef CPU_H_
 #define CPU_H_
 
-/*Loggeo de eventos*/
-/*
-void comienzo_ejecucion(t_hilo* hilo, uint32_t quantum);
-void fin_ejecucion();
-void ejecucion_instruccion(char* mnemonico, t_list* parametros);
-void cambio_registros(t_registros_cpu registros);
-void ejecucion_hilo(t_hilo* hilo, uint32_t quantum);
-*/
+#include <stdlib.h>
+#include <commons/config.h>
+#include <commons/log.h>
+#include "execution_unit.h"
+#define PATH_ARCHIVO_CONF "Config/cpu.conf"
+
+/*dummy*/
+void imprimir_tcb(void);
+/*dummy*/
 
 #endif /* CPU_H_ */

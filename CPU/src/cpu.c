@@ -8,19 +8,7 @@
  ============================================================================
  */
 
-#include <stdio.h>
-#include <stdlib.h>
 #include "cpu.h"
-#include "execution_unit.h"
-
-#include <commons/config.h>
-#include <commons/log.h>
-
-#define PATH_ARCHIVO_CONF "Config/cpu.conf"
-
-
-void imprimir_tcb(void);
-
 
 int main(void) {
 
@@ -31,8 +19,8 @@ int main(void) {
 	int puerto_msp = config_get_int_value(config,"PUERTO_MSP");
 	char *direccionIP_msp = config_get_string_value(config,"IP_MSP");
 	int retardo = config_get_int_value(config,"RETARDO");*/
-	int retardo = 800;
-	//Fin levantar archivo de configuracion
+	int retardo = 0;
+	//FIN levantar archivo de configuracion
 
 	if(conectar_a_kernel() == -1){
 		//log("error_conectar_kernel");
@@ -50,9 +38,9 @@ int main(void) {
 
 	while(1){
 
-		obtener_siguiente_hilo();		//solicita un nuevo hilo para ejecutar (TCB y quantum) al Kernel.
+		obtener_siguiente_hilo();								//solicita un nuevo hilo para ejecutar (TCB y quantum) al Kernel.
 		//aca va el delay con el retardo?
-		while(quantum || hilo.kernel_mode){
+		while(quantum || registros.K){
 
 			eu_cargar_registros();
 			eu_fetch_instruccion();
@@ -63,14 +51,14 @@ int main(void) {
 
 		}
 
-		//devolver_hilo();						//devuelve el hilo al kernel.
+		//devolver_hilo();										//devuelve el hilo al kernel.
 
 	}
 
 	return EXIT_SUCCESS;
 
 }
-
+/*dummy*/
 void imprimir_tcb(void) {
 
 	int i;
@@ -88,5 +76,5 @@ void imprimir_tcb(void) {
 	printf("Registro I Valor: %4d\n\n", hilo.pid);
 
 }
-
+/*dummy*/
 
