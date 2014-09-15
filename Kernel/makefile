@@ -1,11 +1,27 @@
-CFLAGS := -I../libs/commons-library
+CC = gcc
+IDIR = -I../libs/commons-library/src \
+       -I../libs/ansisop-panel \
+       -I../libs/utiles
+LDIR = -L../libs/commons-library/src/build \
+       -L../libs/ansisop-panel/Release \
+       -L../libs/utiles
+LIBS = -lcommons -lutiles -lpthread -lansisop-panel
+OBJ = obj/kernel.o obj/loader.o obj/planificador.o
+DIRS = bin/ obj/ panel/
+OUT = bin/Kernel
 
-LDFLAGS := -L../libs/commons-library
+all: directories kernel
 
-LIB := -lcommons
+obj/%.o: src/%.c
+	$(CC) -c $(IDIR) -o $@ $<
 
-all: main.c
-	gcc $(CFLAGS) $(LDFLAGS) main.c $(LIB) -o Kernel
+kernel: $(OBJ)
+	$(CC) $(OBJ) $(LDIR) $(LIBS) -o $(OUT)
+
+directories:
+	mkdir -p $(DIRS)
 
 clean:
-	touch Kernel && $(RM) Kernel
+	rm -rf $(OUT) $(OBJ) $(DIRS)
+
+.PHONY: directories clean

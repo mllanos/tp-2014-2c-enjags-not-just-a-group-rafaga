@@ -1,12 +1,12 @@
-COMMONS_DIR_HEADERS=../commons-library
-COMMONS_DIR_BIN=../commons-library
+COMMONS_DIR_HEADERS=../../commons-library/src
+COMMONS_DIR_BIN=../../commons-library/src/build
 COMMONS_NAME=commons
 
 UTILES=libutiles.so
 INSTALL_DIR=/usr/lib
 
-SOURCE_FILES = console.c error.c socket.c string.c utiles.c
-HEADER_FILER = console.h error.h socket.h string.h utiles.h
+SOURCE_FILES = utiles.c
+HEADER_FILER = utiles.h
 
 compile:
 	cd utiles; gcc -shared -fPIC $(SOURCE_FILES) $(HEADER_FILES) -I$(COMMONS_DIR_HEADERS) -L$(COMMONS_DIR_BIN) -o $(UTILES) -l$(COMMONS_NAME)
