@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include "set_instrucciones.h"
 #include "execution_unit.h"
+#define ZERO_DIV 1
 
 void load (void){
 
@@ -89,7 +90,7 @@ void divr (void) {
 	if(registros.registros_programacion[j])
 		registros.registros_programacion[A] = registros.registros_programacion[i] / registros.registros_programacion[j];
 	else
-		registros.flags = 0;						//setear flag ZERO_DIV, cambiar por el valor que corresponde
+		registros.flags = ZERO_DIV;
 
 }
 
@@ -142,25 +143,21 @@ void eso_goto (void) {
 
 void jmpz (void) {
 
-	int32_t i = fetch_operand(REGISTRO) - 'A';
-
-	if(registros.registros_programacion[A] == 0)				//se puede optimizar si hago el if antes del fetch; la única consideración es que deberia adelantar el
-		registros.P = registros.registros_programacion[i];		//puntero de instruccion a mano, para saltear ese parametro que nunca leería
+	if(registros.registros_programacion[A] == 0)
+		registros.P = fetch_operand(DIRECCION);
 
 }
 
 void jpnz (void) {
 
-	int32_t i = fetch_operand(REGISTRO) - 'A';
-
 	if(registros.registros_programacion[A])
-		registros.P = registros.registros_programacion[i];
+		registros.P = fetch_operand(DIRECCION);
 
 }
 
 void inte (void) {
 
-	//implementacion pendiente
+	//kernel_interrupcion(hilo,fetch_operand(DIRECCION));
 
 }
 
@@ -172,7 +169,15 @@ void flcl (void) {
 
 void shif (void) {
 
-	//implementacion pendiente
+	int n,i;
+
+	n = fetch_operand(NUMERO);
+	i = fetch_operand(REGISTRO) - 'A';
+
+	if(n < 0)
+		registros.registros_programacion[i] = ( (uint32_t)registros.registros_programacion[i] ) >> (n*-1); //REVISAR
+	else if(n > 0)
+		registros.registros_programacion[i] = registros.registros_programacion[i] << n;
 
 }
 
@@ -203,7 +208,7 @@ void take (void) {
 void xxxx (void) {
 
 	/*dummy*/
-	imprimir_tcb();
+	//imprimir_tcb();
 	exit(0);
 	/*dummy*/
 	//decir_al_kernel_que_el_hilo_finalizo_la_ejecucion

@@ -48,7 +48,7 @@ int main(void) {
 			eu_ejecutar(retardo);
 			avanzar_puntero_instruccion(instruccion_size);
 			eu_actualizar_registros();
-
+			imprimir_tcb();
 		}
 
 		//devolver_hilo();										//devuelve el hilo al kernel.
@@ -67,14 +67,14 @@ void imprimir_tcb(void) {
 		fflush(stdout);
 	}
 	puts("\n");
-
+/*
 	printf("Registro M Valor: %4d\n", hilo.segmento_codigo);
 	printf("Registro P Valor: %4d\n", hilo.puntero_instruccion);
 	printf("Registro X Valor: %4d\n", hilo.base_stack);
 	printf("Registro S Valor: %4d\n", hilo.cursor_stack);
 	printf("Registro K Valor: %4d\n", hilo.kernel_mode);
 	printf("Registro I Valor: %4d\n\n", hilo.pid);
-
+*/
 }
 /*dummy*/
 

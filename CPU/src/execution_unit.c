@@ -125,7 +125,7 @@ int conectar_a_kernel(void){
 
 int conectar_a_msp(void){
 
-	tcb = fopen("arithmetics.bc","r+");
+	tcb = fopen("Documentos/A.bc","r+");
 
 	return 0;
 }
