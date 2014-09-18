@@ -35,7 +35,6 @@ void eu_cargar_registros(void){
 	for(i = 0;i < 5; ++i)
 		registros.registros_programacion[i] = hilo.registros[i];
 
-	registros.flags = hilo.flags;
 	registros.I = hilo.pid;
 	registros.X = hilo.base_stack;
 	registros.K = hilo.kernel_mode;
@@ -51,7 +50,6 @@ void eu_actualizar_registros(void){
 	for(i = 0;i < 5; ++i)
 		hilo.registros[i] = registros.registros_programacion[i];
 
-	hilo.flags = registros.flags;
 	hilo.cursor_stack = registros.S;
 	hilo.puntero_instruccion = registros.P;
 
@@ -69,9 +67,9 @@ void eu_fetch_instruccion(void){
 void eu_decode(void){
 
 	if(registros.K == 0)
-		fin_tabla = 23;
+		fin_tabla = 22;
 	else
-		fin_tabla = 33;
+		fin_tabla = 32;
 
 	for(cursor_tabla = 0;cursor_tabla <= fin_tabla && strcmp(oc_instruccion,tabla_instrucciones[cursor_tabla].mnemonico);++cursor_tabla )
 		;
@@ -125,7 +123,7 @@ int conectar_a_kernel(void){
 
 int conectar_a_msp(void){
 
-	tcb = fopen("Documentos/A.bc","r+");
+	tcb = fopen("BESO/A.bc","r+");
 
 	return 0;
 }

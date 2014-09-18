@@ -13,13 +13,13 @@
 int main(void) {
 
 	//Levantar archivo de configuracion
-	/*t_config* config = config_create(PATH_ARCHIVO_CONF);
+	t_config* config = config_create(PATH_ARCHIVO_CONF);
 	int puerto_kernel = config_get_int_value(config,"PUERTO_KERNEL");
 	char *direccionIP_kernel = config_get_string_value(config,"IP_KERNEL");
 	int puerto_msp = config_get_int_value(config,"PUERTO_MSP");
 	char *direccionIP_msp = config_get_string_value(config,"IP_MSP");
-	int retardo = config_get_int_value(config,"RETARDO");*/
-	int retardo = 0;
+	int retardo = config_get_int_value(config,"RETARDO");
+	//int retardo = 0;
 	//FIN levantar archivo de configuracion
 
 	if(conectar_a_kernel() == -1){
@@ -39,10 +39,10 @@ int main(void) {
 	while(1){
 
 		obtener_siguiente_hilo();								//solicita un nuevo hilo para ejecutar (TCB y quantum) al Kernel.
+		eu_cargar_registros();
 		//aca va el delay con el retardo?
 		while(quantum || registros.K){
 
-			eu_cargar_registros();
 			eu_fetch_instruccion();
 			eu_decode();
 			eu_ejecutar(retardo);

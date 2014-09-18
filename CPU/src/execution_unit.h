@@ -25,7 +25,6 @@ typedef struct {
 	uint32_t S; 						//Cursor de stack
 	uint32_t K; 						//Kernel Mode
 	uint32_t I; 						//PID
-	uint32_t flags;						//Registro de FLAGS:
 } t_registros_cpu;
 
 enum {A,B,C,D,E} typedef t_registros_programacion;
@@ -43,7 +42,6 @@ typedef struct {
 	uint32_t puntero_instruccion;
 	uint32_t base_stack;
 	uint32_t cursor_stack;
-	uint32_t flags;
 	int32_t registros[5];
 	t_cola cola;
 } t_hilo;

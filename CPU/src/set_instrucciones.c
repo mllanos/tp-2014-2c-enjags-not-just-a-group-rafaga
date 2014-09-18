@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include "set_instrucciones.h"
 #include "execution_unit.h"
-#define ZERO_DIV 1
 
 void load (void){
 
@@ -90,7 +89,7 @@ void divr (void) {
 	if(registros.registros_programacion[j])
 		registros.registros_programacion[A] = registros.registros_programacion[i] / registros.registros_programacion[j];
 	else
-		registros.flags = ZERO_DIV;
+		perror("División por 0");
 
 }
 
@@ -158,12 +157,6 @@ void jpnz (void) {
 void inte (void) {
 
 	//kernel_interrupcion(hilo,fetch_operand(DIRECCION));
-
-}
-
-void flcl (void) {
-
-	registros.flags = 0;
 
 }
 
@@ -271,54 +264,51 @@ void inicializar_tabla_instrucciones(void){
 	strcpy(tabla_instrucciones[17].mnemonico, "INTE");
 	tabla_instrucciones[17].rutina = inte;
 
-	strcpy(tabla_instrucciones[18].mnemonico, "FLCL");
-	tabla_instrucciones[18].rutina = flcl;
+	strcpy(tabla_instrucciones[18].mnemonico, "SHIF");
+	tabla_instrucciones[18].rutina = shif;
 
-	strcpy(tabla_instrucciones[19].mnemonico, "SHIF");
-	tabla_instrucciones[19].rutina = shif;
+	strcpy(tabla_instrucciones[19].mnemonico, "NOPP");
+	tabla_instrucciones[19].rutina = nopp;
 
-	strcpy(tabla_instrucciones[20].mnemonico, "NOPP");
-	tabla_instrucciones[20].rutina = nopp;
+	strcpy(tabla_instrucciones[20].mnemonico, "PUSH");
+	tabla_instrucciones[20].rutina = eso_push;
 
-	strcpy(tabla_instrucciones[21].mnemonico, "PUSH");
-	tabla_instrucciones[21].rutina = eso_push;
+	strcpy(tabla_instrucciones[21].mnemonico, "TAKE");
+	tabla_instrucciones[21].rutina = take;
 
-	strcpy(tabla_instrucciones[22].mnemonico, "TAKE");
-	tabla_instrucciones[22].rutina = take;
-
-	strcpy(tabla_instrucciones[23].mnemonico, "XXXX");
-	tabla_instrucciones[23].rutina = xxxx;
+	strcpy(tabla_instrucciones[22].mnemonico, "XXXX");
+	tabla_instrucciones[22].rutina = xxxx;
 
 	//INSTRUCCIONES PROTEGIDAS
 /*
-	tabla_instrucciones[24].mnemonico = "MALC";
-	tabla_instrucciones[24].rutina = malc;
+	tabla_instrucciones[23].mnemonico = "MALC";
+	tabla_instrucciones[23].rutina = malc;
 
-	tabla_instrucciones[25].mnemonico = "FREE";
-	tabla_instrucciones[25].rutina = eso_free;
+	tabla_instrucciones[24].mnemonico = "FREE";
+	tabla_instrucciones[24].rutina = eso_free;
 
-	tabla_instrucciones[26].mnemonico = "INNN";
-	tabla_instrucciones[26].rutina = innn;
+	tabla_instrucciones[25].mnemonico = "INNN";
+	tabla_instrucciones[25].rutina = innn;
 
-	tabla_instrucciones[27].mnemonico = "INNC";
-	tabla_instrucciones[27].rutina = innc;
+	tabla_instrucciones[26].mnemonico = "INNC";
+	tabla_instrucciones[26].rutina = innc;
 
-	tabla_instrucciones[28].mnemonico = "OUTN";
-	tabla_instrucciones[28].rutina = outn;
+	tabla_instrucciones[27].mnemonico = "OUTN";
+	tabla_instrucciones[27].rutina = outn;
 
-	tabla_instrucciones[29].mnemonico = "OUTC";
-	tabla_instrucciones[29].rutina = outc;
+	tabla_instrucciones[28].mnemonico = "OUTC";
+	tabla_instrucciones[28].rutina = outc;
 
-	tabla_instrucciones[30].mnemonico = "CREA";
-	tabla_instrucciones[30].rutina = crea;
+	tabla_instrucciones[29].mnemonico = "CREA";
+	tabla_instrucciones[29].rutina = crea;
 
-	tabla_instrucciones[31].mnemonico = "JOIN";
-	tabla_instrucciones[31].rutina = join;
+	tabla_instrucciones[30].mnemonico = "JOIN";
+	tabla_instrucciones[30].rutina = join;
 
-	tabla_instrucciones[32].mnemonico = "BLOK";
-	tabla_instrucciones[32].rutina = blok;
+	tabla_instrucciones[31].mnemonico = "BLOK";
+	tabla_instrucciones[31].rutina = blok;
 
-	tabla_instrucciones[33].mnemonico = "WAKE";
-	tabla_instrucciones[33].rutina = wake;
+	tabla_instrucciones[32].mnemonico = "WAKE";
+	tabla_instrucciones[32].rutina = wake;
 */
 }
