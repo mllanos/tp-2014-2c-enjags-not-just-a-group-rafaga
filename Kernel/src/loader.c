@@ -31,7 +31,7 @@ void *loader(void *arg)
 	size_t size = sizeof (clientname);
 
 	/* Create the socket and set it up to accept connections. */
-	int listener = serverSocket(config_get_int_value(config, "PUERTO"), &clientname);
+	int listener = server_socket(config_get_int_value(config, "PUERTO"), &clientname);
 
 	/* Initialize the set of active sockets. */
 	FD_ZERO (&active_fd_set);
@@ -61,15 +61,29 @@ void *loader(void *arg)
 					}
 					fprintf (stderr, "Server: connect from host %s, port %hd.\n", inet_ntoa (clientname.sin_addr), ntohs (clientname.sin_port));
 					FD_SET (new_console, &active_fd_set);
+					t_msg *msg = new_message(0, "Hello new connection. - Kernel");
+					enviar_mensaje(new_console, msg);
+					destroy_message(msg);
 				}
 				else {
 
 					/* Data arriving on an already-connected socket. */
+
+					t_msg *recibido = recibir_mensaje(i);
+					puts(recibido->stream);
+
+					close (i);
+					FD_CLR (i, &active_fd_set);
+
+					destroy_message(recibido);
+
+					/*
 					if (read_from_client (i) < 0) {
 						fprintf (stderr, "Server: disconnect from host %s, port %hd.\n", inet_ntoa (clientname.sin_addr), ntohs (clientname.sin_port));
 						close (i);
 						FD_CLR (i, &active_fd_set);
 					}
+					*/
 				}
 			}
 		}

@@ -10,7 +10,7 @@
 
 #include "cpu.h"
 
-int main(void) {
+int main(int argc, char **argv) {
 
 	//Levantar archivo de configuracion
 	t_config* config = config_create(PATH_ARCHIVO_CONF);
@@ -43,6 +43,7 @@ int main(void) {
 		//aca va el delay con el retardo?
 		while(quantum || registros.K){
 
+			puts("en loop");
 			eu_fetch_instruccion();
 			eu_decode();
 			eu_ejecutar(retardo);

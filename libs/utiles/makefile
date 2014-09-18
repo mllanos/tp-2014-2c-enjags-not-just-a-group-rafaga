@@ -1,22 +1,21 @@
-COMMONS_DIR_HEADERS=../../commons-library/src
-COMMONS_DIR_BIN=../../commons-library/src/build
-COMMONS_NAME=commons
-
 UTILES=libutiles.so
-INSTALL_DIR=/usr/lib
+LIB_DIR=/usr/lib
+INCLUDE_DIR=/usr/include
+LIBS= -lcommons
 
-SOURCE_FILES = utiles.c
-HEADER_FILER = utiles.h
+C_SRCS = $(shell find . -iname "*.c" | tr '\n' ' ')
+H_SRCS = $(shell find . -iname "*.h" | tr '\n' ' ')
 
 compile:
-	cd utiles; gcc -shared -fPIC $(SOURCE_FILES) $(HEADER_FILES) -I$(COMMONS_DIR_HEADERS) -L$(COMMONS_DIR_BIN) -o $(UTILES) -l$(COMMONS_NAME)
-	mv utiles/$(UTILES) .
+	gcc -shared -fPIC $(C_SRCS) $(H_SRCS) -o $(UTILES) $(LIBS)
 
 install: compile
-	sudo cp -u $(UTILES) $(INSTALL_DIR)
+	cp -u $(UTILES) $(LIB_DIR)
+	cp --parents -u $(H_SRCS) $(INCLUDE_DIR)
 
-uninstall:
-	sudo rm -f $(INSTALL_DIR)/$(UTILES)
+uninstall: clean
+	rm -f $(LIB_DIR)/$(UTILES)
+	rm -rf $(INCLUDE_DIR)/utiles 
         
 clean:
 	rm -f $(UTILES)

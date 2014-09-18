@@ -1,9 +1,25 @@
-# un comentario - es ignorado
-# ningún archivo temporal (~)
-# pero si queremos versionar el archivo lib.o, incluse aunque estemos ignorando los archivos .o más arriba
-#!lib.o
-*~
-.*
-libs/commons-library/src/build
-*/Debug
-/Ensamblador
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+# Precompiled Headers
+*.gch
+*.pch
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
