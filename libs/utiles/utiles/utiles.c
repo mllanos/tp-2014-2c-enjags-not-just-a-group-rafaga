@@ -1,96 +1,93 @@
 #include "utiles.h"
 
-/*
- * Prepara un socket servidor.
- */
- int serverSocket(uint16_t port, struct sockaddr_in *name)
- {
- 	int sock, yes = 1;
+int server_socket(uint16_t port, struct sockaddr_in *name)
+{
+	int sock, optval = 1;
 
 	/* Create the socket. */
- 	sock = socket(PF_INET, SOCK_STREAM, 0);
- 	if(sock < 0) {
- 		perror("socket");
- 		exit(EXIT_FAILURE);
- 	}
+	sock = socket(PF_INET, SOCK_STREAM, 0);
+	if(sock < 0) {
+		perror("socket");
+		exit(EXIT_FAILURE);
+	}
 
 	/* Set socket options. */
- 	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
- 		perror("setsockopt");
- 		exit(1);
- 	}
+	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1) {
+		perror("setsockopt");
+		exit(1);
+	}
 
 	/* Fill ip / port info. */
- 	name->sin_family = AF_INET;
- 	name->sin_addr.s_addr = htonl(INADDR_ANY);
- 	name->sin_port = htons(port);
+	name->sin_family = AF_INET;
+	name->sin_addr.s_addr = htonl(INADDR_ANY);
+	name->sin_port = htons(port);
 
  	/* Give the socket a name. */
- 	if(bind(sock, (struct sockaddr *) name, sizeof (*name)) < 0) {
- 		perror("bind");
- 		exit(EXIT_FAILURE);
- 	}
+	if(bind(sock, (struct sockaddr *) name, sizeof (*name)) < 0) {
+		perror("bind");
+		exit(EXIT_FAILURE);
+	}
 
 	/* Listen to incoming connections. */
- 	if (listen(sock, 1) < 0) {
- 		perror ("listen");
- 		exit (EXIT_FAILURE);
- 	}
+	if (listen(sock, 1) < 0) {
+		perror ("listen");
+		exit (EXIT_FAILURE);
+	}
 
- 	return sock;
- }
+	return sock;
+}
 
-/*
- * Prepara un socket cliente.
- */
- int clientSocket(char* ip, uint16_t port)
- {
- 	int sock;
- 	struct sockaddr_in servername;
+int client_socket(char* ip, uint16_t port)
+{
+	int sock;
+	struct sockaddr_in servername;
 
 	/* Create the socket. */
- 	sock = socket(PF_INET, SOCK_STREAM, 0);
- 	if(sock < 0) {
- 		perror("socket");
- 		exit(EXIT_FAILURE);
- 	}
+	sock = socket(PF_INET, SOCK_STREAM, 0);
+	if(sock < 0) {
+		perror("socket");
+		exit(EXIT_FAILURE);
+	}
 
 	/* Fill server ip / port info. */
- 	servername.sin_family = AF_INET;
- 	servername.sin_addr.s_addr = inet_addr(ip);
- 	servername.sin_port = htons(port);
- 	memset(&(servername.sin_zero), 0, 8);
+	servername.sin_family = AF_INET;
+	servername.sin_addr.s_addr = inet_addr(ip);
+	servername.sin_port = htons(port);
+	memset(&(servername.sin_zero), 0, 8);
 
 	/* Connect to the server. */
- 	if(connect(sock, (struct sockaddr *) &servername, sizeof (servername)) < 0) {
- 		perror("connect");
- 		exit(EXIT_FAILURE);
- 	}
+	if(connect(sock, (struct sockaddr *) &servername, sizeof (servername)) < 0) {
+		perror("connect");
+		exit(EXIT_FAILURE);
+	}
 
- 	return sock;
- }
+	return sock;
+}
 
 
 /*
  * Enviar Mensaje.
  *
  */
+ /*
  void enviarMensaje(int sockfd, char* info)
  {
  	t_mensaje* mensaje = malloc(sizeof(t_mensaje));
  	mensaje->id = '_';
  	mensaje->info = info;
- 	t_stream* stream = serializador(mensaje);
- 	if((send(sockfd, stream->data, stream->length, 0)) < 0) {
+ 	t_buffer* buffer = serializador(mensaje);
+ 	if((send(sockfd, buffer->data, buffer->length, 0)) < 0) {
  		perror("Error en el send");
  		exit(EXIT_FAILURE);
  	}
  }
+ */
 
 /*
  * Recibir Mensaje.
  *
  */
+ /*
  t_mensaje* recibirMensaje(int sockfd)
  {
  	char buffer[256];
@@ -98,89 +95,137 @@
  	t_mensaje* mensaje = deserializarMensaje(buffer, nbytes);
  	return mensaje;
  }
+ */
 
 /*
  * Deserializar Mensaje.
  *
  */
+ /*
  t_mensaje* deserializarMensaje(char* buffer, int nbytes)
  {
- 	t_stream* stream = malloc(sizeof(t_stream));
- 	stream->data = buffer;
- 	stream->length = nbytes;
+ 	t_buffer* buffer = malloc(sizeof(t_buffer));
+ 	buffer->data = buffer;
+ 	buffer->length = nbytes;
 
- 	t_mensaje* mensaje = deserializador(stream);
+ 	t_mensaje* mensaje = deserializador(buffer);
  	return mensaje;
  }
+ */
 
 /*
  * Serializacion
  *
  */
- t_stream *serializador(t_mensaje *mensaje)
+ /*
+ t_buffer *serializador(t_mensaje *mensaje)
  {
  	char *data = malloc(strlen(mensaje->info) + 1);
- 	t_stream *stream = malloc(sizeof(t_stream));
+ 	t_buffer *buffer = malloc(sizeof(t_buffer));
  	int offset = 0, tmp_size = 0;
  	memcpy(data, &mensaje->id, tmp_size = sizeof(char));
  	offset = tmp_size;
  	memcpy(data + offset, mensaje->info, tmp_size = strlen(mensaje->info) + 1);
  	offset += tmp_size;
- 	stream->length = offset;
- 	stream->data = data;
- 	return stream;
+ 	buffer->length = offset;
+ 	buffer->data = data;
+ 	return buffer;
  }
+ */
 
 /*
  * Deserializacion.
  *
  */
- t_mensaje *deserializador(t_stream *stream)
+ /*
+ t_mensaje *deserializador(t_buffer *buffer)
  {
  	t_mensaje *mensaje = malloc(sizeof(t_mensaje));
  	int offset = 0;
  	int tmp_size = 0;
- 	memcpy(&mensaje->id, stream->data, tmp_size = sizeof(char));
+ 	memcpy(&mensaje->id, buffer->data, tmp_size = sizeof(char));
  	offset = tmp_size;
- 	for (tmp_size = 1; (stream->data + offset)[tmp_size - 1] != '\0';
+ 	for (tmp_size = 1; (buffer->data + offset)[tmp_size - 1] != '\0';
  		tmp_size++);
  		mensaje->info = malloc(tmp_size);
- 	memcpy(mensaje->info, stream->data + offset, tmp_size);
+ 	memcpy(mensaje->info, buffer->data + offset, tmp_size);
  	return mensaje;
  }
-
-/*
- * Devuelve el numero mayor. 
- * 
  */
- int obtenerMayor(int mayor, int numero)
+
+ t_msg *new_message(uint8_t id, char *message)
  {
- 	return mayor < numero ? numero : mayor;
+ 	t_msg *new = malloc(sizeof(*new));
+ 	new->header.id = id;
+ 	new->header.length = strlen(message);
+ 	new->stream = string_duplicate(message);
+ 	return new;
  }
 
-/*
- * Convierte un numero entero a su equivalente caracter.
- * Devuelve dicho caracter.
- */
- char intToChar(int i)
+ t_msg *recibir_mensaje(int sockfd)
  {
- 	return (char)(((int)'0')+i);
+ 	t_msg *msg = malloc(sizeof(*msg));
+ 	msg->stream = string_duplicate(" ");
+
+ 	/* Get message info. */
+ 	if (recv(sockfd, &(msg->header), sizeof(t_header), MSG_WAITALL) < 0) {
+ 		perror("recv");
+ 		exit(EXIT_FAILURE);
+ 	}
+
+ 	/* Get message data. */
+ 	msg->stream = realloc(msg->stream, sizeof(char) * msg->header.length);
+ 	if (msg->header.length > 0) {
+ 		if (recv(sockfd, msg->stream, msg->header.length, MSG_WAITALL) < 0) {
+ 			perror("recv");
+ 			exit(EXIT_FAILURE);
+ 		}
+ 	}
+
+ 	return msg;
  }
 
-/*
- * Aplica rand en un intervalo 0 - limite.
- * Devuelve dicho numero.
- */
- int randomizarNumero(int limite)
+ void enviar_mensaje(int sockfd, t_msg *msg)
  {
- 	return rand() % (limite+1);
+ 	int total = 0;
+ 	int pending = msg->header.length + sizeof(t_header);
+ 	int sent;
+ 	char *buffer = malloc(sizeof(t_header) + msg->header.length);
+
+ 	/* Fill buffer with the struct's data. */
+ 	memcpy(buffer, &(msg->header), sizeof(t_header));
+ 	memcpy(buffer + sizeof(t_header), msg->stream, msg->header.length);
+
+ 	/* Send message(s). */
+ 	while(total < pending) {
+ 		sent = send(sockfd, buffer, msg->header.length + sizeof(msg->header), MSG_NOSIGNAL);
+ 		if(sent < 0) {
+ 			perror("send");
+ 		}
+ 		total += sent;
+ 		pending -= sent;
+ 	}
+
+ 	free(buffer);
  }
 
-/*
- * Genera un long que sirve de semilla para rand() segun el tiempo y pid.
- * Devuelve la semilla.
- */
- long seedgen()
+ void destroy_message(t_msg *msg)
+ {
+ 	free(msg->stream);
+ 	free(msg);
+ }
+
+ int max(int a, int b)
+ {
+ 	return a < b ? b : a;
+ }
+
+ int randomize(int limit)
+ {
+ 	return rand() % (limit + 1);
+ }
+
+ long seedgen(void)
  {
  	long s, seed, pid;
  	time_t seconds;
@@ -190,10 +235,7 @@
  	return seed;
  }
 
-/*
- * Duerme un proceso en milisegundos.
- */
- extern int msleep(__useconds_t __useconds)
+ int msleep(useconds_t usecs)
  {
- 	return usleep(__useconds*1000);
+ 	return usleep(usecs*1000);
  }

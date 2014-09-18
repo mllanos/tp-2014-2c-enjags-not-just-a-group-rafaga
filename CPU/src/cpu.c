@@ -10,7 +10,7 @@
 
 #include "cpu.h"
 
-int main(void) {
+int main(int argc, char **argv) {
 
 	//Levantar archivo de configuracion
 	/*t_config* config = config_create(PATH_ARCHIVO_CONF);
@@ -41,7 +41,7 @@ int main(void) {
 		obtener_siguiente_hilo();								//solicita un nuevo hilo para ejecutar (TCB y quantum) al Kernel.
 		//aca va el delay con el retardo?
 		while(quantum || registros.K){
-
+			puts("en loop");
 			eu_cargar_registros();
 			eu_fetch_instruccion();
 			eu_decode();

@@ -14,11 +14,13 @@ uninstall-libs:
 
 compile-procs:
 	cd Kernel && make
+	cd CPU && make
 
 clean-procs:
 	cd Kernel && make clean
+	cd CPU && make clean
 
 clean-libs:
-	cd libs/commons-library && make clean
-	cd libs/ansisop-panel && make clean
-	cd libs/utiles && make clean
+	cd libs/commons-library && sudo make clean
+	cd libs/ansisop-panel && sudo make clean
+	cd libs/utiles && sudo make clean
