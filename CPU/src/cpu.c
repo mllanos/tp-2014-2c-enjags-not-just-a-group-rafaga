@@ -13,7 +13,7 @@
 int main(int argc, char **argv) {
 
 	//Levantar archivo de configuracion
-	t_config* config = config_create(PATH_ARCHIVO_CONF);
+	t_config* config = config_create(argv[1]);
 	int puerto_kernel = config_get_int_value(config,"PUERTO_KERNEL");
 	char *direccionIP_kernel = config_get_string_value(config,"IP_KERNEL");
 	int puerto_msp = config_get_int_value(config,"PUERTO_MSP");
