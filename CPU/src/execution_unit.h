@@ -65,10 +65,4 @@ void eu_ejecutar(int retardo);
 int fetch_operand(t_operandos tipo_operando);
 /*FIN_Funciones de la UE (Unidad de Ejecución)*/
 
-/*dummys*/
-int conectar_a_kernel(void);
-int conectar_a_msp(void);
-/*dummys*/
-
-
 #endif /*EXECUTION_UNIT_H*/

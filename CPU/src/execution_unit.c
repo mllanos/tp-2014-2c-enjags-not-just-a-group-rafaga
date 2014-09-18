@@ -114,16 +114,3 @@ int fetch_operand(t_operandos tipo_operando){
 	return 4000000000;	//Para que no hinche con el warning, después hay que borrarlo
 
 }
-
-/*dummys*/
-int conectar_a_kernel(void){
-	return 0;
-}
-
-int conectar_a_msp(void){
-
-	tcb = fopen("BESO/A.bc","r+");
-
-	return 0;
-}
-/*dummys*/

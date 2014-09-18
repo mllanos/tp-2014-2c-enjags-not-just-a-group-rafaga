@@ -19,7 +19,6 @@ int main(int argc, char **argv) {
 	int puerto_msp = config_get_int_value(config,"PUERTO_MSP");
 	char *direccionIP_msp = config_get_string_value(config,"IP_MSP");
 	int retardo = config_get_int_value(config,"RETARDO");
-	//int retardo = 0;
 	//FIN levantar archivo de configuracion
 
 	if(conectar_a_kernel() == -1){
@@ -77,5 +76,15 @@ void imprimir_tcb(void) {
 	printf("Registro I Valor: %4d\n\n", hilo.pid);
 */
 }
-/*dummy*/
 
+int conectar_a_kernel(void){
+	return 0;
+}
+
+int conectar_a_msp(void){
+
+	tcb = fopen("BESO/A.bc","r+");
+
+	return 0;
+}
+/*dummys*/

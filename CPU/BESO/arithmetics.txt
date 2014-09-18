@@ -1,0 +1,22 @@
+LOAD A,7
+LOAD B,90
+MULR A,B^ 7 * 90 = 630
+LOAD B,5
+ADDR A,B^ 630 + 5 = 635
+DECR A^ 635 - 1 = 634
+LOAD B,2
+DIVR A,B^ 634 / 2 = 317
+LOAD B,40
+MODR A,B^ 317 % 40 = 37
+LOAD B,300
+SUBR A,B^ 37 - 300 = -263
+INCR A^ -263 + 1 = -262
+^-262
+XXXX
+
+
+^Numero 300 decimal
+^Lo transforma en ASCII ',' 001 (44 1) 
+^Que en decimal es 0010 1100 0000 0001
+^Cuando deberia ser 0000 0001 0010 1100 (300 decimal)
+^Conclusion representa los datos en little-endian
