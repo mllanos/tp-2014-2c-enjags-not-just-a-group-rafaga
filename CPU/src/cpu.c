@@ -14,20 +14,20 @@ int main(int argc, char **argv) {
 
 	//Levantar archivo de configuracion
 	t_config* config = config_create(argv[1]);
-	int puerto_kernel = config_get_int_value(config,"PUERTO_KERNEL");
+	uint16_t puerto_kernel = config_get_int_value(config,"PUERTO_KERNEL");
 	char *direccionIP_kernel = config_get_string_value(config,"IP_KERNEL");
-	int puerto_msp = config_get_int_value(config,"PUERTO_MSP");
+	uint16_t puerto_msp = config_get_int_value(config,"PUERTO_MSP");
 	char *direccionIP_msp = config_get_string_value(config,"IP_MSP");
 	int retardo = config_get_int_value(config,"RETARDO");
 	//FIN levantar archivo de configuracion
 
-	if(conectar_a_kernel() == -1){
+	if(conectar_a_kernel(direccionIP_kernel,puerto_kernel) == -1){
 		//log("error_conectar_kernel");
 		puts("Hubo un error al conectar al Kernel. Abortado.");	//imprimir el mensaje en la consola donde se ejecuta el proceso, no la consola remota
 		exit(EXIT_FAILURE);
 	}
 
-	if(conectar_a_msp() == -1){
+	if(conectar_a_msp(direccionIP_msp,puerto_msp) == -1){	//cambiar utiles para poder validar el error yo
 		//log("error_conectar_msp");
 		puts("Hubo un error al conectar a la MSP. Abortado.");
 		exit(EXIT_FAILURE);
@@ -35,20 +35,25 @@ int main(int argc, char **argv) {
 
 	inicializar_tabla_instrucciones();
 
+	/*dummy*/
+	tcb = fopen("BESO/A.bc","r+");
+	/*dummy*/
+
 	while(1){
 
 		obtener_siguiente_hilo();								//solicita un nuevo hilo para ejecutar (TCB y quantum) al Kernel.
 		eu_cargar_registros();
-		//aca va el delay con el retardo?
+
 		while(quantum || registros.K){
 
-			puts("en loop");
 			eu_fetch_instruccion();
 			eu_decode();
 			eu_ejecutar(retardo);
 			avanzar_puntero_instruccion(instruccion_size);
 			eu_actualizar_registros();
+			/*dummy*/
 			imprimir_tcb();
+			/*dummy*/
 		}
 
 		//devolver_hilo();										//devuelve el hilo al kernel.
@@ -58,6 +63,19 @@ int main(int argc, char **argv) {
 	return EXIT_SUCCESS;
 
 }
+
+int conectar_a_kernel(char *direccionIP,uint16_t puerto){
+
+	kernel = client_socket(direccionIP,puerto);
+	return 0;
+}
+
+int conectar_a_msp(char *direccionIP,uint16_t puerto){
+
+	msp = client_socket(direccionIP,puerto);
+	return 0;
+}
+
 /*dummy*/
 void imprimir_tcb(void) {
 
@@ -75,16 +93,5 @@ void imprimir_tcb(void) {
 	printf("Registro K Valor: %4d\n", hilo.kernel_mode);
 	printf("Registro I Valor: %4d\n\n", hilo.pid);
 */
-}
-
-int conectar_a_kernel(void){
-	return 0;
-}
-
-int conectar_a_msp(void){
-
-	tcb = fopen("BESO/A.bc","r+");
-
-	return 0;
 }
 /*dummys*/

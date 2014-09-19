@@ -12,13 +12,10 @@ static char oc_instruccion[5];											//operation code
 static int cursor_tabla,fin_tabla;
 /*FIN_Variables Locales*/
 
-/*dummy*/
-FILE *tcb;
-/*dummy*/
-
 void obtener_siguiente_hilo (void) {
 
 	//cargar tcb en hilo
+	buffer = recibir_mensaje(kernel);
 	quantum = 5;
 
 }
@@ -59,7 +56,6 @@ void eu_fetch_instruccion(void){
 
 	//recibir de msp y guardar en oc_instruccion
 	instruccion_size = OPERATION_CODE_SIZE;
-	puts("eu_fetch_instruccion");
 	fread(oc_instruccion,instruccion_size,1,tcb);
 }
 

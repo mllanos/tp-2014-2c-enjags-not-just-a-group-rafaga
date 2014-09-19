@@ -13,12 +13,11 @@
 #include <commons/log.h>
 #include "../../libs/utiles/utiles/utiles.h"
 #include "execution_unit.h"
-#define PATH_ARCHIVO_CONF "../config/cpu.conf"
 
 /*dummy*/
 void imprimir_tcb(void);
-int conectar_a_kernel(void);
-int conectar_a_msp(void);
+int conectar_a_kernel(char *direccionIP,uint16_t puerto);
+int conectar_a_msp(char *direccionIP,uint16_t puerto);
 /*dummys*/
 
 #endif /* CPU_H_ */

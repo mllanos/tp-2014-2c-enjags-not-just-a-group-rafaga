@@ -25,7 +25,7 @@ typedef struct {
 	uint32_t S; 						//Cursor de stack
 	uint32_t K; 						//Kernel Mode
 	uint32_t I; 						//PID
-} t_registros_cpu;
+} __attribute__ ((__packed__)) t_registros_cpu;
 
 enum {A,B,C,D,E} typedef t_registros_programacion;
 /*FIN_Definición de los tipos Registro*/
@@ -48,11 +48,18 @@ typedef struct {
 /*FIN_Definición de t_hilo*/
 
 /*Variables Globales*/
+int msp;
+int kernel;
+t_msg *buffer;
 t_hilo hilo;
 uint32_t quantum;
 size_t instruccion_size;
 t_registros_cpu registros;
 /*FIN_Variables Globales*/
+
+/*dummy*/
+FILE *tcb;
+/*dummy*/
 
 /*Funciones de la UE (Unidad de Ejecución)*/
 void obtener_siguiente_hilo (void);
