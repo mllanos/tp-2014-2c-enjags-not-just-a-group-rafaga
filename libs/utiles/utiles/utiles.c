@@ -64,96 +64,7 @@ int client_socket(char* ip, uint16_t port)
 	return sock;
 }
 
-
-/*
- * Enviar Mensaje.
- *
- */
- /*
- void enviarMensaje(int sockfd, char* info)
- {
- 	t_mensaje* mensaje = malloc(sizeof(t_mensaje));
- 	mensaje->id = '_';
- 	mensaje->info = info;
- 	t_buffer* buffer = serializador(mensaje);
- 	if((send(sockfd, buffer->data, buffer->length, 0)) < 0) {
- 		perror("Error en el send");
- 		exit(EXIT_FAILURE);
- 	}
- }
- */
-
-/*
- * Recibir Mensaje.
- *
- */
- /*
- t_mensaje* recibirMensaje(int sockfd)
- {
- 	char buffer[256];
- 	int nbytes = recv(sockfd, buffer, sizeof(buffer), 0);
- 	t_mensaje* mensaje = deserializarMensaje(buffer, nbytes);
- 	return mensaje;
- }
- */
-
-/*
- * Deserializar Mensaje.
- *
- */
- /*
- t_mensaje* deserializarMensaje(char* buffer, int nbytes)
- {
- 	t_buffer* buffer = malloc(sizeof(t_buffer));
- 	buffer->data = buffer;
- 	buffer->length = nbytes;
-
- 	t_mensaje* mensaje = deserializador(buffer);
- 	return mensaje;
- }
- */
-
-/*
- * Serializacion
- *
- */
- /*
- t_buffer *serializador(t_mensaje *mensaje)
- {
- 	char *data = malloc(strlen(mensaje->info) + 1);
- 	t_buffer *buffer = malloc(sizeof(t_buffer));
- 	int offset = 0, tmp_size = 0;
- 	memcpy(data, &mensaje->id, tmp_size = sizeof(char));
- 	offset = tmp_size;
- 	memcpy(data + offset, mensaje->info, tmp_size = strlen(mensaje->info) + 1);
- 	offset += tmp_size;
- 	buffer->length = offset;
- 	buffer->data = data;
- 	return buffer;
- }
- */
-
-/*
- * Deserializacion.
- *
- */
- /*
- t_mensaje *deserializador(t_buffer *buffer)
- {
- 	t_mensaje *mensaje = malloc(sizeof(t_mensaje));
- 	int offset = 0;
- 	int tmp_size = 0;
- 	memcpy(&mensaje->id, buffer->data, tmp_size = sizeof(char));
- 	offset = tmp_size;
- 	for (tmp_size = 1; (buffer->data + offset)[tmp_size - 1] != '\0';
- 		tmp_size++);
- 		mensaje->info = malloc(tmp_size);
- 	memcpy(mensaje->info, buffer->data + offset, tmp_size);
- 	return mensaje;
- }
- */
-
- t_msg *new_message(uint8_t id, char *message)
+ t_msg *new_message(t_msg_id id, char *message)
  {
  	t_msg *new = malloc(sizeof(*new));
  	new->header.id = id;
@@ -165,7 +76,7 @@ int client_socket(char* ip, uint16_t port)
  t_msg *recibir_mensaje(int sockfd)
  {
  	t_msg *msg = malloc(sizeof(*msg));
- 	msg->stream = string_duplicate(" ");
+ 	msg->stream = string_new();
 
  	/* Get message info. */
  	if (recv(sockfd, &(msg->header), sizeof(t_header), MSG_WAITALL) < 0) {
@@ -230,7 +141,7 @@ int client_socket(char* ip, uint16_t port)
  	long s, seed, pid;
  	time_t seconds;
  	pid = getpid();
-    s = time ( &seconds ); /* get CPU seconds since 01/01/1970 */
+    s = time (&seconds); /* get CPU seconds since 01/01/1970 */
  	seed = abs(((s*181)*((pid-83)*359))%104729);
  	return seed;
  }

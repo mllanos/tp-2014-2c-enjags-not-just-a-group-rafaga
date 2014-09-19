@@ -172,7 +172,7 @@ char**  string_get_string_as_array(char* text) {
     return array_values;
 }
 
-char*   string_substring(char* text, int start, int length) {
+char *string_substring(char* text, int start, int length) {
 	char* new_string = calloc(1, length + 1);
 	strncpy(new_string, text + start, length);
 	return new_string;
