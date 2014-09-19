@@ -12,9 +12,6 @@ static char oc_instruccion[5];											//operation code
 static int cursor_tabla,fin_tabla;
 /*FIN_Variables Locales*/
 
-/*dummy*/
-FILE *tcb;
-/*dummy*/
 
 void obtener_siguiente_hilo (void) {
 

@@ -54,6 +54,9 @@ size_t instruccion_size;
 t_registros_cpu registros;
 /*FIN_Variables Globales*/
 
+/* Dummy */
+FILE *tcb;
+
 /*Funciones de la UE (Unidad de Ejecución)*/
 void obtener_siguiente_hilo (void);
 void avanzar_puntero_instruccion(size_t desplazamiento);
