@@ -40,7 +40,7 @@ void msp_connect(void)
 {
 	char *ip = config_get_string_value(config, "IP_MSP");
 	uint16_t port = config_get_int_value(config, "PUERTO_MSP");
-	int msp_fd = client_socket(ip, port);
+	//int msp_fd = client_socket(ip, port);
 }
 
 void kernel_tcb(void)

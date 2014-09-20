@@ -79,12 +79,12 @@ int client_socket(char* ip, uint16_t port)
  	msg->stream = string_new();
 
  	/* Get message info. */
- 	int status = recv(sockfd, &(msg->header), sizeof(t_header), MSG_WAITALL) < 0;
+ 	int status = recv(sockfd, &(msg->header), sizeof(t_header), MSG_WAITALL);
  	if (status < 0) {
  		/* An error has ocurred. */
  		perror("recv");
  		exit(EXIT_FAILURE);
- 	} else if (status = 0) {
+ 	} else if (status == 0) {
  		/* Remote connection has been closed. */
  		free(msg->stream);
  		free(msg);

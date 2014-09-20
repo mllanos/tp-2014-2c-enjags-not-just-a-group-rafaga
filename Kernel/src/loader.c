@@ -15,7 +15,6 @@ void *loader(void *arg)
 	FD_SET (listener, &active_fd_set);
 
 	while (1) {
-
 		/* Block until input arrives on one or more active sockets. */
 		memcpy(&read_fd_set, &active_fd_set, sizeof(read_fd_set));
 
@@ -48,7 +47,7 @@ void *loader(void *arg)
 					if(recibido == NULL) {
 						/* Socket closed connection. */
 						fprintf (stderr, "Server: disconnect from host %s, port %hd.\n", inet_ntoa (clientname.sin_addr), ntohs (clientname.sin_port));
-						close (i);
+						//close (i);
 						FD_CLR (i, &active_fd_set);
 					} else {
 						/* Socket received message. */
@@ -78,11 +77,13 @@ void *loader(void *arg)
 								break;
 							default:
 								puts("Unknown ID.");
-								exit(EXIT_FAILURE);
+								break;
 						}
+
+						destroy_message(recibido);
 					}
 
-					destroy_message(recibido);
+					
 				}
 			}
 		}

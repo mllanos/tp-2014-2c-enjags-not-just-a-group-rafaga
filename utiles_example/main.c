@@ -11,8 +11,8 @@ int main (int argc, char **argv) {
 	puts(enviado->stream);
 	printf("Length: %d\n", enviado->header.length);
 	enviar_mensaje(sockfd, enviado);
-	t_msg *recibido = recibir_mensaje(sockfd);
-	puts(recibido->stream);
+	//t_msg *recibido = recibir_mensaje(sockfd);
+	//puts(recibido->stream);
 	sleep(5);
 	t_msg *out = new_message(CONSOLE_OUT, "Blah.");
 	enviar_mensaje(sockfd, out);
