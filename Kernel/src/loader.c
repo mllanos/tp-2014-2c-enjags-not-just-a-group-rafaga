@@ -1,5 +1,4 @@
 #include "loader.h"
-#include "kernel.h"
 
 void *loader(void *arg)
 {
@@ -46,39 +45,41 @@ void *loader(void *arg)
 
 					/* Data arriving on an already-connected socket. */
 					t_msg *recibido = recibir_mensaje(i);
-					puts(recibido->stream);
+					if(recibido == NULL) {
+						/* Socket closed connection. */
+						fprintf (stderr, "Server: disconnect from host %s, port %hd.\n", inet_ntoa (clientname.sin_addr), ntohs (clientname.sin_port));
+						close (i);
+						FD_CLR (i, &active_fd_set);
+					} else {
+						/* Socket received message. */
+						puts(recibido->stream);
 
-					t_msg *e_msg;
-					t_hilo *tcb;
+						t_msg *e_msg;
+						t_hilo *new_tcb;
 
-					switch(recibido->header.id) {
-						case CONSOLE_CODE:
-							tcb = reservar_memoria(recibido->stream);
-							
-							if(tcb == NULL) {
-								/* Couldn't allocate memory. */
-								e_msg = new_message(NOT_ENOUGH_MEMORY, "No se pudo reservar memoria en la MSP.");
-								enviar_mensaje(i, e_msg);
-								destroy_message(e_msg);
-								close (i);
-								FD_CLR (i, &active_fd_set);
-							} else {
-								/* Initialize registers and push process to the new queue. */
-								int i;
-								for(i = 0; i < 5; i++)
-									tcb->registros[i] = 0;
-								t_process *new_proc = crear_proceso(i, tcb);
-								queue_push(new_queue, new_proc);
-							}
-							break;
-						case CONSOLE_OUT:
-							fprintf (stderr, "Server: disconnect from host %s, port %hd.\n", inet_ntoa (clientname.sin_addr), ntohs (clientname.sin_port));
-							close (i);
-							FD_CLR (i, &active_fd_set);
-							break;
-						default:
-							puts("Unknown ID");
-							exit(EXIT_FAILURE);
+						switch(recibido->header.id) {
+							case CONSOLE_CODE:
+								new_tcb = reservar_memoria(recibido->stream);
+								if(new_tcb == NULL) {
+									/* Couldn't allocate memory. */
+									e_msg = new_message(NOT_ENOUGH_MEMORY, "No se pudo reservar memoria en la MSP.");
+									enviar_mensaje(i, e_msg);
+									destroy_message(e_msg);
+									close (i);
+									FD_CLR (i, &active_fd_set);
+								} else {
+									/* Initialize registers and push process to the new queue. */
+									int j;
+									for(j = 0; j < 5; j++)
+										new_tcb->registros[j] = 0;
+									dictionary_put(sockfd_dict, string_itoa(new_tcb->pid), string_itoa(i));
+									queue_push(new_queue, new_tcb);
+								}
+								break;
+							default:
+								puts("Unknown ID.");
+								exit(EXIT_FAILURE);
+						}
 					}
 
 					destroy_message(recibido);
@@ -91,15 +92,12 @@ void *loader(void *arg)
 uint32_t get_unique_id(void)
 {
 	static int x = 0;
-	return x++;
+	return ++x;
 }
 
 t_hilo *reservar_memoria(char *beso_data)
 {
 	t_hilo *tcb = new_tcb(NULL);
-	char *ip = config_get_string_value(config, "IP_MSP");
-	uint16_t port = config_get_int_value(config, "PUERTO_MSP");
-	int msp_fd = client_socket(ip, port);
 
 	/* Sending the process' PID to MSP. */
 	t_msg *process = new_message(NEW_PROCESS, string_itoa(tcb->pid));
@@ -110,6 +108,7 @@ t_hilo *reservar_memoria(char *beso_data)
 	enviar_mensaje(msp_fd, code);
 
 	t_msg *status_code = recibir_mensaje(msp_fd);
+
 
 	switch(status_code->header.id == NOT_ENOUGH_MEMORY) {
 		case NOT_ENOUGH_MEMORY:
@@ -168,18 +167,4 @@ t_hilo *new_tcb(t_hilo *tcb)
 	}
 
 	return new;
-}
-
-t_process *crear_proceso(int sockfd, t_hilo *tcb)
-{
-	t_process *proc = malloc(sizeof(*proc));
-	proc->sockfd = sockfd;
-	proc->tcb = tcb;
-	return proc;
-}
-
-void eliminar_proceso(t_process *proc)
-{
-	free(proc->tcb);
-	free(proc);
 }

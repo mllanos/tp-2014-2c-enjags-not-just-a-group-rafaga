@@ -17,9 +17,15 @@
 #define PANEL_PATH "../panel"
 
 void initialize(char *config_path);
+void finalize(void);
+void msp_connect(void);
+void kernel_tcb(void);
 
 /* Archivo de configuracion. */
 t_config *config;
+
+/* Diccionario de sockets - hilos. */
+t_dictionary *sockfd_dict;
 
 /* Colas de estado de procesos. */
 t_queue *new_queue;

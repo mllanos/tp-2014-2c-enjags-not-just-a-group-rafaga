@@ -18,13 +18,7 @@ typedef struct {
 	uint32_t base_stack;
 	uint32_t cursor_stack;
 	int32_t registros[5];
-	t_cola cola;
 } t_hilo;
-
-typedef struct {
-	int sockfd;
-	t_hilo *tcb;
-} t_process;
 
 	/*Loggeo de eventos Kernel*/
 void conexion_cpu(uint32_t id);

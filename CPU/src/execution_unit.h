@@ -13,6 +13,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <unistd.h>
+#include <utiles/utiles.h>
 #include "set_instrucciones.h"
 #define OPERATION_CODE_SIZE 4;
 
