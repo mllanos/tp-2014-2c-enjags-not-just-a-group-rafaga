@@ -18,11 +18,10 @@
 #include <panel/panel.h>
 #include "kernel.h"
 
-int msp_fd;
-
 void *loader(void *arg);
-t_hilo *new_tcb(t_hilo *tcb);
-t_hilo *reservar_memoria(char *beso_data);
+t_hilo *ult_tcb(t_hilo *tcb);
+t_hilo *reservar_memoria(t_hilo *tcb, char *buf);
 uint32_t get_unique_id(void);
+void interpret_message(int sockfd, t_msg *recibido);
 
 #endif
