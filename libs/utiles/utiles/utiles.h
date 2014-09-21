@@ -11,6 +11,7 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <commons/string.h>
+#define REG_SIZE 4
 
 /* Listado de los diferentes IDs de los mensajes a enviar en el sistema. */
 typedef enum {
@@ -34,6 +35,20 @@ typedef struct {
 	char *stream;
 }__attribute__ ((__packed__)) t_msg;
 
+typedef enum { NEW, READY, EXEC, BLOCK, EXIT } t_cola;
+
+typedef struct {
+	uint32_t pid;
+	uint32_t tid;
+	uint32_t kernel_mode;
+	uint32_t segmento_codigo;
+	uint32_t segmento_codigo_size;
+	uint32_t puntero_instruccion;
+	uint32_t base_stack;
+	uint32_t cursor_stack;
+	int32_t registros[5];
+	t_cola cola;
+} __attribute__ ((__packed__)) t_hilo;
 
 /* Creacion de sockets. */
 int server_socket(uint16_t port, struct sockaddr_in *name);
@@ -44,6 +59,10 @@ t_msg *new_message(t_msg_id id, char *message);
 t_msg *recibir_mensaje(int sockfd);
 void enviar_mensaje(int sockfd, t_msg *msg);
 void destroy_message(t_msg *mgs);
+
+/* Serializacion */
+char *serializador_tcb(t_hilo *tcb,uint16_t quantum);
+void deserializador_tcb(t_hilo *tcb, char *stream);
 
 /* Otros. */
 int max(int a, int b);

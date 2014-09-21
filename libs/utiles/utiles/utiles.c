@@ -157,3 +157,43 @@ int client_socket(char* ip, uint16_t port)
  {
  	return usleep(usecs*1000);
  }
+
+ char *serializador_tcb(t_hilo *tcb,uint16_t quantum) {
+
+	 int i = 2,j;
+	 char *stream = malloc(sizeof *tcb + sizeof quantum);
+
+	 memcpy(stream,&quantum,sizeof quantum);
+	 memcpy(stream + 2,&tcb->pid,REG_SIZE);
+	 memcpy(stream + (i+= REG_SIZE),&tcb->tid,REG_SIZE);
+	 memcpy(stream + (i+= REG_SIZE),&tcb->kernel_mode,REG_SIZE);
+	 memcpy(stream + (i+= REG_SIZE),&tcb->segmento_codigo,REG_SIZE);
+	 memcpy(stream + (i+= REG_SIZE),&tcb->segmento_codigo_size,REG_SIZE);
+	 memcpy(stream + (i+= REG_SIZE),&tcb->puntero_instruccion,REG_SIZE);
+	 memcpy(stream + (i+= REG_SIZE),&tcb->base_stack,REG_SIZE);
+	 memcpy(stream + (i+= REG_SIZE),&tcb->cursor_stack,REG_SIZE);
+	 for(j = 0;j < 5;++j)
+		 memcpy(stream + (i+= REG_SIZE),&tcb->registros[j],REG_SIZE);
+	 memcpy(stream + (i+= REG_SIZE),&tcb->cola,sizeof tcb->cola);
+
+	 return stream;
+
+ }
+
+ void deserializador_tcb(t_hilo *tcb, char *stream) {
+
+	 int i = 0,j;
+
+	 memcpy(&tcb->pid,stream + i,REG_SIZE);
+	 memcpy(&tcb->tid,stream + (i+= REG_SIZE),REG_SIZE);
+	 memcpy(&tcb->kernel_mode,stream + (i+= REG_SIZE),REG_SIZE);
+	 memcpy(&tcb->segmento_codigo,stream + (i+= REG_SIZE),REG_SIZE);
+	 memcpy(&tcb->segmento_codigo_size,stream + (i+= REG_SIZE),REG_SIZE);
+	 memcpy(&tcb->puntero_instruccion,stream + (i+= REG_SIZE),REG_SIZE);
+	 memcpy(&tcb->base_stack,stream + (i+= REG_SIZE),REG_SIZE);
+	 memcpy(&tcb->cursor_stack,stream + (i+= REG_SIZE),REG_SIZE);
+	 for(j = 0;j < 5;++j)
+		 memcpy(&tcb->registros[j],stream + (i+= REG_SIZE),REG_SIZE);
+	 memcpy(&tcb->cola,stream + (i+= REG_SIZE),sizeof tcb->cola);
+
+ }

@@ -11,7 +11,6 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <signal.h>
-#include <signal.h>
 
 #define PUERTO "6667"
 #define BACKLOG 5			// Define cuantas conexiones vamos a mantener pendientes al mismo tiempo
