@@ -63,7 +63,7 @@ t_msg *recibir_mensaje(int sockfd);
 void enviar_mensaje(int sockfd, t_msg *msg);
 void destroy_message(t_msg *mgs);
 
-/* Serializacion */
+/* Serializacion. */
 char *serializar_tcb(t_hilo *tcb,uint16_t quantum);
 void deserializar_tcb(t_hilo *tcb, char *stream);
 
@@ -72,5 +72,12 @@ int max(int a, int b);
 long seedgen(void);
 int randomize(int limit);
 int msleep(useconds_t usecs);
+
+/* Private functions. */
+int _server_socket(uint16_t port, char *e_socket, char *e_setsockopt, char *e_bind, char *e_listen);
+int _client_socket(char* ip, uint16_t port, char *e_socket, char *e_connect);
+int _accept_connection(int sockfd, char *e_accept);
+t_msg *_recibir_mensaje(int sockfd, char *e_recv);
+void _enviar_mensaje(int sockfd, t_msg *msg, char *e_send);
 
 #endif /* UTILES_H_ */
