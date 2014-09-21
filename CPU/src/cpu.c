@@ -23,13 +23,13 @@ int main(int argc, char **argv) {
 
 	if(conectar_a_kernel(direccionIP_kernel,puerto_kernel) == -1){
 		//log("error_conectar_kernel");
-		puts("Hubo un error al conectar al Kernel. Abortado.");	//imprimir el mensaje en la consola donde se ejecuta el proceso, no la consola remota
+		puts("Hubo un error al conectar con el Kernel. Abortado.");	//imprimir el mensaje en la consola donde se ejecuta el proceso, no la consola remota
 		exit(EXIT_FAILURE);
 	}
 
 	if(conectar_a_msp(direccionIP_msp,puerto_msp) == -1){	//cambiar utiles para poder validar el error yo
 		//log("error_conectar_msp");
-		puts("Hubo un error al conectar a la MSP. Abortado.");
+		puts("Hubo un error al conectar con la MSP. Abortado.");
 		exit(EXIT_FAILURE);
 	}
 
@@ -56,7 +56,7 @@ int main(int argc, char **argv) {
 			/*dummy*/
 		}
 
-		//devolver_hilo();										//devuelve el hilo al kernel.
+		devolver_hilo();										//devuelve el hilo al kernel.
 
 	}
 
@@ -66,14 +66,13 @@ int main(int argc, char **argv) {
 
 int conectar_a_kernel(char *direccionIP,uint16_t puerto){
 
-	kernel = client_socket(direccionIP,puerto);
-	return 0;
+	return kernel = client_socket(direccionIP,puerto);
+
 }
 
 int conectar_a_msp(char *direccionIP,uint16_t puerto){
 
-	msp = client_socket(direccionIP,puerto);
-	return 0;
+	return msp = client_socket(direccionIP,puerto);
 }
 
 /*dummy*/

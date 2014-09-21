@@ -54,7 +54,6 @@ typedef struct {
 /*Variables Globales*/
 int msp;
 int kernel;
-t_msg *buffer;
 t_hilo hilo;
 uint32_t quantum;
 size_t instruccion_size;

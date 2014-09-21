@@ -18,10 +18,10 @@ int main(void) {
 	hilo.segmento_codigo_size = 1024;
 	hilo.tid = 0;
 
-	char* stream = serializador_tcb(&hilo,quantum);
+	char* stream = serializar_tcb(&hilo,quantum);
 
 	quantum2 = (uint16_t) *stream;
-	deserializador_tcb(&hilo2,(stream + 2));
+	deserializar_tcb(&hilo2,(stream + 2));
 
 	printf("Quantum Valor:			%8d\n", quantum2);
 	printf("Registro PID Valor:		%8d\n", hilo2.pid);

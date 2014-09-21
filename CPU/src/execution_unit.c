@@ -13,11 +13,11 @@ static int cursor_tabla,fin_tabla;
 /*FIN_Variables Locales*/
 
 void obtener_siguiente_hilo (void) {
-
-	//cargar tcb en hilo
-	buffer = recibir_mensaje(kernel);
-	quantum = 5;
-
+//falta bucle hasta comprobar el id
+	t_msg *buffer = recibir_mensaje(kernel);
+	memcpy(&quantum,buffer->stream,2);
+	memcpy(&hilo,buffer->stream + 2,buffer->header.length -2);
+	destroy_message(buffer);
 }
 
 void avanzar_puntero_instruccion(size_t desplazamiento){
@@ -76,7 +76,7 @@ void eu_decode(void){
 
 void eu_ejecutar(int retardo){
 
-	usleep(retardo * 1000);						//Por ahora queda el usleep, después hay que mejorar el método para generar el delay
+	msleep(retardo);
 	tabla_instrucciones[cursor_tabla].rutina();
 
 }
@@ -108,5 +108,13 @@ int fetch_operand(t_operandos tipo_operando){
 	}
 
 	return 4000000000;	//Para que no hinche con el warning, después hay que borrarlo
+
+}
+
+void devolver_hilo(void) {
+
+	t_msg *buffer = new_message(1,(char*) &hilo);	//id para enviar tcb
+	enviar_mensaje(kernel,buffer);
+	destroy_message(buffer);
 
 }

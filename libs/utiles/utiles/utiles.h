@@ -64,8 +64,8 @@ void enviar_mensaje(int sockfd, t_msg *msg);
 void destroy_message(t_msg *mgs);
 
 /* Serializacion */
-char *serializador_tcb(t_hilo *tcb,uint16_t quantum);
-void deserializador_tcb(t_hilo *tcb, char *stream);
+char *serializar_tcb(t_hilo *tcb,uint16_t quantum);
+void deserializar_tcb(t_hilo *tcb, char *stream);
 
 /* Otros. */
 int max(int a, int b);

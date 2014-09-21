@@ -57,12 +57,8 @@ int client_socket(char* ip, uint16_t port)
 	memset(&(servername.sin_zero), 0, 8);
 
 	/* Connect to the server. */
-	if(connect(sockfd, (struct sockaddr *) &servername, sizeof (servername)) < 0) {
-		perror("connect");
-		exit(EXIT_FAILURE);
-	}
+	return connect(sockfd, (struct sockaddr *) &servername, sizeof (servername)) == -1 ? -1 : sockfd;
 
-	return sockfd;
 }
 
 int accept_connection(int sockfd)
@@ -173,7 +169,7 @@ long seedgen(void)
  	return usleep(usecs*1000);
  }
 
- char *serializador_tcb(t_hilo *tcb,uint16_t quantum) {
+ char *serializar_tcb(t_hilo *tcb,uint16_t quantum) {
 
 	 int i = 2,j;
 	 char *stream = malloc(sizeof *tcb + sizeof quantum);
@@ -195,7 +191,7 @@ long seedgen(void)
 
  }
 
- void deserializador_tcb(t_hilo *tcb, char *stream) {
+ void deserializar_tcb(t_hilo *tcb, char *stream) {
 
 	 int i = 0,j;
 
