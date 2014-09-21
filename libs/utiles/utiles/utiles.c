@@ -181,8 +181,8 @@ long seedgen(void)
 	 memcpy(stream,&quantum,sizeof quantum);
 	 memcpy(stream + 2,&tcb->pid,REG_SIZE);
 	 memcpy(stream + (i+= REG_SIZE),&tcb->tid,REG_SIZE);
-	 memcpy(stream + (i+= REG_SIZE),&tcb->kernel_mode,REG_SIZE);
-	 memcpy(stream + (i+= REG_SIZE),&tcb->segmento_codigo,REG_SIZE);
+	 memcpy(stream + (i+= REG_SIZE),&tcb->kernel_mode,sizeof tcb->kernel_mode);
+	 memcpy(stream + (i+= sizeof tcb->kernel_mode),&tcb->segmento_codigo,REG_SIZE);
 	 memcpy(stream + (i+= REG_SIZE),&tcb->segmento_codigo_size,REG_SIZE);
 	 memcpy(stream + (i+= REG_SIZE),&tcb->puntero_instruccion,REG_SIZE);
 	 memcpy(stream + (i+= REG_SIZE),&tcb->base_stack,REG_SIZE);
@@ -201,8 +201,8 @@ long seedgen(void)
 
 	 memcpy(&tcb->pid,stream + i,REG_SIZE);
 	 memcpy(&tcb->tid,stream + (i+= REG_SIZE),REG_SIZE);
-	 memcpy(&tcb->kernel_mode,stream + (i+= REG_SIZE),REG_SIZE);
-	 memcpy(&tcb->segmento_codigo,stream + (i+= REG_SIZE),REG_SIZE);
+	 memcpy(&tcb->kernel_mode,stream + (i+= REG_SIZE),sizeof tcb->kernel_mode);
+	 memcpy(&tcb->segmento_codigo,stream + (i+= sizeof tcb->kernel_mode),REG_SIZE);
 	 memcpy(&tcb->segmento_codigo_size,stream + (i+= REG_SIZE),REG_SIZE);
 	 memcpy(&tcb->puntero_instruccion,stream + (i+= REG_SIZE),REG_SIZE);
 	 memcpy(&tcb->base_stack,stream + (i+= REG_SIZE),REG_SIZE);

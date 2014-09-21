@@ -36,12 +36,14 @@ typedef struct {
 	char *stream;
 }__attribute__ ((__packed__)) t_msg;
 
+#ifndef T_HILO_
+#define T_HILO_
 typedef enum { NEW, READY, EXEC, BLOCK, EXIT } t_cola;
 
 typedef struct {
 	uint32_t pid;
 	uint32_t tid;
-	uint32_t kernel_mode;
+	bool kernel_mode;
 	uint32_t segmento_codigo;
 	uint32_t segmento_codigo_size;
 	uint32_t puntero_instruccion;
@@ -50,6 +52,7 @@ typedef struct {
 	int32_t registros[5];
 	t_cola cola;
 } __attribute__ ((__packed__)) t_hilo;
+#endif
 
 /* Funciones socket. */
 int server_socket(uint16_t port);
