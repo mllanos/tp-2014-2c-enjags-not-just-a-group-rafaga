@@ -117,7 +117,7 @@ int fetch_operand(t_operandos tipo_operando){
 
 	t_msg *new_msg = msp_solicitar_memoria(registros.I,registros.M + registros.P,size,ARG_REQUEST);
 	//validar el ID
-	printf("Recibi de MSP: ID %d - Tamanio %d - OC %d\n",new_msg->header.id,new_msg->header.length,new_msg->stream);
+	printf("Recibi de MSP: ID %d - Tamanio %d - OC %s\n",new_msg->header.id,new_msg->header.length,new_msg->stream);
 	fflush(stdout);
 	memcpy(&arg,new_msg->stream,size);
 	instruccion_size += size;
@@ -129,7 +129,7 @@ int fetch_operand(t_operandos tipo_operando){
 
 void devolver_hilo(void) {
 
-	t_msg *buffer = new_message(CPU_TCB,(char*) &hilo,56);
+	t_msg *buffer = new_message(CPU_TCB,(char*) &hilo);
 	enviar_mensaje(kernel,buffer);
 	free(buffer);
 
@@ -142,7 +142,7 @@ t_msg* msp_solicitar_memoria(uint32_t pid,uint32_t direccion_logica,uint32_t siz
 	memcpy(stream + sizeof pid,&direccion_logica,sizeof direccion_logica);
 	memcpy(stream + 2*sizeof pid,&size,sizeof size);
 
-	t_msg *new_msg = new_message(id,stream,2*sizeof pid + sizeof size);
+	t_msg *new_msg = new_message(id,stream);
 
 	enviar_mensaje(msp,new_msg);
 	destroy_message(new_msg);

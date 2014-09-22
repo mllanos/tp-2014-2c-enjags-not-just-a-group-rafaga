@@ -12,7 +12,7 @@ void interpret_message(int sockfd, t_msg *recibido)
 			printf("Recibi del CPU ID: %d Tamanio: %d\n\n",recibido->header.id,recibido->header.length);
 			fread(dato_cpu,4,1,beso);
 			printf("%s",dato_cpu);
-			msg = new_message(NEXT_OC, dato_cpu,4);		
+			msg = new_message(NEXT_OC, dato_cpu);		
 			enviar_mensaje(sockfd, msg);
 			free(msg);
 			break;
@@ -23,7 +23,7 @@ void interpret_message(int sockfd, t_msg *recibido)
 			printf("arg_size: %d",arg_size);
 			fread(dato_cpu,arg_size,1,beso);
 			printf("%s",dato_cpu);
-			msg = new_message(NEXT_ARG, dato_cpu,arg_size);		
+			msg = new_message(NEXT_ARG, dato_cpu);		
 			enviar_mensaje(sockfd, msg);
 			free(msg);
 			break;
