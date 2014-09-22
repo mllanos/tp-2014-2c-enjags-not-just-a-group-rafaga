@@ -159,29 +159,29 @@ int _server_socket(uint16_t port, char *e_socket, char *e_setsockopt, char *e_bi
 
 int _client_socket(char* ip, uint16_t port, char *e_socket, char *e_connect)
 {
-int sockfd;
-struct sockaddr_in servername;
+	int sockfd;
+	struct sockaddr_in servername;
 
 	/* Create the socket. */
-sockfd = socket(PF_INET, SOCK_STREAM, 0);
-if(sockfd < 0) {
-	perror(e_socket);
-	exit(EXIT_FAILURE);
-}
+	sockfd = socket(PF_INET, SOCK_STREAM, 0);
+	if(sockfd < 0) {
+		perror(e_socket);
+		exit(EXIT_FAILURE);
+	}
 
 	/* Fill server ip / port info. */
-servername.sin_family = AF_INET;
-servername.sin_addr.s_addr = inet_addr(ip);
-servername.sin_port = htons(port);
-memset(&(servername.sin_zero), 0, 8);
+	servername.sin_family = AF_INET;
+	servername.sin_addr.s_addr = inet_addr(ip);
+	servername.sin_port = htons(port);
+	memset(&(servername.sin_zero), 0, 8);
 
 	/* Connect to the server. */
-if(connect(sockfd, (struct sockaddr *) &servername, sizeof (servername)) < 0) {
-	perror(e_connect);
-	exit(EXIT_FAILURE);
-}
+	if(connect(sockfd, (struct sockaddr *) &servername, sizeof (servername)) < 0) {
+		perror(e_connect);
+		exit(EXIT_FAILURE);
+	}
 
-return sockfd;
+	return sockfd;
 }
 
 
@@ -220,12 +220,13 @@ t_msg *_recibir_mensaje(int sockfd, char *e_recv)
 
  	/* Get message data. */
 	msg->stream = realloc(msg->stream, sizeof(char) * msg->header.length);
-	if (msg->header.length > 0) {
-		if (recv(sockfd, msg->stream, msg->header.length, MSG_WAITALL) < 0) {
-			perror(e_recv);
-			exit(EXIT_FAILURE);
-		}
+
+	if (recv(sockfd, msg->stream, msg->header.length, MSG_WAITALL) < 0) {
+		perror(e_recv);
+		exit(EXIT_FAILURE);
 	}
+
+	msg->stream[msg->header.length] = '\0';
 
 	return msg;
 }
@@ -247,6 +248,7 @@ void _enviar_mensaje(int sockfd, t_msg *msg, char *e_send)
 		sent = send(sockfd, buffer, msg->header.length + sizeof(msg->header), MSG_NOSIGNAL);
 		if(sent < 0) {
 			perror(e_send);
+			exit(EXIT_FAILURE);
 		}
 		total += sent;
 		pending -= sent;
