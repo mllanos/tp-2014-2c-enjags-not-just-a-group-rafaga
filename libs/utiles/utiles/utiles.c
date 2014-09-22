@@ -18,11 +18,11 @@ int accept_connection(int sockfd)
 }
 
 
-t_msg *new_message(t_msg_id id, char *message)
+t_msg *new_message(t_msg_id id, char *message,uint32_t size)
 {
 	t_msg *new = malloc(sizeof(*new));
 	new->header.id = id;
-	new->header.length = strlen(message);
+	new->header.length = size;
 	new->stream = message;
 	return new;
 }
