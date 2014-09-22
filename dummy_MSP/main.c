@@ -30,7 +30,7 @@ void interpret_message(int sockfd, t_msg *recibido)
 		case RESERVE_CODE:
 		case RESERVE_STACK:
 		case WRITE_CODE:
-			msg = new_message(OK_MEMORY, "0",2);		
+			msg = new_message(OK_MEMORY, string_duplicate("0"));		
 			enviar_mensaje(sockfd, msg);
 			destroy_message(msg);
 			break;
