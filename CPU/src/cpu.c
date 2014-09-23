@@ -9,7 +9,7 @@
  */
 
 #include "cpu.h"
-/*
+
 int main(int argc, char **argv) {
 
 	//Levantar archivo de configuracion
@@ -20,14 +20,14 @@ int main(int argc, char **argv) {
 	char *direccionIP_msp = config_get_string_value(config,"IP_MSP");
 	int retardo = config_get_int_value(config,"RETARDO");
 	//FIN levantar archivo de configuracion
-*/
+/*
 int main(void) {
 	uint16_t puerto_kernel = 1122;
 	uint16_t puerto_msp = 2233;
 	int retardo = 80;
 	char *direccionIP_kernel = "127.0.0.1";
 	char *direccionIP_msp = "127.0.0.1";
-
+*/	//para debuggear con el eclipse, no borrar
 	conectar_a_kernel(direccionIP_kernel,puerto_kernel);
 		//log("error_conectar_kernel") ?
 

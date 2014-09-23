@@ -77,6 +77,7 @@ int server_socket(uint16_t port);
 int client_socket(char* ip, uint16_t port);
 int accept_connection(int sockfd);
 t_msg *new_message(t_msg_id id, char *message);
+t_msg *crear_mensaje(t_msg_id id, char *message,uint32_t size); /*Recibe un ID de tipo de mensaje, un puntero al stream a enviar, y su tamaño. NO reserva memoria para el stream, usa el mismo puntero recibido*/
 t_msg *recibir_mensaje(int sockfd);
 void enviar_mensaje(int sockfd, t_msg *msg);
 void destroy_message(t_msg *mgs);
