@@ -7,6 +7,7 @@
 
 char ip[16], algoritmo[8];
 int puerto, cmemoria, cswap;
+t_log  *logfile;
 
 
 int main (int argc, char** argv){
@@ -14,7 +15,8 @@ int main (int argc, char** argv){
 
 	//Nos loguemos (utilizando la libreria commons)
 	loguer=crearLog(argv[0]);
-
+	//Cargamos el archivo de configuracion
+	cargarConficuracion(argv[1]);
 
 
 
@@ -23,7 +25,22 @@ int main (int argc, char** argv){
 	return 0;
 }
 
-void levantarArchivoConfig(char* path){
+t_log *crearLog(char *archivo){
+	char path[11]={0};
+	char aux[17]={0};
+
+	strcpy(path,"logueo.log");
+	strcat(aux,"touch ");
+	strcat(aux,path);
+	system(aux);
+	t_log *logAux=log_create(path,archivo,false,LOG_LEVEL_DEBUG);
+	log_info(logAux,"ARCHIVO DE LOG CREADO");
+	return logAux;
+}
+
+
+
+void cargarConficuracion(char* path){
 	/* el archivo configuracion sera del tipo:
 	 * IP=127.0.0.1
 	 * PUERTO=5000
@@ -43,6 +60,6 @@ void levantarArchivoConfig(char* path){
 	cswap         =config_get_int_value(configUMV,"CANTIDAD_SWAP");
 	algoritmo     =config_get_string_value(configUMV,"SUST_PAGS");
 	config_destroy(configUMV);
-	//printf("archivo de configuracion levantado: ip:%s puerto:%i tamanio de bloque:%i\n",ipUMV,puertoUMV,tamanioBloque);
-	log_debug(loguer,"levantarArchivoConf()==>Se levanto el archivo con ip:%s puerto:%i tamanio de memoria:%i swap:%i algoritmo:%i ...",ip,puerto,cmemoria,cswap,algoritmo);
+	//printf("archivo de configuracion levantado: ip:%s ...);
+	log_debug(logfile,"cargarConficuracion(char* path) exitoso, con ip:%s puerto:%i tamanio de memoria:%i swap:%i algoritmo:%i ...",ip,puerto,cmemoria,cswap,algoritmo);
 }
