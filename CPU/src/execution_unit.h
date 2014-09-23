@@ -14,6 +14,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <utiles/utiles.h>
+//#include "utiles.h"		//No la borres, es para debuggear con el eclipse, comentala nomás
 #include "set_instrucciones.h"
 #define OPERATION_CODE_SIZE 4
 

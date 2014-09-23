@@ -23,6 +23,16 @@ t_msg *new_message(t_msg_id id, char *message)
 	t_msg *new = malloc(sizeof(*new));
 	new->header.id = id;
 	new->header.length = strlen(message);
+	char *stream = string_duplicate(message);
+	new->stream = stream;
+	return new;
+}
+
+t_msg *crear_mensaje(t_msg_id id, char *message,uint32_t size)
+{
+	t_msg *new = malloc(sizeof(*new));
+	new->header.id = id;
+	new->header.length = size;
 	new->stream = message;
 	return new;
 }
@@ -225,8 +235,6 @@ t_msg *_recibir_mensaje(int sockfd, char *e_recv)
 		perror(e_recv);
 		exit(EXIT_FAILURE);
 	}
-
-	msg->stream[msg->header.length] = '\0';
 
 	return msg;
 }

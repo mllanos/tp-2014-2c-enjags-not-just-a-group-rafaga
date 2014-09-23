@@ -28,7 +28,7 @@ int main(void) {
 	int cpu = accept_connection(listener);
 	close(listener);
 
-	t_msg *next_hilo = new_message(NEXT_TRHEAD,stream,58);
+	t_msg *next_hilo = crear_mensaje(NEXT_THREAD,stream,58);
 	enviar_mensaje(cpu,next_hilo);
 	puts("TCB enviado (primera vez)\n\n");
 	printf("%d\n", next_hilo->header.length);
@@ -57,7 +57,7 @@ int main(void) {
 
 		stream = serializar_tcb(&hilo,quantum);
 
-		next_hilo = new_message(NEXT_TRHEAD,stream,58);
+		next_hilo = crear_mensaje(NEXT_THREAD,stream,58);
 
 		enviar_mensaje(cpu,next_hilo);
 		puts("TCB enviado\n\n");
