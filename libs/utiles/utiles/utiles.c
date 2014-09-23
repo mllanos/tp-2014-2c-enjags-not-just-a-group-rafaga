@@ -226,6 +226,8 @@ t_msg *_recibir_mensaje(int sockfd, char *e_recv)
 		exit(EXIT_FAILURE);
 	}
 
+	msg->stream[msg->header.length] = '\0';
+
 	return msg;
 }
 
