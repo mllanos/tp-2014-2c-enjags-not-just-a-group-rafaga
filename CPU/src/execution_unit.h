@@ -15,7 +15,7 @@
 #include <unistd.h>
 #include <utiles/utiles.h>
 #include "set_instrucciones.h"
-#define OPERATION_CODE_SIZE 4;
+#define OPERATION_CODE_SIZE 4
 
 /*Definición de los tipos Registro*/
 typedef struct {
@@ -55,14 +55,10 @@ typedef struct {
 int msp;
 int kernel;
 t_hilo hilo;
-uint32_t quantum;
+uint16_t quantum;
 size_t instruccion_size;
 t_registros_cpu registros;
 /*FIN_Variables Globales*/
-
-/*dummy*/
-FILE *tcb;
-/*dummy*/
 
 /*Funciones de la UE (Unidad de Ejecución)*/
 void obtener_siguiente_hilo (void);
@@ -73,6 +69,8 @@ void eu_fetch_instruccion(void);
 void eu_decode(void);
 void eu_ejecutar(int retardo);
 int fetch_operand(t_operandos tipo_operando);
+void devolver_hilo(void);
+t_msg* msp_solicitar_memoria(uint32_t pid,uint32_t direccion_logica,uint32_t size, t_msg_id id);
 /*FIN_Funciones de la UE (Unidad de Ejecución)*/
 
 #endif /*EXECUTION_UNIT_H*/

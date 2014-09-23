@@ -1,14 +1,36 @@
 #include <utiles/utiles.h>
 #include <commons/string.h>
 
+FILE *beso;
+
 void interpret_message(int sockfd, t_msg *recibido)
 {
 	t_msg *msg;
+	char dato_cpu[4]; 
 	switch(recibido->header.id) {
+		case OC_REQUEST:
+			printf("Recibi del CPU ID: %d Tamanio: %d\n\n",recibido->header.id,recibido->header.length);
+			fread(dato_cpu,4,1,beso);
+			printf("%s",dato_cpu);
+			msg = new_message(NEXT_OC, dato_cpu);		
+			enviar_mensaje(sockfd, msg);
+			free(msg);
+			break;
+		case ARG_REQUEST:
+			printf("Recibi del CPU ID: %d Tamanio: %d\n\n",recibido->header.id,recibido->header.length);
+			uint32_t arg_size;
+			memcpy(&arg_size,recibido->stream + 8,recibido->header.length - 8);
+			printf("arg_size: %d",arg_size);
+			fread(dato_cpu,arg_size,1,beso);
+			printf("%s",dato_cpu);
+			msg = new_message(NEXT_ARG, dato_cpu);		
+			enviar_mensaje(sockfd, msg);
+			free(msg);
+			break;
 		case RESERVE_CODE:
 		case RESERVE_STACK:
 		case WRITE_CODE:
-			msg = new_message(OK_MEMORY, "0");		
+			msg = new_message(OK_MEMORY, string_duplicate("0"));		
 			enviar_mensaje(sockfd, msg);
 			destroy_message(msg);
 			break;
@@ -21,6 +43,8 @@ void interpret_message(int sockfd, t_msg *recibido)
 int main(int argc, char **argv)
 {
 	fd_set master, read_fds;
+
+	beso = fopen("A.bc","r");
 
 	/* Create the socket and set it up to accept connections. */
 	int listener = server_socket(2233);

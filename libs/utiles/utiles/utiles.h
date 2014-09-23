@@ -13,16 +13,34 @@
 #include <netdb.h>
 #include <unistd.h>
 #include <commons/string.h>
-#define REG_SIZE 4
+#define REG_SIZE 4 /* Tamaño de los registros de la CPU */
 
 /* Listado de los diferentes IDs de los mensajes a enviar en el sistema. */
 typedef enum {
-	CONSOLE_CODE,			/* Envio de codigo BESO de Consola a Kernel. */
-	OK_MEMORY,				/* Memoria reservada en el MSP. */
-	NOT_ENOUGH_MEMORY,		/* No hay memoria suficiente en el MSP para crear un segmento. */
-	RESERVE_CODE,			/* Pedido de Kernel a reservar un segmento de codigo de un Programa a MSP. */
-	RESERVE_STACK,			/* Pedido de Kernel a reservar un segmento de stack de un Programa a MSP. */
-	WRITE_CODE				/* Pedido de Kernel a escribir en memoria el codigo de un Programa a MSP. */
+	INIT_CONSOLE,				/* Pedido de creacion de hilo principal de Consola a Kernel. */
+	KILL_CONSOLE,				/* Respuesta de finalizacion por error de Kernel a Consola. */
+	RESERVE_CODE,				/* Pedido de reserva de segmento de codigo de Kernel a MSP. */
+	RESERVE_STACK,				/* Pedido de reserva de segmento de stack de Kernel a MSP. */
+	OK_MEMORY,					/* Respuesta de memoria reservada de MSP a Kernel. */
+	NOT_ENOUGH_MEMORY,			/* Respuesta de memoria insuficiente de MSP a Kernel. */
+	WRITE_CODE,					/* Pedido de escritura de codigo BESO de Kernel a MSP. */
+	OK_CODE,					/* Respuesta de escritura correcta de codigo BESO de MSP a Kernel. */
+	OC_REQUEST,					/* Pedido del CPU a la MSP del siguiente código de operación */
+	NEXT_OC,					/* Código de operación enviado por la MSP al CPU que lo solicitó */
+	NEXT_THREAD,				/* TCB enviado por el Kernel a una CPU disponible */
+	ARG_REQUEST,				/* Pedido del CPU a la MSP del siguiente argumento */
+	NEXT_ARG,					/* Argumento enviado por la MSP al CPU que lo solicitó */
+	CPU_TCB,					/* ? */
+	CPU_CONNECT,				/* Pedido de conexion de CPU a Kernel. */
+	CPU_PROCESS,				/* Pedido de conexion a proceso de CPU a Kernel. */
+	CPU_DISCONNECT,				/* Pedido de desconexion de CPU a Kernel. */
+	CPU_INTERRUPT,				/* Pedido de interrupcion de un hilo de proceso de CPU a Kernel. */
+	CPU_INPUT,					/* Pedido de entrada estandar de CPU a Kernel. */
+	CPU_OUTPUT,					/* Pedido de salida estandar de CPU a Kernel. */
+	CPU_THREAD,					/* Pedido de nuevo hilo de proceso de CPU a Kernel. */
+	CPU_JOIN,					/* Pedido de union a hilo de proceso de CPU a Kernel. */
+	CPU_BLOCK,					/* Pedido de bloqueo de hilo de proceso por recurso de CPU a Kernel. */
+	CPU_WAKE					/* Pedido de removido de bloqueo a los hilos de procesos bloquedos por recurso de CPU a Kernel. */
 } t_msg_id;
 
 /* Definicion de estructuras. */
@@ -64,8 +82,8 @@ void enviar_mensaje(int sockfd, t_msg *msg);
 void destroy_message(t_msg *mgs);
 
 /* Serializacion. */
-char *serializar_tcb(t_hilo *tcb,uint16_t quantum);
-void deserializar_tcb(t_hilo *tcb, char *stream);
+char *serializar_tcb(t_hilo *tcb,uint16_t quantum);	/*Recibe un puntero al tcb y el quantum, retorna el stream listo a enviar*/	
+void deserializar_tcb(t_hilo *tcb, char *stream);	/*Recibe un puntero al tcb y el stream del mensaje recibido. Guarda en el tcb la info recibida*/
 
 /* Otros. */
 int max(int a, int b);

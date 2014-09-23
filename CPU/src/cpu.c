@@ -9,7 +9,7 @@
  */
 
 #include "cpu.h"
-
+/*
 int main(int argc, char **argv) {
 
 	//Levantar archivo de configuracion
@@ -20,26 +20,23 @@ int main(int argc, char **argv) {
 	char *direccionIP_msp = config_get_string_value(config,"IP_MSP");
 	int retardo = config_get_int_value(config,"RETARDO");
 	//FIN levantar archivo de configuracion
+*/
+int main(void) {
+	uint16_t puerto_kernel = 1122;
+	uint16_t puerto_msp = 2233;
+	int retardo = 80;
+	char *direccionIP_kernel = "127.0.0.1";
+	char *direccionIP_msp = "127.0.0.1";
 
-	if(conectar_a_kernel(direccionIP_kernel,puerto_kernel) == -1){
-		//log("error_conectar_kernel");
-		puts("Hubo un error al conectar con el Kernel. Abortado.");	//imprimir el mensaje en la consola donde se ejecuta el proceso, no la consola remota
-		exit(EXIT_FAILURE);
-	}
+	conectar_a_kernel(direccionIP_kernel,puerto_kernel);
+		//log("error_conectar_kernel") ?
 
-	if(conectar_a_msp(direccionIP_msp,puerto_msp) == -1){	//cambiar utiles para poder validar el error yo
-		//log("error_conectar_msp");
-		puts("Hubo un error al conectar con la MSP. Abortado.");
-		exit(EXIT_FAILURE);
-	}
+	conectar_a_msp(direccionIP_msp,puerto_msp);
+		//log("error_conectar_msp")?
 
 	inicializar_tabla_instrucciones();
 
-	/*dummy*/
-	tcb = fopen("BESO/A.bc","r+");
-	/*dummy*/
-
-	while(1){
+	while(1) {
 
 		obtener_siguiente_hilo();								//solicita un nuevo hilo para ejecutar (TCB y quantum) al Kernel.
 		eu_cargar_registros();
