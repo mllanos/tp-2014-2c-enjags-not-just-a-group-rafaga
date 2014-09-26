@@ -22,17 +22,21 @@ void getm (void) {
 	uint32_t i = fetch_operand(REGISTRO) - 'A';
 	uint32_t j = fetch_operand(REGISTRO) - 'A';
 
-	//registros.registros_programacion[i] = msp_solicitar_memoria(registros.I,registros.registros_programacion[j],sizeof(int32_t));	//4bytes? preguntar qué es "memoria apuntada"
+	t_msg *new_msg = msp_solicitar_memoria(registros.I,registros.M + registros.registros_programacion[j],REG_SIZE,MEM_REQUEST);
+	//if(new_msg->header.id != ???) //falta elegir un msg_id
+			;//abortar la ejecucion?
+	memcpy(&registros.registros_programacion[i],new_msg->stream,REG_SIZE); //4bytes? preguntar qué es "memoria apuntada"
+	destroy_message(new_msg);
 
 }
 
 void setm (void) {
 
-	size_t operand_size = fetch_operand(NUMERO);
+	uint8_t cantidad = fetch_operand(NUMERO);
 	uint32_t i = fetch_operand(REGISTRO) - 'A';
 	uint32_t j = fetch_operand(REGISTRO) - 'A';
 
-	//msp_escribir_memoria(registros.I,registros.registros_programacion[i],registros.registros_programacion[j],operand_size);
+	memcpy(&registros.registros_programacion[i],&registros.registros_programacion[j],cantidad);
 
 }
 
@@ -156,7 +160,7 @@ void jpnz (void) {
 
 void inte (void) {
 
-	//kernel_interrupcion(hilo,fetch_operand(DIRECCION));
+	//servicio_kernel(CPU_INTERRUPT,fetch_operand(DIRECCION));
 
 }
 
@@ -168,9 +172,11 @@ void shif (void) {
 	i = fetch_operand(REGISTRO) - 'A';
 
 	if(n < 0)
-		registros.registros_programacion[i] = ( (uint32_t)registros.registros_programacion[i] ) >> (n*-1); //REVISAR
-	else if(n > 0)
-		registros.registros_programacion[i] = registros.registros_programacion[i] << n;
+		registros.registros_programacion[i] = registros.registros_programacion[i] << (n * -1); //REVISAR
+	else if(n > 0) {
+		int size = sizeof(uint32_t) * 8 - 1;
+		registros.registros_programacion[i] = (registros.registros_programacion[i] >> n) & ~(((0x1 << size) >> n) << 1);
+	}
 
 }
 
@@ -180,31 +186,32 @@ void nopp (void) {
 
 void eso_push (void) {
 
-	size_t cantidad_bytes = fetch_operand(NUMERO);
+	uint32_t cantidad_bytes = fetch_operand(NUMERO);
 	uint32_t i = fetch_operand(REGISTRO) - 'A';
 
-	//msp_escribir_memoria(registros.I,registros.S,registros.registros_programacion[i],cantidad_bytes);
+	msp_escribir_memoria(registros.I,registros.X + registros.S,&registros.registros_programacion[i],cantidad_bytes);
 	registros.S += cantidad_bytes;
 
 }
 
 void take (void) {
 
-	size_t cantidad_bytes = fetch_operand(NUMERO);
+	uint32_t cantidad_bytes = fetch_operand(NUMERO);
 	uint32_t i = fetch_operand(REGISTRO) - 'A';
 
-	//msp_solicitar_memoria(registros.I,registros.registros_programacion[i],cantidad_bytes);
+	t_msg *new_msg = msp_solicitar_memoria(registros.I,registros.X + registros.S,cantidad_bytes,MEM_REQUEST); //por ahi conviene poner otro id
 	registros.S -= cantidad_bytes;
+	//if(new_msg->header.id != ???) //falta elegir un msg_id
+		;//abortar la ejecucion?
+	memcpy(&registros.registros_programacion[i],new_msg->stream,cantidad_bytes);
+	destroy_message(new_msg);
 
 }
 
 void xxxx (void) {
 
-	/*dummy*/
-	//imprimir_tcb();
+	//servicio_kernel(FINISHED_THREAD);
 	exit(0);
-	/*dummy*/
-	//decir_al_kernel_que_el_hilo_finalizo_la_ejecucion
 
 }
 

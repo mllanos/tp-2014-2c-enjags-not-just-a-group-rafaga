@@ -30,7 +30,9 @@ typedef enum {
 	NEXT_THREAD,				/* TCB enviado por el Kernel a una CPU disponible */
 	ARG_REQUEST,				/* Pedido del CPU a la MSP del siguiente argumento */
 	NEXT_ARG,					/* Argumento enviado por la MSP al CPU que lo solicitó */
-	CPU_TCB,					/* ? */
+	MEM_REQUEST,				/* Pedido de datos a la MSP */
+	WRITE_MEM,				/* Pedido de escritura en memoria a la MSP */
+	CPU_TCB,					/* TCB devuelto por la CPU */
 	CPU_CONNECT,				/* Pedido de conexion de CPU a Kernel. */
 	CPU_PROCESS,				/* Pedido de conexion a proceso de CPU a Kernel. */
 	CPU_DISCONNECT,				/* Pedido de desconexion de CPU a Kernel. */

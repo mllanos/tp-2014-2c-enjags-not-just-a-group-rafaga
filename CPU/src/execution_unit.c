@@ -8,34 +8,24 @@
 #include "execution_unit.h"
 
 /*Variables Locales*/
+static t_list *parametros;
 static char oc_instruccion[5];											//operation code
 static int cursor_tabla,fin_tabla;
 /*FIN_Variables Locales*/
 
 void obtener_siguiente_hilo (void) {
-//falta bucle hasta comprobar el id
-	t_msg *buffer = recibir_mensaje(kernel);
+
+	t_msg *buffer;
+	parametros = list_create();
+
+	do {
+	buffer = recibir_mensaje(kernel);
+	} while(buffer->header.id != NEXT_THREAD);
+
 	memcpy(&quantum,buffer->stream,sizeof quantum);
-	memcpy(&hilo.pid,buffer->stream + 2,4);
-	//memcpy(&hilo,buffer->stream + sizeof quantum,buffer->header.length - sizeof quantum);
-	deserializar_tcb(&hilo,buffer->stream + 2);
-
-	int i;
-	printf("Quantum Valor:		%8d\n", quantum);
-	printf("Registro PID Valor:		%8d\n", hilo.pid);
-	printf("Registro TID Valor:		%8d\n", hilo.tid);
-	printf("Registro KM Valor:		%8d\n", hilo.kernel_mode);
-	printf("Registro CS Valor:		%8d\n", hilo.segmento_codigo);
-	printf("Registro CS_Size Valor:		%8d\n", hilo.segmento_codigo_size);
-	printf("Registro IP Valor:		%8d\n", hilo.puntero_instruccion);
-	printf("Registro Stack Valor:		%8d\n", hilo.base_stack);
-	printf("Registro Stack_Size Valor:	%8d\n", hilo.cursor_stack);
-	for(i = 0;i < 5; ++i)
-		printf("Registro %c. Valor:		%8d\n",('A'+i), hilo.registros[i]);
-	printf("Registro COLA:			%8d\n", hilo.cola);
-	puts("\n");
-
+	deserializar_tcb(&hilo,buffer->stream + sizeof quantum);
 	destroy_message(buffer);
+
 }
 
 void avanzar_puntero_instruccion(size_t desplazamiento){
@@ -74,12 +64,13 @@ void eu_fetch_instruccion(void){
 
 	instruccion_size = OPERATION_CODE_SIZE;
 	t_msg *new_msg = msp_solicitar_memoria(registros.I,registros.M + registros.P,OPERATION_CODE_SIZE,OC_REQUEST);
-	//validar que el ID sea NEXT_OC
-	printf("Recibi de MSP: ID %d - Tamanio %d - OC %s\n",new_msg->header.id,new_msg->header.length,new_msg->stream);
-	fflush(stdout);
+	//if(new_msg->header.id != NEXT_ARG)
+		;//abortar la ejecucion?
 	memcpy(oc_instruccion,new_msg->stream,OPERATION_CODE_SIZE);
 	destroy_message(new_msg);
-	//fread(oc_instruccion,instruccion_size,1,tcb);
+
+	list_destroy(parametros);
+	parametros = list_create();
 }
 
 void eu_decode(void){
@@ -102,6 +93,10 @@ void eu_ejecutar(int retardo){
 	msleep(retardo);
 	tabla_instrucciones[cursor_tabla].rutina();
 	--quantum;
+	ejecucion_instruccion(tabla_instrucciones[cursor_tabla].mnemonico, parametros);
+	cambio_registros(registros);
+	printf("\n\nREGISTRO A: %X\n\n",registros.registros_programacion[A]);
+	fflush(stdout);
 
 }
 
@@ -116,12 +111,13 @@ int fetch_operand(t_operandos tipo_operando){
 		size = sizeof(int32_t);
 
 	t_msg *new_msg = msp_solicitar_memoria(registros.I,registros.M + registros.P,size,ARG_REQUEST);
-	//validar el ID
-	printf("Recibi de MSP: ID %d - Tamanio %d - ARG %d\n",new_msg->header.id,new_msg->header.length,(int)*(new_msg->stream));
-	fflush(stdout);
+	//if(new_msg->header.id != NEXT_OC)
+			;//abortar la ejecucion?
 	memcpy(&arg,new_msg->stream,size);
 	instruccion_size += size;
 	destroy_message(new_msg);
+
+	list_add(parametros,(void*)&arg);
 
 	return arg;
 
@@ -129,7 +125,7 @@ int fetch_operand(t_operandos tipo_operando){
 
 void devolver_hilo(void) {
 
-	t_msg *buffer = crear_mensaje(CPU_TCB,(char*) &hilo,56);
+	t_msg *buffer = crear_mensaje(CPU_TCB,(char*) &hilo,sizeof(t_hilo));
 	enviar_mensaje(kernel,buffer);
 	free(buffer);
 
@@ -137,16 +133,39 @@ void devolver_hilo(void) {
 
 t_msg* msp_solicitar_memoria(uint32_t pid,uint32_t direccion_logica,uint32_t size, t_msg_id id) {
 
-	char *stream = malloc(2*sizeof pid + sizeof size);
-	memcpy(stream,&pid,sizeof pid);
-	memcpy(stream + sizeof pid,&direccion_logica,sizeof direccion_logica);
-	memcpy(stream + 2*sizeof pid,&size,sizeof size);
+	int stream_size = 2*REG_SIZE + sizeof size;
+	char *stream = malloc(stream_size);
+	memcpy(stream,&pid,REG_SIZE);
+	memcpy(stream + REG_SIZE,&direccion_logica,REG_SIZE);
+	memcpy(stream + 2*REG_SIZE,&size,sizeof size);
 
-	t_msg *new_msg = crear_mensaje(id,stream,2*sizeof pid + sizeof size);
+	t_msg *new_msg = crear_mensaje(id,stream,stream_size);
 
 	enviar_mensaje(msp,new_msg);
 	destroy_message(new_msg);
 
 	return recibir_mensaje(msp);
+
+}
+
+t_msg* msp_escribir_memoria(uint32_t pid,uint32_t direccion_logica,void *bytes_a_escribir,uint32_t size) {
+
+	char *stream = malloc(2*REG_SIZE + size);
+	memcpy(stream,&pid,REG_SIZE);
+	memcpy(stream + REG_SIZE,&direccion_logica,REG_SIZE);
+	memcpy(stream + 2*REG_SIZE,&bytes_a_escribir,size);
+
+	t_msg *new_msg = crear_mensaje(WRITE_MEM,stream,size);
+
+	enviar_mensaje(msp,new_msg);
+	destroy_message(new_msg);
+
+	return recibir_mensaje(msp);
+
+}
+
+void servicio_kernel() {
+
+
 
 }

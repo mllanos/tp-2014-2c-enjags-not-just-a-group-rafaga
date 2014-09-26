@@ -13,9 +13,11 @@
 #include <stddef.h>
 #include <string.h>
 #include <unistd.h>
+#include <panel/panel.h>
 #include <utiles/utiles.h>
-//#include "utiles.h"		//No la borres, es para debuggear con el eclipse, comentala nomás
+#include <commons/collections/list.h>
 #include "set_instrucciones.h"
+
 #define OPERATION_CODE_SIZE 4
 
 /*Definición de los tipos Registro*/
@@ -31,26 +33,6 @@ typedef struct {
 
 enum {A,B,C,D,E} typedef t_registros_programacion;
 /*FIN_Definición de los tipos Registro*/
-
-/*Definición de t_hilo (Más adelante ponerlo en el header del kernel y sacarlo del header del panel*/
-#ifndef T_HILO_
-#define T_HILO_
-typedef enum { NEW, READY, EXEC, BLOCK, EXIT } t_cola;
-
-typedef struct {
-	uint32_t pid;
-	uint32_t tid;
-	bool kernel_mode;
-	uint32_t segmento_codigo;
-	uint32_t segmento_codigo_size;
-	uint32_t puntero_instruccion;
-	uint32_t base_stack;
-	uint32_t cursor_stack;
-	int32_t registros[5];
-	t_cola cola;
-} __attribute__ ((__packed__)) t_hilo;
-#endif
-/*FIN_Definición de t_hilo*/
 
 /*Variables Globales*/
 int msp;
@@ -72,6 +54,26 @@ void eu_ejecutar(int retardo);
 int fetch_operand(t_operandos tipo_operando);
 void devolver_hilo(void);
 t_msg* msp_solicitar_memoria(uint32_t pid,uint32_t direccion_logica,uint32_t size, t_msg_id id);
+t_msg* msp_escribir_memoria(uint32_t pid,uint32_t direccion_logica,void *bytes_a_escribir,uint32_t size);
+//void servicio_kernel(void);
 /*FIN_Funciones de la UE (Unidad de Ejecución)*/
+
+/**
+ * Debe invocarse cada vez se vaya a ejecutar una instrucción.
+ * Por ejemplo: ejecucion_instruccion("ABCD", "soy", 1, "parametro");
+ *
+ * @param  mnemonico  Nombre de la instrucción a ejecutar.
+ * @param  parametros  Parametros de la instrucción a ejecutar.
+ */
+void ejecucion_instruccion(char* mnemonico, t_list* parametros);
+
+/**
+ * Debe invocarse cada vez que ocura algún cambio en alguno de los
+ * registros de la CPU (una vez por instruccion a ejecutar, luego de
+ * llamar a ejecucion_instruccion()).
+ *
+ * @param  registros  Estructura conteniendo cada uno de los registros de la CPU.
+ */
+void cambio_registros(t_registros_cpu registros);
 
 #endif /*EXECUTION_UNIT_H*/
