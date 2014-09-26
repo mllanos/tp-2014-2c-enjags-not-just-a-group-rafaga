@@ -195,6 +195,29 @@ int _client_socket(char* ip, uint16_t port, char *e_socket, char *e_connect)
 }
 
 
+int socket_cliente(char* ip, char * port){
+
+	struct addrinfo hints;
+	struct addrinfo *serverInfo;
+
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_UNSPEC;		// Permite que la maquina se encargue de verificar si usamos IPv4 o IPv6
+	hints.ai_socktype = SOCK_STREAM;	// Indica que usaremos el protocolo TCP
+
+	getaddrinfo(ip, port, &hints, &serverInfo);	// Carga en serverInfo los datos de la conexion
+
+
+	int serverSocket;
+	serverSocket = socket(serverInfo->ai_family, serverInfo->ai_socktype, serverInfo->ai_protocol);
+
+
+	connect(serverSocket, serverInfo->ai_addr, serverInfo->ai_addrlen);
+	freeaddrinfo(serverInfo);	// No lo necesitamos mas
+
+	return serverSocket;
+
+}
+
 int _accept_connection(int sockfd, char *e_accept)
 {
 	struct sockaddr_in clientname;
