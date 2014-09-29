@@ -6,33 +6,30 @@ void *loader(void *arg)
 		sem_wait(&sem_loader);
 
 		pthread_mutex_lock(&loader_mutex);
-		char *buffer = buffer = queue_pop(loader_queue);
+		t_msg *buf_msg = queue_pop(loader_queue);
 		pthread_mutex_unlock(&loader_mutex);
 
-		char **args = string_split(buffer, "|");
+		int *sockfd = malloc(sizeof(int));
+		sockfd = memcpy(sockfd, buf_msg->stream, sizeof(uint32_t));
 	
-		t_hilo *new_tcb = reservar_memoria(ult_tcb(), args[1]);
+		t_hilo *new_tcb = reservar_memoria(ult_tcb(), buf_msg);
 
 		if(new_tcb == NULL) {
 
 			/* Couldn't allocate memory. */
-			t_msg *e_msg = new_message(NOT_ENOUGH_MEMORY, string_duplicate("No se pudo reservar memoria en la MSP."));
-			enviar_mensaje(atoi(args[0]), e_msg);
-			destroy_message(e_msg);
+			t_msg *msg = string_message(KILL_CONSOLE, "No se pudo reservar memoria en la MSP.", 0);
+			enviar_mensaje(*sockfd, msg);
+			destroy_message(msg);
 		} else {
 
 			/* Initialize registers and push process to the new queue. */
 			int i;
 			for(i = 0; i < 5; i++)
 				new_tcb->registros[i] = 0;
-			dictionary_put(sockfd_dict, string_itoa(new_tcb->pid), string_duplicate(args[1]));
+			dictionary_put(sockfd_dict, string_itoa(new_tcb->pid), sockfd);
 			queue_push(new_queue, new_tcb);
 		}
 
-		free(buffer);
-		free(args[0]);
-		free(args[1]);
-		free(args);
 	}
 }
 
@@ -41,8 +38,9 @@ t_hilo *ult_tcb(void)
 {
 	t_hilo *new = malloc(sizeof(*new));	
 	new->pid = get_unique_id();
-	new->tid = 0;
+	new->tid = new->pid;
 	new->kernel_mode = false;
 
 	return new;
 }
+

@@ -103,18 +103,18 @@ void create_thread(int sockfd, char *tcb_stream)
 	t_hilo *new_tcb = malloc(sizeof(*new_tcb));
 
 	new_tcb->pid = tcb->pid;
-	new_tcb->tid = tcb->tid + 1; /* TODO metodo que genere tid para un programa. */
+	new_tcb->tid = get_unique_id();
 	new_tcb->kernel_mode = tcb->kernel_mode;
 
-	t_msg *r_stack = new_message(RESERVE_STACK, string_from_format("%d:%d", new_tcb->pid, get_stack_size()));
+	t_msg *r_stack = string_message(RESERVE_SEGMENT, "Reservando segmento para nuevo thread.", 0, new_tcb->pid, get_stack_size());
 
 	enviar_mensaje(msp_fd, r_stack);
 
 	t_msg *status = recibir_mensaje(msp_fd);
 
-	if(status->header.id == OK_MEMORY) {
+	if(status->header.id == OK_RESERVE) {
 		queue_push(ready_queue, new_tcb);
-	} else if(status->header.id == NOT_ENOUGH_MEMORY) {
+	} else if(status->header.id == ENOMEM_RESERVE) {
 		free(new_tcb);
 	} else {
 		errno = EBADMSG;

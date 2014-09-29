@@ -41,11 +41,10 @@ typedef struct {
 void initialize(char *config_path);
 void finalize(void);
 void boot_kernel(void);
-void msp_connect(void);
 void receive_messages(void);
 void interpret_message(int sockfd, t_msg *recibido);
 t_hilo *klt_tcb(void);
-t_hilo *reservar_memoria(t_hilo *tcb, char *buf);
+t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg);
 uint32_t get_unique_id(void);
 
 
@@ -77,6 +76,7 @@ t_queue *exit_queue;
 /* Colas de mensajes a atender por los subsistemas. */
 t_queue *loader_queue;
 t_queue *planificador_queue;
+
 
 /* Lista de CPU. */
 t_list *cpu_list;

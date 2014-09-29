@@ -8,30 +8,37 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdarg.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
 #include <unistd.h>
 #include <commons/string.h>
+
+
 #define REG_SIZE 4 /* Tamaño de los registros de la CPU */
 
 /* Listado de los diferentes IDs de los mensajes a enviar en el sistema. */
 typedef enum {
 	INIT_CONSOLE,				/* Pedido de creacion de hilo principal de Consola a Kernel. */
 	KILL_CONSOLE,				/* Respuesta de finalizacion por error de Kernel a Consola. */
-	RESERVE_CODE,				/* Pedido de reserva de segmento de codigo de Kernel a MSP. */
-	RESERVE_STACK,				/* Pedido de reserva de segmento de stack de Kernel a MSP. */
-	OK_MEMORY,					/* Respuesta de memoria reservada de MSP a Kernel. */
-	NOT_ENOUGH_MEMORY,			/* Respuesta de memoria insuficiente de MSP a Kernel. */
-	WRITE_CODE,					/* Pedido de escritura de codigo BESO de Kernel a MSP. */
-	OK_CODE,					/* Respuesta de escritura correcta de codigo BESO de MSP a Kernel. */
+
+	RESERVE_SEGMENT,			/* Pedido de reserva de segmento a MSP. */
+	OK_RESERVE,					/* Respuesta de memoria reservada de MSP. */
+	ENOMEM_RESERVE,				/* Respuesta de memoria insuficiente de MSP. */
+
+	WRITE_MEMORY,				/* Pedido de escritura en memoria a MSP. */
+	OK_WRITE,					/* Respuesta de escritura correcta de MSP. */
+	SEGFAULT_WRITE,				/* Respuesta de error de segmento en escritura de MSP. */
+
 	OC_REQUEST,					/* Pedido del CPU a la MSP del siguiente código de operación */
 	NEXT_OC,					/* Código de operación enviado por la MSP al CPU que lo solicitó */
 	NEXT_THREAD,				/* TCB enviado por el Kernel a una CPU disponible */
 	ARG_REQUEST,				/* Pedido del CPU a la MSP del siguiente argumento */
 	NEXT_ARG,					/* Argumento enviado por la MSP al CPU que lo solicitó */
 	MEM_REQUEST,				/* Pedido de datos a la MSP */
-	WRITE_MEM,				/* Pedido de escritura en memoria a la MSP */
+	WRITE_MEM,					/* Pedido de escritura en memoria a la MSP */
+
 	CPU_TCB,					/* TCB devuelto por la CPU */
 	CPU_CONNECT,				/* Pedido de conexion de CPU a Kernel. */
 	CPU_PROCESS,				/* Pedido de conexion a proceso de CPU a Kernel. */
@@ -49,12 +56,15 @@ typedef enum {
 typedef struct {
 	t_msg_id id;
 	uint16_t length;
+	uint16_t argc;
 }__attribute__ ((__packed__)) t_header;
 
 typedef struct {
 	t_header header;
 	char *stream;
+	uint32_t *argv;
 }__attribute__ ((__packed__)) t_msg;
+
 
 #ifndef T_HILO_
 #define T_HILO_
@@ -74,31 +84,33 @@ typedef struct {
 } __attribute__ ((__packed__)) t_hilo;
 #endif
 
+
 /* Funciones socket. */
 int server_socket(uint16_t port);
 int client_socket(char* ip, uint16_t port);
 int accept_connection(int sockfd);
-t_msg *new_message(t_msg_id id, char *message);
-t_msg *crear_mensaje(t_msg_id id, char *message,uint32_t size); /*Recibe un ID de tipo de mensaje, un puntero al stream a enviar, y su tamaño. NO reserva memoria para el stream, usa el mismo puntero recibido*/
+t_msg *string_message(t_msg_id id, char *message, uint16_t count, ...);
+t_msg *modify_message(t_msg_id new_id, t_msg *old_msg, uint16_t new_count, ...);
+t_msg *beso_message(t_msg_id id, char *beso_path, uint16_t count, ...);
+t_msg *crear_mensaje(t_msg_id id, char *message, uint32_t size); /*Recibe un ID de tipo de mensaje, un puntero al stream a enviar, y su tamaño. NO reserva memoria para el stream, usa el mismo puntero recibido*/
 t_msg *recibir_mensaje(int sockfd);
+t_msg *_recibir_mensaje(int sockfd);
 void enviar_mensaje(int sockfd, t_msg *msg);
+void _enviar_mensaje(int sockfd, t_msg *msg);
 void destroy_message(t_msg *mgs);
+
 
 /* Serializacion. */
 char *serializar_tcb(t_hilo *tcb,uint16_t quantum);	/*Recibe un puntero al tcb y el quantum, retorna el stream listo a enviar*/	
 void deserializar_tcb(t_hilo *tcb, char *stream);	/*Recibe un puntero al tcb y el stream del mensaje recibido. Guarda en el tcb la info recibida*/
 
-/* Otros. */
+
+/* Funciones auxiliares. */
 int max(int a, int b);
 long seedgen(void);
 int randomize(int limit);
 int msleep(useconds_t usecs);
-
-/* Private functions. */
-int _server_socket(uint16_t port, char *e_socket, char *e_setsockopt, char *e_bind, char *e_listen);
-int _client_socket(char* ip, uint16_t port, char *e_socket, char *e_connect);
-int _accept_connection(int sockfd, char *e_accept);
-t_msg *_recibir_mensaje(int sockfd, char *e_recv);
-void _enviar_mensaje(int sockfd, t_msg *msg, char *e_send);
+char *read_file(char *path);
+void putmsg(t_msg *msg);
 
 #endif /* UTILES_H_ */

@@ -16,13 +16,13 @@ compile-procs:
 	cd Kernel && make
 	cd CPU && make
 	cd dummy_MSP && make
-	cd dummy_Consola && make
+	cd Consola && make
 
 clean-procs:
 	cd Kernel && make clean
 	cd CPU && make clean
 	cd dummy_MSP && make clean
-	cd dummy_Consola && make clean
+	cd Consola && make clean
 
 clean-libs:
 	cd libs/commons-library && sudo make clean

@@ -12,9 +12,9 @@ void interpret_message(int sockfd, t_msg *recibido)
 			printf("Recibi del CPU ID: %d Tamanio: %d\n\n",recibido->header.id,recibido->header.length);
 			fread(dato_cpu,4,1,beso);
 			printf("%s",dato_cpu);
-			msg = crear_mensaje(NEXT_OC, dato_cpu,4);	
+			msg = string_message(NEXT_OC, dato_cpu, 0);	
 			enviar_mensaje(sockfd, msg);
-			free(msg);
+			destroy_message(msg);
 			break;
 		case ARG_REQUEST:
 			printf("Recibi del CPU ID: %d Tamanio: %d\n\n",recibido->header.id,recibido->header.length);
@@ -23,14 +23,17 @@ void interpret_message(int sockfd, t_msg *recibido)
 			printf("arg_size: %d",arg_size);
 			fread(dato_cpu,arg_size,1,beso);
 			printf("%s",dato_cpu);
-			msg = crear_mensaje(NEXT_ARG, dato_cpu,arg_size); 
+			msg = string_message(NEXT_ARG, dato_cpu, 0); 
 			enviar_mensaje(sockfd, msg);
-			free(msg);
+			destroy_message(msg);
 			break;
-		case RESERVE_CODE:
-		case RESERVE_STACK:
-		case WRITE_CODE:
-			msg = new_message(OK_MEMORY, "0");		
+		case RESERVE_SEGMENT:
+			msg = string_message(OK_RESERVE, "0", 0);		
+			enviar_mensaje(sockfd, msg);
+			destroy_message(msg);
+			break;
+		case WRITE_MEMORY:
+			msg = string_message(OK_WRITE, "0", 0);		
 			enviar_mensaje(sockfd, msg);
 			destroy_message(msg);
 			break;
@@ -48,6 +51,10 @@ int main(int argc, char **argv)
 
 	/* Create the socket and set it up to accept connections. */
 	int listener = server_socket(2233);
+	if(listener < 0) {
+		perror("error: %d");
+		exit(EXIT_FAILURE);
+	}
 
 	/* Initialize the set of active sockets. */
 	FD_ZERO (&master);
@@ -95,7 +102,7 @@ int main(int argc, char **argv)
 					} else {
 
 						/* Socket received message. */
-						puts(recibido->stream);
+						putmsg(recibido);
 
 						interpret_message(i, recibido);
 
