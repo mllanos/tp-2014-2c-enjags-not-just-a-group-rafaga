@@ -6,16 +6,12 @@ void *planificador(void *arg)
 		sem_wait(&sem_planificador);
 		
 		pthread_mutex_lock(&planificador_mutex);
-		char *buffer = queue_pop(planificador_queue); // string_from_format("%d:%d:%s", sockfd, recibido->header.id, recibido->stream)
+		t_msg *recibido = queue_pop(planificador_queue);
 		pthread_mutex_unlock(&planificador_mutex);
 
-		char **args = string_split(buffer, "|");
-		int sockfd = atoi(args[0]);
-		int id = atoi(args[1]);
-
-		switch(id) {
+		switch(recibido->header.id) {
 			case CPU_CONNECT:
-				cpu_add(sockfd);
+				//cpu_add(sockfd);
 				break;
 			case CPU_PROCESS:
 				//assign_process(sockfd);
@@ -25,16 +21,23 @@ void *planificador(void *arg)
 				break;
 			case CPU_INTERRUPT:
 				//system_call(args[2]);
-			case CPU_INPUT:
+				break;
+			case NUMERIC_INPUT:
+			case STRING_INPUT:
 				//standard_input(args[2]);
-			case CPU_OUTPUT:
+				break;
+			case STRING_OUTPUT:
 				//standard_output(args[2]);
+				break;
 			case CPU_THREAD:
-				create_thread(sockfd, args[2]);
+				//create_thread(sockfd, args[2]);
+				break;
 			case CPU_JOIN:
 				//join_thread(args[2]);
+				break;
 			case CPU_BLOCK:
 				//block_thread(args[2]);
+				break;
 			case CPU_WAKE:
 				//wake_thread(args[2]);
 				break;
@@ -42,11 +45,6 @@ void *planificador(void *arg)
 				errno = EBADMSG;
 				perror("planificador");
 				break;
-		}
-
-		int i = 0;
-		for(i = 0; i < 3; i++) {
-			free(args[i]);
 		}
 	}
 }

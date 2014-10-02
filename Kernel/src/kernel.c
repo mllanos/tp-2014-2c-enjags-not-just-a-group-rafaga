@@ -66,7 +66,6 @@ void receive_messages(void)
 	int fdmax = listener;
 
 	while (1) {
-
 		/* Block until input arrives on one or more active sockets. */
 		memcpy(&read_fds, &master, sizeof(read_fds));
 
@@ -81,7 +80,6 @@ void receive_messages(void)
 		for (i = 0; i <= fdmax; i++) {
 			if (FD_ISSET (i, &read_fds)) {
 				if (i == listener) {
-
 					/* Connection request on original socket. */
 					int newfd = accept_connection(listener);
 					if (newfd < 0) {
@@ -93,17 +91,14 @@ void receive_messages(void)
 					fdmax = newfd > fdmax ? newfd : fdmax;
 				}
 				else {
-
 					/* Data arriving on an already-connected socket. */
 					t_msg *recibido = recibir_mensaje(i);
 					if(recibido == NULL) {
-
 						/* Socket closed connection. */
 						puts("Desconexion.");
 						close (i);
 						FD_CLR (i, &master);
 					} else {
-
 						/* Socket received message. */
 
 						putmsg(recibido);
@@ -141,32 +136,35 @@ void finalize(void)
 void interpret_message(int sockfd, t_msg *recibido)
 {
 	switch(recibido->header.id) {
-		case INIT_CONSOLE: /* Delegar a loader. */
+		/* Mensaje de Consola. */
+		case INIT_CONSOLE: 						/* <BESO_STRING> */
 			sem_post(&sem_loader);
 
 			pthread_mutex_lock(&loader_mutex);
-			queue_push(loader_queue, modify_message(INIT_CONSOLE, recibido, 0, 1, sockfd));
+			queue_push(loader_queue, remake_message(NO_NEW_ID, recibido, 1, sockfd));
 			pthread_mutex_unlock(&loader_mutex);
 
 			break;
-		case CPU_CONNECT: /* Delegar a planificador. */
-		case CPU_PROCESS:
-		case CPU_DISCONNECT:
-		case CPU_INTERRUPT:
-		case CPU_INPUT:
-		case CPU_OUTPUT:
-		case CPU_THREAD:
-		case CPU_JOIN:
-		case CPU_BLOCK:
-		case CPU_WAKE:
+		/* Mensaje de CPU. */
+		case CPU_CONNECT:						/* <CPU_HANDSHAKE???> */
+		case CPU_DISCONNECT:					/* <CPU_GOODBYE???> */
+		case CPU_PROCESS:						/* <CPU_QUERY???> */
+		case NUMERIC_INPUT: 					/* <PID, [STRING]> */
+		case STRING_INPUT: 						/* <PID, [STRING]> */
+		case STRING_OUTPUT: 					/* <PID, OUT_STRING> */
+		case CPU_INTERRUPT: 					/* <MEM_DIR, TCB_STRING> */
+		case CPU_THREAD:						/* <TCB_STRING> */
+		case CPU_JOIN:							/* <CALLER_TID, WAITER_TID, [STRING]> */
+		case CPU_BLOCK:							/* <RESOURCE_ID, TCB_STRING> */
+		case CPU_WAKE:							/* <RESOURCE_ID, [STRING] */
 			sem_post(&sem_planificador);
 
 			pthread_mutex_lock(&planificador_mutex);
-			queue_push(planificador_queue, string_from_format("%d|%d|%s", sockfd, recibido->header.id, recibido->stream));
+			queue_push(planificador_queue, modify_message(NO_NEW_ID, recibido, 1, sockfd));
 			pthread_mutex_unlock(&planificador_mutex);
 
 			break;
-		default: /* Nunca deberia pasar. */
+		default: 								/* Nunca deberia pasar. */
 			errno = EBADMSG;
 			perror("interpret_message");
 			exit(EXIT_FAILURE);
@@ -183,7 +181,7 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 
 	message[0] = string_message(RESERVE_SEGMENT, "Reserva de segmento de codigo.", 2, tcb->pid, msg->header.length);
 	message[1] = string_message(RESERVE_SEGMENT, "Reserva de segmento de stack.", 2, tcb->pid, get_stack_size());
-	message[2] = modify_message(WRITE_MEMORY, msg, 1, 1, tcb->pid);
+	message[2] = remake_message(WRITE_MEMORY, msg, 1, tcb->pid);
 
 	for(i = 0; i < 3 && cont; i++) {
 		enviar_mensaje(msp_fd, message[i]);
@@ -217,11 +215,11 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 	} 
 
 	if(cont) {
-		tcb->segmento_codigo = atoi((const char *) status[0]->stream);
+		tcb->segmento_codigo = status[0]->argv[0];
 		tcb->segmento_codigo_size = msg->header.length;
 		tcb->puntero_instruccion = tcb->segmento_codigo;
 
-		tcb->base_stack = atoi((const char *) status[1]->stream);
+		tcb->base_stack = status[1]->argv[0];
 		tcb->cursor_stack = tcb->base_stack;
 	}
 

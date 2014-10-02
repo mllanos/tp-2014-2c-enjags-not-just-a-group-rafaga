@@ -35,7 +35,7 @@
 
  char *get_ip_kernel(void);
  int get_puerto_kernel(void);
-
+ 
 #define CONSOLA_H_
 
 #endif /* CONSOLA_H_ */

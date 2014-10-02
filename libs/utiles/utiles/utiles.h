@@ -15,13 +15,22 @@
 #include <unistd.h>
 #include <commons/string.h>
 
+#define REG_SIZE 4
 
-#define REG_SIZE 4 /* Tamaño de los registros de la CPU */
 
-/* Listado de los diferentes IDs de los mensajes a enviar en el sistema. */
+/****************** IDS DE MENSAJES. ******************/
+
 typedef enum {
+	NO_NEW_ID,					/* Valor centinela para evitar la modificacion de id en modify_message(). */
+
 	INIT_CONSOLE,				/* Pedido de creacion de hilo principal de Consola a Kernel. */
 	KILL_CONSOLE,				/* Respuesta de finalizacion por error de Kernel a Consola. */
+
+	NUMERIC_INPUT,				/* Pedido de input numerico de CPU. */
+	STRING_INPUT,				/* Pedido de input de string de CPU. */
+	REPLY_INPUT,				/* Respuesta de input de Consola. */
+
+	STRING_OUTPUT,				/* Pedido de salida estandar de CPU. */
 
 	RESERVE_SEGMENT,			/* Pedido de reserva de segmento a MSP. */
 	OK_RESERVE,					/* Respuesta de memoria reservada de MSP. */
@@ -31,28 +40,29 @@ typedef enum {
 	OK_WRITE,					/* Respuesta de escritura correcta de MSP. */
 	SEGFAULT_WRITE,				/* Respuesta de error de segmento en escritura de MSP. */
 
-	OC_REQUEST,					/* Pedido del CPU a la MSP del siguiente código de operación */
-	NEXT_OC,					/* Código de operación enviado por la MSP al CPU que lo solicitó */
-	NEXT_THREAD,				/* TCB enviado por el Kernel a una CPU disponible */
-	ARG_REQUEST,				/* Pedido del CPU a la MSP del siguiente argumento */
-	NEXT_ARG,					/* Argumento enviado por la MSP al CPU que lo solicitó */
-	MEM_REQUEST,				/* Pedido de datos a la MSP */
-	WRITE_MEM,					/* Pedido de escritura en memoria a la MSP */
+	OC_REQUEST,					/* Pedido del CPU a la MSP del siguiente código de operación. */
+	NEXT_OC,					/* Código de operación enviado por la MSP al CPU que lo solicitó. */
+	NEXT_THREAD,				/* TCB enviado por el Kernel a una CPU disponible. */
+	ARG_REQUEST,				/* Pedido del CPU a la MSP del siguiente argumento. */
+	NEXT_ARG,					/* Argumento enviado por la MSP al CPU que lo solicitó. */
+	MEM_REQUEST,				/* Pedido de datos a la MSP. */
+	WRITE_MEM,					/* Pedido de escritura en memoria a la MSP. */
 
 	CPU_TCB,					/* TCB devuelto por la CPU */
 	CPU_CONNECT,				/* Pedido de conexion de CPU a Kernel. */
 	CPU_PROCESS,				/* Pedido de conexion a proceso de CPU a Kernel. */
 	CPU_DISCONNECT,				/* Pedido de desconexion de CPU a Kernel. */
 	CPU_INTERRUPT,				/* Pedido de interrupcion de un hilo de proceso de CPU a Kernel. */
-	CPU_INPUT,					/* Pedido de entrada estandar de CPU a Kernel. */
-	CPU_OUTPUT,					/* Pedido de salida estandar de CPU a Kernel. */
+
 	CPU_THREAD,					/* Pedido de nuevo hilo de proceso de CPU a Kernel. */
 	CPU_JOIN,					/* Pedido de union a hilo de proceso de CPU a Kernel. */
 	CPU_BLOCK,					/* Pedido de bloqueo de hilo de proceso por recurso de CPU a Kernel. */
 	CPU_WAKE					/* Pedido de removido de bloqueo a los hilos de procesos bloquedos por recurso de CPU a Kernel. */
 } t_msg_id;
 
-/* Definicion de estructuras. */
+
+/****************** ESTRUCTURAS DE DATOS. ******************/
+
 typedef struct {
 	t_msg_id id;
 	uint16_t length;
@@ -80,37 +90,135 @@ typedef struct {
 	uint32_t base_stack;
 	uint32_t cursor_stack;
 	int32_t registros[5];
-	t_cola cola;
+	t_cola cola; /* Es necesario esto? */
 } __attribute__ ((__packed__)) t_hilo;
 #endif
 
 
-/* Funciones socket. */
+/****************** FUNCIONES SOCKET. ******************/
+
+/*
+ * Crea, vincula y escucha un socket desde un puerto determinado.
+ */
 int server_socket(uint16_t port);
+
+/*
+ * Crea y conecta a una ip:puerto determinado.
+ */
 int client_socket(char* ip, uint16_t port);
+
+/*
+ * Acepta la conexion de un socket.
+ */
 int accept_connection(int sockfd);
-t_msg *string_message(t_msg_id id, char *message, uint16_t count, ...);
-t_msg *modify_message(t_msg_id new_id, t_msg *old_msg, uint16_t new_count, ...);
-t_msg *beso_message(t_msg_id id, char *beso_path, uint16_t count, ...);
-t_msg *crear_mensaje(t_msg_id id, char *message, uint32_t size); /*Recibe un ID de tipo de mensaje, un puntero al stream a enviar, y su tamaño. NO reserva memoria para el stream, usa el mismo puntero recibido*/
+
+/*
+ * Recibe un t_msg a partir de un socket determinado.
+ */
 t_msg *recibir_mensaje(int sockfd);
-t_msg *_recibir_mensaje(int sockfd);
+
+/*
+ * Envia los contenidos de un t_msg a un socket determinado.
+ */
 void enviar_mensaje(int sockfd, t_msg *msg);
-void _enviar_mensaje(int sockfd, t_msg *msg);
+
+
+/****************** FUNCIONES T_MSG. ******************/
+
+/*
+ * Crea un t_msg a partir de un string y count argumentos.
+ */
+t_msg *string_message(t_msg_id id, char *message, uint16_t count, ...);
+
+/*
+ * Agrega nuevos argumentos a un mensaje (estilo FIFO).
+ */
+t_msg *modify_message(t_msg_id new_id, t_msg *old_msg, uint16_t new_count, ...);
+
+/*
+ * Elimina todos los argumentos existentes de un mensaje y agrega nuevos.
+ */
+t_msg *remake_message(t_msg_id new_id, t_msg *old_msg, uint16_t new_count, ...);
+
+/*
+ * Crea un t_msg a partir de los contenidos de un archivo beso y count argumentos.
+ */
+t_msg *beso_message(t_msg_id id, char *beso_path, uint16_t count, ...);
+
+/*
+ * Crea un t_msg a partir de los contenidos de un tcb y count argumentos.
+ */
+t_msg *tcb_message(t_msg_id id, t_hilo *tcb, uint16_t count, ...);
+
+/*
+ * Crea un mensaje (viejo).
+ */
+t_msg *crear_mensaje(t_msg_id id, char *message, uint32_t size);
+
+/*
+ * Libera los contenidos de un t_msg.
+ */
 void destroy_message(t_msg *mgs);
 
 
-/* Serializacion. */
-char *serializar_tcb(t_hilo *tcb,uint16_t quantum);	/*Recibe un puntero al tcb y el quantum, retorna el stream listo a enviar*/	
-void deserializar_tcb(t_hilo *tcb, char *stream);	/*Recibe un puntero al tcb y el stream del mensaje recibido. Guarda en el tcb la info recibida*/
+/****************** SERIALIZACION TCB. ******************/ 
+
+/*
+ * Recibe un puntero al tcb y el quantum, retorna el stream listo a enviar.
+ */
+char *serializar_tcb(t_hilo *tcb,uint16_t quantum); // TODO QUITAR QUANTUM DE ACA
+
+/*
+ * Recibe un puntero al tcb y el stream del mensaje recibido. Guarda en el tcb la info recibida.
+ */
+void deserializar_tcb(t_hilo *tcb, char *stream);
 
 
-/* Funciones auxiliares. */
+/****************** FUNCIONES AUXILIARES. ******************/
+
+/*
+ * Compara dos numeros y retorna el maximo.
+ */
 int max(int a, int b);
-long seedgen(void);
+
+/*
+ * Genera una nueva secuencia de enteros pseudo-random a retornar por rand().
+ */
+void seedgen(void);
+
+/*
+ * RNG. Retorna valores entre 0 y limit.
+ */
 int randomize(int limit);
+
+/*
+ * Sleep en microsegundos.
+ */
 int msleep(useconds_t usecs);
+
+/*
+ * Lee un archivo y retorna sus contenidos.
+ */
 char *read_file(char *path);
+
+/*
+ * Alternativa sin undefined behavior a fflush(STDIN) para usar con scanf().
+ */
+void clean_stdin_buffer(void);
+
+/*
+ * Muestra los contenidos y argumentos de un t_msg.
+ */
 void putmsg(t_msg *msg);
+
+/*
+ * Funcion auxiliar para putmsg().
+ */
+char *id_string(t_msg_id id);
+
+/*
+ * Recupera los contenidos de un tcb cargado a mensaje.
+ */
+t_hilo *retrieve_tcb(t_msg *msg);
 
 #endif /* UTILES_H_ */

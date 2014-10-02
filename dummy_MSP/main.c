@@ -28,12 +28,12 @@ void interpret_message(int sockfd, t_msg *recibido)
 			destroy_message(msg);
 			break;
 		case RESERVE_SEGMENT:
-			msg = string_message(OK_RESERVE, "0", 0);		
+			msg = string_message(OK_RESERVE, "", 1, 0);		
 			enviar_mensaje(sockfd, msg);
 			destroy_message(msg);
 			break;
 		case WRITE_MEMORY:
-			msg = string_message(OK_WRITE, "0", 0);		
+			msg = string_message(OK_WRITE, "", 1, 0);		
 			enviar_mensaje(sockfd, msg);
 			destroy_message(msg);
 			break;
