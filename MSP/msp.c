@@ -213,3 +213,49 @@ t_segmento *crearPagina(u_int16_t pagina)
 
 	return new;
 }
+
+// Te devuelve un num_byte de un value...
+// Byte1 = segmento (12) Byte2 = pagina (12) Byte3 = offset (8)
+uint32_t dameByte(uint32_t value, int num_byte) {             // Example value: 0x01020304
+
+	switch(num_byte){
+
+		case 1:
+				uint32_t byte1 = (value >> 20);
+				return byte1;
+
+		case 2:
+				uint32_t byte2 = (value >> 8) & 0xfff;
+				return byte2;
+
+		case 3:
+				uint32_t byte3 = value & 0xff;
+				return byte3;
+	/*
+		case 1:
+			uint32_t byte1 = (value >> 24);           // 0x01020304 >> 24 is 0x01 so
+			return byte1;										  // no masking is necessary
+		case 2:
+			uint32_t byte2 = (value >> 16) & 0xff;    // 0x01020304 >> 16 is 0x0102 so
+			return byte2;                                  // we must mask to get 0x02
+		case 3:
+			uint32_t byte3 = (value >> 8)  & 0xff;    // 0x01020304 >> 8 is 0x010203 so
+			return byte3;                                  // we must mask to get 0x03
+		case 4:
+			uint32_t byte4 = value & 0xff;            // here we only mask, no shifting
+			return byte4;                                  // is necessary
+	*/
+	}
+}
+
+uint32_t armarDireccion(uint32_t segmento, uint32_t pagina, uint32_t offset){
+	//Movemos los bits necesarios
+	uint32_t seg = (value << 20);
+	uint32_t pag = (value << 8);
+
+	//Procedemos a mezclar
+	uint32_t aux = (seg | pag);
+	uint32_t direccion = (aux | offset);
+
+	return direccion;
+}
