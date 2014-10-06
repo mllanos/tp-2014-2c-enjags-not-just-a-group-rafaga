@@ -14,7 +14,10 @@ int puerto, cmemoria, cswap;
 t_log  *logfile;
 t_list *listaSegmentos; //O lista de segmentos
 fd_set  descriptoresLectura;
-u_int32_t pid;
+
+u_int32_t pid;                  //Tengo presente el pid y el num segmento del proceso
+u_int32_t num_segmento;			// entrante y lo uso por ej para eliminar segmentos...
+
 int mem_total = 0;
 
 
@@ -171,7 +174,7 @@ void reservarMemoria(u_int32_t id, int tamaño) {
 			}
 		//Anexo la listaPaginas a un segmento que vamos a crear
 
-		t_list *filter_list = list_filter(listaSegmentos, (void*) es_igual); // filtro y me quedo con una lista de pid iguales
+		t_list *filter_list = list_filter(listaSegmentos, (void*) es_igual_pid); // filtro y me quedo con una lista de pid iguales
 		int segmentos = list_size(filter_list);
 
 		t_segmento *seg = crearSegmento(id, (u_int16_t) segmentos, listaPaginas);
@@ -185,7 +188,7 @@ void reservarMemoria(u_int32_t id, int tamaño) {
 		iniciarBasesegmento();
 		uint32_t direccion = armarDireccion(segmento, pagina, offset);
 		retornarDireccion(pid, direccion);
-
+		log_debug(logfile,"reservarSegmento()==>Se creo un segmento exitosamente...");
 	}
 	else{
 		//error
@@ -194,8 +197,12 @@ void reservarMemoria(u_int32_t id, int tamaño) {
 	}
 }
 
-bool es_igual(t_segmento *p) {
+bool es_igual_pid(t_segmento *p) {
 		return (p->id == pid);
+	}
+
+bool es_igual_pid_and_seg(t_segmento *p) {
+		return ((p->id == pid) && (p->num_segmento == num_segmento));
 	}
 
 t_segmento *crearSegmento(u_int32_t id, u_int32_t segmento, t_lista *pagina)
@@ -222,6 +229,7 @@ t_segmento *crearPagina(u_int32_t pagina)
 // Te devuelve un num_byte de un value...
 // Byte1 = segmento (12) Byte2 = pagina (12) Byte3 = offset (8)
 uint32_t dameByte(uint32_t value, int num_byte) {
+
 	uint32_t byte1;
 	uint32_t byte2;
 	uint32_t byte3;
@@ -290,4 +298,20 @@ void retornarDireccion(uint32_t pid,uint32_t direccion_logica) {
 
 }
 
+void destruirSegmento(uint32_t direccion_logica){
 
+	uint32_t num_segmento = dameByte(direccion_logica, 1)
+	t_segmento *delete = list_remove_by_condition(listaSegmentos, (void*) es_igual_pid_and_seg);
+
+				if (delete != NULL){
+
+					free(delete);
+					log_debug(logfile,"destruirSegmento()==>Se destruyo un segmento exitosamente...");
+
+				}
+				else{
+					//error no se encontro segmento, segmentation fault??
+					log_error(logfile,"destruirSegmento()-No se puede eliminar el segmendo pedido por el proceso: %i ..",pid);
+				}
+
+}
