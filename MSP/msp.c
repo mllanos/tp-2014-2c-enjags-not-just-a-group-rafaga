@@ -14,20 +14,20 @@ int puerto, cmemoria, cswap;
 t_log  *logfile;
 t_list *listaSegmentos; //O lista de segmentos
 fd_set  descriptoresLectura;
-u_int16_t pid;
+u_int32_t pid;
 int mem_total = 0;
 
 
 typedef struct {		//Esto representa a un segmento (una fila de la tabla)
-	u_int16_t id;
-	u_int16_t num_segmento;
+	u_int32_t id;
+	u_int32_t num_segmento;
 	t_lista *paginas;
 } t_segmento;
 
 typedef struct {		//Esto representa a una pagina
-	u_int16_t num_pagina;
-	u_int16_t bit;
-	u_int16_t bonus;
+	u_int32_t num_pagina;
+	u_int32_t bit;
+	u_int32_t bonus;
 	u_int32_t direccion;
 } t_pagina;
 
@@ -148,12 +148,12 @@ void atenderConexion(int sock_msp){
 	}
 }
 
-void reservarMemoria(u_int16_t id, int tamaño) {
+void reservarMemoria(u_int32_t id, int tamaño) {
 	//acordar usar lista de segmentos para calcular el espacio libre de memoria, vercuales estan en (0)y (1) para saber le de la swap, porque tienen un limite.
 	//usar esto al momento de pasar las paginas a memoria y tambien luego al reemplazarlas. para eso me sirve el -1, osea saber en la lista que paginas todavia no se escribieron.
 	//el algoritmo de reemplazo influye al reemplazar no ahora, asi que el bonus lo inicio en 0.
-	int pag = 0;
-	int c_paginas
+
+	uint32_t c_paginas
 
 	if tamaño < SEG_MAX{
 
@@ -181,6 +181,11 @@ void reservarMemoria(u_int16_t id, int tamaño) {
 		//Elimino la lista temporal
 		list_clean(filter_list);
 
+
+		iniciarBasesegmento();
+		uint32_t direccion = armarDireccion(segmento, pagina, offset);
+		retornarDireccion(pid, direccion);
+
 	}
 	else{
 		//error
@@ -193,7 +198,7 @@ bool es_igual(t_segmento *p) {
 		return (p->id == pid);
 	}
 
-t_segmento *crearSegmento(u_int16_t id, u_int16_t segmento, t_lista *pagina)
+t_segmento *crearSegmento(u_int32_t id, u_int32_t segmento, t_lista *pagina)
 {
 	t_segmento *new = malloc( sizeof(t_segmento) );
 	new->id= id;
@@ -203,7 +208,7 @@ t_segmento *crearSegmento(u_int16_t id, u_int16_t segmento, t_lista *pagina)
 	return new;
 }
 
-t_segmento *crearPagina(u_int16_t pagina)
+t_segmento *crearPagina(u_int32_t pagina)
 {
 	t_segmento *new = malloc( sizeof(t_pagina) );
 	new->num_pagina = pagina;
@@ -216,22 +221,26 @@ t_segmento *crearPagina(u_int16_t pagina)
 
 // Te devuelve un num_byte de un value...
 // Byte1 = segmento (12) Byte2 = pagina (12) Byte3 = offset (8)
-uint32_t dameByte(uint32_t value, int num_byte) {             // Example value: 0x01020304
+uint32_t dameByte(uint32_t value, int num_byte) {
+	uint32_t byte1;
+	uint32_t byte2;
+	uint32_t byte3;
 
 	switch(num_byte){
 
 		case 1:
-				uint32_t byte1 = (value >> 20);
+				byte1 = (value >> 20);
 				return byte1;
 
 		case 2:
-				uint32_t byte2 = (value >> 8) & 0xfff;
+				byte2 = (value >> 8) & 0xfff;
 				return byte2;
 
 		case 3:
-				uint32_t byte3 = value & 0xff;
+				byte3 = value & 0xff;
 				return byte3;
-	/*
+
+	/* // Example value: 0x01020304
 		case 1:
 			uint32_t byte1 = (value >> 24);           // 0x01020304 >> 24 is 0x01 so
 			return byte1;										  // no masking is necessary
@@ -259,3 +268,26 @@ uint32_t armarDireccion(uint32_t segmento, uint32_t pagina, uint32_t offset){
 
 	return direccion;
 }
+
+void iniciarBasesegmento(){
+
+	uint32_t segmento = 0;
+	uint32_t pagina = 0;
+	uint32_t offset = 0;
+}
+
+void retornarDireccion(uint32_t pid,uint32_t direccion_logica) {
+
+	int stream_size = 2*REG_SIZE;
+	char *stream = malloc(stream_size);
+	memcpy(stream,&pid,REG_SIZE);
+	memcpy(stream + REG_SIZE,&direccion_logica,REG_SIZE);
+
+	t_msg *new_msg = crear_mensaje(id,stream,stream_size);
+
+	enviar_mensaje(sockt,new_msg);
+	destroy_message(new_msg);
+
+}
+
+
