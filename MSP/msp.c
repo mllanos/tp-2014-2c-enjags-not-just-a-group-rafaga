@@ -7,19 +7,23 @@
 #define PAG_MAX          256
 
 
-int  socketHilo,socketKernel; //los que retorna el accept dentro de AtenderConexion
-char *point;
+int  puerto, socketHilo,socketKernel; //los que retorna el accept dentro de AtenderConexion
+char *point; //Puntero inicial a memoria estatica o principal
 char ip[16], algoritmo[8];
-int puerto, cmemoria, cswap;
+u_int32_t cmemoria, cswap;
 t_log  *logfile;
+t_list *listaMemoriaPrincipal;
 t_list *listaSegmentos; //O lista de segmentos
 fd_set  descriptoresLectura;
 
 u_int32_t pid;                  //Tengo presente el pid y el num segmento del proceso
 u_int32_t num_segmento;			// entrante y lo uso por ej para eliminar segmentos...
 
-int mem_total = 0;
 
+//Espacios en terminos de paginas ;)
+u_int32_t pag_mem_total = 0;
+u_int32_t pag_tot_mem;
+u_int32_t pag_tot_swap;
 
 typedef struct {		//Esto representa a un segmento (una fila de la tabla)
 	u_int32_t id;
@@ -29,10 +33,15 @@ typedef struct {		//Esto representa a un segmento (una fila de la tabla)
 
 typedef struct {		//Esto representa a una pagina
 	u_int32_t num_pagina;
-	u_int32_t bit;
+	u_int32_t bit;	//0 , 1 , 2
 	u_int32_t bonus;
-	u_int32_t direccion;
+	u_int32_t num_marco;
 } t_pagina;
+
+typedef struct {		//Esto representa a un marco de memoria principal
+	u_int32_t num_marco;
+	u_int32_t bit; //0 o 1
+} t_memoria;
 
 int main (int argc, char** argv){
 
@@ -115,7 +124,15 @@ void cargarConficuracion(char* path){
 	cswap         =1048576 * config_get_int_value(configUMV,"CANTIDAD_SWAP");
 	algoritmo     =config_get_string_value(configUMV,"SUST_PAGS");
 	config_destroy(configUMV);
+
+	//Calculos de espacios
+
+	div_t m = div(cmemoria, PAG_MAX); //Calculo cuantas paginas voy a usar para la memoria y se lo asigno a pag_tot_mem
+	pag_tot_mem = m.quot;
+	div_t s = div(cswap, PAG_MAX); //Calculo cuantas paginas voy a usar para la swap y se lo asigno a pag_tot_swap
+	pag_tot_swap = s.quot;
 	mem_total = cmemoria + cswap; //actualizo la memoria total
+
 	//printf("archivo de configuracion levantado: ip:%s ...);
 	log_debug(logfile,"cargarConficuracion(char* path)-Proceso exitoso, con ip:%s puerto:%i tamanio de memoria:%i swap:%i algoritmo:%i ...",ip,puerto,cmemoria,cswap,algoritmo);
 }
@@ -125,7 +142,18 @@ void crearEstructuras(){
 	listaSegmentos=list_create();
 	point = (char*) malloc(cmemoria);  // Creo memoria principal (malloc).
 
+	listaMemoriaPrincipal=list_create();
+
+	//Creo la lista de marcos de la memoria princippal
+
+	for(int i=0; i < pag_tot_mem; i++)
+				{
+					t_marco *marc = crearMarco(i);
+					list_add(listaMemoriaPrincipal, marc);
+				}
+
 	log_debug(logfile,"crearEstructuras()-Se creo la memoria principal del tp con la direccion fisica %i...",(int)(cmemoria));
+
 }
 
 void atenderConexion(int sock_msp){
@@ -151,49 +179,57 @@ void atenderConexion(int sock_msp){
 	}
 }
 
-void reservarMemoria(u_int32_t id, int tamaño) {
+void reservarMemoria(int tamaño) { //Saco id y utilizo el pid que es como variable global
 	//acordar usar lista de segmentos para calcular el espacio libre de memoria, vercuales estan en (0)y (1) para saber le de la swap, porque tienen un limite.
 	//usar esto al momento de pasar las paginas a memoria y tambien luego al reemplazarlas. para eso me sirve el -1, osea saber en la lista que paginas todavia no se escribieron.
 	//el algoritmo de reemplazo influye al reemplazar no ahora, asi que el bonus lo inicio en 0.
 
-	uint32_t c_paginas
+	uint32_t c_paginas;
+	if (espacioTotalOcupado() < pag_mem_total){
 
-	if tamaño < SEG_MAX{
 
-		div_t c = div(tamaño, PAG_MAX); //Calculo cuantas paginas voy a usar y se lo asigno a c_paginas
+		if tamaño < SEG_MAX{
 
-		if (c.rem == 0) {c_paginas = c.quot;} else {c_paginas = c.quot + 1;} //Si la ultima pagina va a estar media vacia. Fragmentacion externa?
+			div_t c = div(tamaño, PAG_MAX); //Calculo cuantas paginas voy a usar y se lo asigno a c_paginas
 
-		t_list listaPaginas = list_create();
+			if (c.rem == 0) {c_paginas = c.quot;} else {c_paginas = c.quot + 1;} //Si la ultima pagina va a estar media vacia. Fragmentacion externa?
 
-		//Creo las paginas correspondientes
-		for(int i=1; i <= c_paginas; i++)
-			{
+			t_list listaPaginas = list_create();
+
+			//Creo las paginas correspondientes
+			for(int i=0; i < c_paginas; i++)
+				{
 				t_segmento *pagina = crearPagina(i);
 				list_add(listaPaginas, pagina);
+				}
+			//Anexo la listaPaginas a un segmento que vamos a crear
+
+			t_list *filter_list = list_filter(listaSegmentos, (void*) es_igual_pid); // filtro y me quedo con una lista de pid iguales
+			int segmentos = list_size(filter_list);
+
+			t_segmento *seg = crearSegmento(pid, (uint32_t) segmentos, listaPaginas);
+
+			list_add(lista, seg);
+
+			//Elimino la lista temporal
+			list_clean(filter_list);
+
+
+			iniciarBasesegmento();
+			uint32_t direccion = armarDireccion(segmento, pagina, offset);
+			retornarDireccion(pid, direccion);
+			log_debug(logfile,"reservarSegmento()==>Se creo un segmento exitosamente...");
 			}
-		//Anexo la listaPaginas a un segmento que vamos a crear
+			else{
+				//error
+				log_error(logfile,"crearSegmento()-No se puede crear el segmendo, debido a exceder el valor maximo de segmento, pedido por el proceso: %i ..",pid);
 
-		t_list *filter_list = list_filter(listaSegmentos, (void*) es_igual_pid); // filtro y me quedo con una lista de pid iguales
-		int segmentos = list_size(filter_list);
-
-		t_segmento *seg = crearSegmento(id, (u_int16_t) segmentos, listaPaginas);
-
-		list_add(lista, seg);
-
-		//Elimino la lista temporal
-		list_clean(filter_list);
-
-
-		iniciarBasesegmento();
-		uint32_t direccion = armarDireccion(segmento, pagina, offset);
-		retornarDireccion(pid, direccion);
-		log_debug(logfile,"reservarSegmento()==>Se creo un segmento exitosamente...");
+			}
 	}
 	else{
 		//error
-		log_error(logfile,"crearSegmento()-No se puede crear el segmendo pedido por el proceso: %i ..",pid);
-		listaSegmentos
+		log_error(logfile,"crearSegmento()-No se puede crear el segmendo, debido a exceder el valor maximo de memoria disponible, pedido por el proceso: %i ..",pid);
+
 	}
 }
 
@@ -205,7 +241,27 @@ bool es_igual_pid_and_seg(t_segmento *p) {
 		return ((p->id == pid) && (p->num_segmento == num_segmento));
 	}
 
-t_segmento *crearSegmento(u_int32_t id, u_int32_t segmento, t_lista *pagina)
+bool es_igual_pag(t_pagina *p) {
+		return (p->num_pagina == pagina);
+	}
+
+bool pagina_uno(t_segmento *p) { ///Mal pero sirve de ejemplo ->
+		return (p->paginas->num_pagina == 1);
+	}
+
+bool pagina_dos(t_pagina *p) {
+		return (p->num_pagina == 2);
+	}
+
+bool memoria_ocupada(t_memoria *p) {
+		return (p->bit == 1 );
+	}
+
+bool memoria_vacia(t_memoria *p) {
+		return (p->bit == 0 );
+	}
+
+t_segmento *crearSegmento(uint32_t id, uint32_t segmento, t_lista *pagina)
 {
 	t_segmento *new = malloc( sizeof(t_segmento) );
 	new->id= id;
@@ -215,16 +271,25 @@ t_segmento *crearSegmento(u_int32_t id, u_int32_t segmento, t_lista *pagina)
 	return new;
 }
 
-t_segmento *crearPagina(u_int32_t pagina)
-{
-	t_segmento *new = malloc( sizeof(t_pagina) );
+t_pagina *crearPagina(uint32_t pagina)
+{ //0= reservado 1= memoria 2= swap
+	t_pagina *new = malloc( sizeof(t_pagina) );
 	new->num_pagina = pagina;
-	new->bit = -1;
+	new->bit = 0;
 	new->bonus = 0;
-	new->direccion = 0;
+	new->num_marco = 0;
 
 	return new;
 }
+
+t_memoria *crearMarco(uint32_t marco, uint32_t){
+
+	t_memoria *new = malloc( sizeof(t_memoria) );
+	new->num_marco = marco;
+	new->bit = 0; //0 o 1
+	return new;
+}
+
 
 // Te devuelve un num_byte de un value...
 // Byte1 = segmento (12) Byte2 = pagina (12) Byte3 = offset (8)
@@ -314,4 +379,128 @@ void destruirSegmento(uint32_t direccion_logica){
 					log_error(logfile,"destruirSegmento()-No se puede eliminar el segmendo pedido por el proceso: %i ..",pid);
 				}
 
+}
+
+void escribirMemoria(uint32_t direccion_logica, char* bytes, uint32_t tamano){
+
+	//Consigo el num de segmento
+	uint32_t segmento = dameByte(direccion_logica, 1);
+	//Con el pid y el num de segmento busco el nodo correspondiente
+	t_segmento *seg = list_find(listaSegmentos, (void*) es_igual_pid_and_seg);
+	//Consigo el num de pagina
+	uint32_t pagina = dameByte(direccion_logica, 2);
+	//Busco la pagina correspondiente
+	t_pagina *pag = list_find(seg->paginas, (void*) es_igual_pag);
+
+	if (pag != NULL){
+		log_debug(logfile,"escribirMemoria()==>Se encontro la posicion logica en la memoria");
+		}
+		else{
+		log_error(logfile,"escribirMemoria()==>No e encontro la posicion logica en la memoria");
+		}
+
+	//Te pido el offset---
+	uint32_t offset = dameByte(direccion_logica, 3);
+
+	if (pag->bit == 0){ //Se reservo pero no se accedio todavia
+
+		t_memoria memoria = buscarMarcoDisponible();
+		if (marco != NULL){
+			//Calculo la direccion exacta para grabar (MARCO GATTI me obligo :( )
+			uint32_t dezplazamiento = 256 * (memoria.num_marco); //Calculo el dezplazamiento "virtual" dentro de la memoria
+			char *marco = point + dezplazamiento; // Calculo la direccion exacta a un marco, usando el point (del malloc al principio)
+			grabarRAM(marco, offset, tamano, bytes);
+
+			//Actualizo el registro de la estructura principal
+			pag->num_marco = memoria.num_marco
+			}
+		else{
+			//Tengo que manejar la swap, implementar algoritmo y desarrollar la busqueda y creacion de archivos swap
+			}
+
+			pag->bit = 1; // todo salio ok, se grabo el marco
+			log_debug(logfile,"escribirMemoria(0)==>Se grabo en la memoria");
+
+		}
+	else{
+
+		if (pag->bit == 1){
+
+			uint32_t dezplazamiento = 256 * (pag->num_marco); //Calculo el dezplazamiento "virtual" dentro de la memoria
+			char *marco = point + dezplazamiento; // Calculo la direccion exacta a un marco, usando el point (del malloc al principio)
+			grabarRAM(marco, offset, tamano, bytes);
+			log_debug(logfile,"escribirMemoria(1)==>Se grabo en la memoria"");
+		}else{
+			//Tengo que manejar la swap,
+
+		}
+
+
+	}
+
+
+
+
+
+}
+
+uint32_t memoriaDisponible(){
+
+	list_size();
+
+}
+
+uint32_t calcularRAMocupada(){ //Utilizo la lista secundaria de la RAM || En terminos de numero de paginas
+
+	t_list *ram_list = list_filter(listaMemoriaPrincipal, (void*) memoria_ocupada);
+	uint32_t size = list_size(ram_list);
+	list_clean(ram_list);
+	return size;
+}
+
+uint32_t calcularSWAPocupada(){ //Utilizo la lista principal, utilizando el bit == 2 || En terminos de numero de paginas
+	t_list lista_aux = listaSegmentos->head;
+	t_list swap_total;
+
+	while (lista_aux != NULL){
+		// recorro cada segmento y filtro las paginas
+		t_list *swap_list = list_filter(lista_aux->data->paginas, (void*) pagina_dos);
+		// esa lista la agrego a swap_total
+		list_add_all(swap_total, swap_list);
+		lista_aux = lista_aux->next;
+
+	}
+
+	uint32_t size = list_size(swap_total);
+	list_clean(swap_total);
+	return size;
+}
+
+uint32_t espacioTotalOcupado(){ //|| En terminos de numero de paginas
+	/*En este caso utilizo la estructura principal, solo cuento todas las paginas que tiene
+	     ya que no puedo ceder mas paginas de mi limite (swap + ram)*/
+	uint32_t total = 0;
+	t_list lista_aux = listaSegmentos->head;
+	while (lista_aux != NULL){
+
+		uint32_t pag = list_size(lista_aux->data->paginas);
+		total = total + pag;
+		lista_aux = lista_aux->next;
+		}
+	return total;
+}
+
+
+
+void grabarRAM(char* point, uint32_t mem_pos, uint32_t size,  char* dato){
+
+	char* pointer = point + mem_pos;
+
+	memcpy(pointer, dato, size);
+}
+
+t_memoria buscarMarcoDisponible(){
+
+	t_memoria *data = list_find(listaMemoriaPrincipal, (void*) memoria_vacia);
+	return data;
 }
