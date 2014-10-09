@@ -9,7 +9,8 @@
 
 int  puerto, socketHilo,socketKernel; //los que retorna el accept dentro de AtenderConexion
 char *point; //Puntero inicial a memoria estatica o principal
-char ip[16], algoritmo[8];
+char ip[16], algoritmo[8]; cat[5];aux[17];adress[23];
+char swap[6]= ".swap";
 u_int32_t cmemoria, cswap;
 t_log  *logfile;
 t_list *listaMemoriaPrincipal;
@@ -416,6 +417,8 @@ void escribirMemoria(uint32_t direccion_logica, char* bytes, uint32_t tamano){
 			}
 		else{
 			//Tengo que manejar la swap, implementar algoritmo y desarrollar la busqueda y creacion de archivos swap
+
+
 			}
 
 			pag->bit = 1; // todo salio ok, se grabo el marco
@@ -504,3 +507,30 @@ t_memoria buscarMarcoDisponible(){
 	t_memoria *data = list_find(listaMemoriaPrincipal, (void*) memoria_vacia);
 	return data;
 }
+
+void crearArchivoSWAP(uint32_t pid, uint32_t segmento, uint32_t pagina){
+	// 6+4+4+3+1+4+|n  //Cantidad total de chars en aux
+
+	strcat(adress,"touch ");	//touch, crea un nuevo archivo
+
+	strcat(adress, armarSWAPath(pid, segmento, pagina));	// strcat, concatena swap a aux
+
+	system(adress);
+}
+
+char *armarSWAPath(uint32_t pid, uint32_t segmento, uint32_t pagina){
+
+		snprintf(cat,5,"%04d",pid);
+		strcat(aux, cat);
+
+		snprintf(cat,5,"%04d",segmento);
+		strcat(aux, cat);
+
+		snprintf(cat,5,"%03d",pagina);
+		strcat(aux, cat);
+
+		strcat(aux, swap);
+
+		return aux;
+}
+
