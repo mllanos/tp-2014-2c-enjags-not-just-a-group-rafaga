@@ -26,6 +26,8 @@ u_int32_t pag_mem_total = 0;
 u_int32_t pag_tot_mem;
 u_int32_t pag_tot_swap;
 
+ult_nodo ultimo;
+
 typedef struct {		//Esto representa a un segmento (una fila de la tabla)
 	u_int32_t id;
 	u_int32_t num_segmento;
@@ -43,6 +45,11 @@ typedef struct {		//Esto representa a un marco de memoria principal
 	u_int32_t num_marco;
 	u_int32_t bit; //0 o 1
 } t_memoria;
+
+typedef struct {
+	t_pagina *pagina;
+	t_segmento *segmento;
+} t_nodo;
 
 int main (int argc, char** argv){
 
@@ -69,7 +76,7 @@ int main (int argc, char** argv){
 
 			select_return = select(socket_msp+1,&descriptoresLectura,NULL,NULL,NULL);
 
-				if(select_return<0){
+				if(select_return < 0){
 					//error
 					printf("error en la funcion select **");
 					log_error(logfile,"main()-Error en el select al esperar por el KERNEL..");
@@ -152,7 +159,8 @@ void crearEstructuras(){
 					t_marco *marc = crearMarco(i);
 					list_add(listaMemoriaPrincipal, marc);
 				}
-
+	t_nodo ultimo = malloc(sizeof(t_nodo)); //Nodo que guarde la ultima posicion de busqueda por el CLOCK
+	t_nodo elim_swap = malloc(sizeof(t_nodo)); //Para guardar los datos del swap a eliminar
 	log_debug(logfile,"crearEstructuras()-Se creo la memoria principal del tp con la direccion fisica %i...",(int)(cmemoria));
 
 }
@@ -245,9 +253,13 @@ bool es_igual_pid_and_seg(t_segmento *p) {
 bool es_igual_pag(t_pagina *p) {
 		return (p->num_pagina == pagina);
 	}
-
+/*
 bool pagina_uno(t_segmento *p) { ///Mal pero sirve de ejemplo ->
 		return (p->paginas->num_pagina == 1);
+	}
+*/
+bool pagina_uno(t_pagina *p) {
+		return (p->num_pagina == 1);
 	}
 
 bool pagina_dos(t_pagina *p) {
@@ -382,7 +394,7 @@ void destruirSegmento(uint32_t direccion_logica){
 
 }
 
-void escribirMemoria(uint32_t direccion_logica, char* bytes, uint32_t tamano){
+void escribirMemoria(uint32_t pid, uint32_t direccion_logica, char* bytes, uint32_t tamano){
 
 	//Consigo el num de segmento
 	uint32_t segmento = dameByte(direccion_logica, 1);
@@ -392,6 +404,8 @@ void escribirMemoria(uint32_t direccion_logica, char* bytes, uint32_t tamano){
 	uint32_t pagina = dameByte(direccion_logica, 2);
 	//Busco la pagina correspondiente
 	t_pagina *pag = list_find(seg->paginas, (void*) es_igual_pag);
+
+	prepararAlgoritmoReemplazo(pag); // Aplico el algoritmo a la pagina
 
 	if (pag != NULL){
 		log_debug(logfile,"escribirMemoria()==>Se encontro la posicion logica en la memoria");
@@ -405,8 +419,9 @@ void escribirMemoria(uint32_t direccion_logica, char* bytes, uint32_t tamano){
 
 	if (pag->bit == 0){ //Se reservo pero no se accedio todavia
 
-		t_memoria memoria = buscarMarcoDisponible();
-		if (marco != NULL){
+		t_memoria *memoria = buscarMarcoDisponible();
+
+		if (memoria != NULL){
 			//Calculo la direccion exacta para grabar (MARCO GATTI me obligo :( )
 			uint32_t dezplazamiento = 256 * (memoria.num_marco); //Calculo el dezplazamiento "virtual" dentro de la memoria
 			char *marco = point + dezplazamiento; // Calculo la direccion exacta a un marco, usando el point (del malloc al principio)
@@ -417,12 +432,28 @@ void escribirMemoria(uint32_t direccion_logica, char* bytes, uint32_t tamano){
 			}
 		else{
 			//Tengo que manejar la swap, implementar algoritmo y desarrollar la busqueda y creacion de archivos swap
+			t_nodo outSwap = buscarReemplazo(listaSegmentos, algoritmo);
 
+			outSwap.pagina->bit = 2; //Actualizo el bit a 2, osea en esta en SWAP
 
+			char *adress = crearArchivoSWAP(outSwap.segmento->id, outSwap.segmento->num_segmento, outSwap.pagina->num_pagina);
+			//Creo archivo SWAP con los datos encontrados
+
+			//Salvo la informacion en el SWAP file, de la pagina nueva a reemplazar
+			leerRAM(point, (outSwap.pagina->num_pagina * 256), 256, dato);
+			escribirSWAPfile(adress, dato, 256);
+
+			//Ahora utilizo los datos bytes y tamano, osea para grabar lo q queremos grabar en principio
+
+			uint32_t dezplazamiento = 256 * (outSwap.pagina->num_marco); //Calculo el dezplazamiento "virtual" dentro de la memoria
+			char *marco = point + dezplazamiento; // Calculo la direccion exacta a un marco, usando el point (del malloc al principio)
+			grabarRAM(marco, offset, tamano, bytes);
+
+			log_debug(logfile,"escribirMemoria(0)==>Se realizo el traslado de memoria a la SWAP");
 			}
 
-			pag->bit = 1; // todo salio ok, se grabo el marco
-			log_debug(logfile,"escribirMemoria(0)==>Se grabo en la memoria");
+		pag->bit = 1; // todo salio ok, se grabo el marco
+		log_debug(logfile,"escribirMemoria(0)==>Se grabo en la memoria");
 
 		}
 	else{
@@ -434,24 +465,31 @@ void escribirMemoria(uint32_t direccion_logica, char* bytes, uint32_t tamano){
 			grabarRAM(marco, offset, tamano, bytes);
 			log_debug(logfile,"escribirMemoria(1)==>Se grabo en la memoria"");
 		}else{
-			//Tengo que manejar la swap,
+			//>>>>>----------Tengo que manejar la swap, es parecido al caso, en u principio, en donde el segmento todavia no se escribio
+			t_nodo outSwap = buscarReemplazo(listaSegmentos, algoritmo);
 
+						outSwap.pagina->bit = 2; //Actualizo el bit a 2, osea en esta en SWAP
+
+						char *adress = crearArchivoSWAP(outSwap.segmento->id, outSwap.segmento->num_segmento, outSwap.pagina->num_pagina);
+						//Creo archivo SWAP con los datos encontrados
+
+						//Salvo la informacion en el SWAP file, de la pagina nueva a reemplazar
+						leerRAM(point, (outSwap.pagina->num_pagina * 256), 256, dato);
+						escribirSWAPfile(adress, dato, 256);
+			//Hasta aca--------------------------------------<<<<<<<<<
+
+			//Ahora debo leer de la SWAP, con la info de la direccion logica
+			leerSWAPfile(armarSWAPath(pid, segmento, pagina), dato, 256);
+			grabarRAM(point, (outSwap.pagina->num_pagina * 256), 256, dato);
+			//Ahora solo queda eliminar esta SWAP vieja
+			borrarSWAPfile(armarSWAPath(pid, segmento, pagina));
 		}
 
 
 	}
 
-
-
-
-
 }
 
-uint32_t memoriaDisponible(){
-
-	list_size();
-
-}
 
 uint32_t calcularRAMocupada(){ //Utilizo la lista secundaria de la RAM || En terminos de numero de paginas
 
@@ -502,13 +540,20 @@ void grabarRAM(char* point, uint32_t mem_pos, uint32_t size,  char* dato){
 	memcpy(pointer, dato, size);
 }
 
+void leerRAM(char* point, uint32_t mem_pos, uint32_t size,  char* dato){
+
+	char* pointer = point + mem_pos;
+
+	memcpy(dato, pointer, size);
+}
+
 t_memoria buscarMarcoDisponible(){
 
 	t_memoria *data = list_find(listaMemoriaPrincipal, (void*) memoria_vacia);
 	return data;
 }
 
-void crearArchivoSWAP(uint32_t pid, uint32_t segmento, uint32_t pagina){
+char *crearArchivoSWAP(uint32_t pid, uint32_t segmento, uint32_t pagina){
 	// 6+4+4+3+1+4+|n  //Cantidad total de chars en aux
 
 	strcat(adress,"touch ");	//touch, crea un nuevo archivo
@@ -516,6 +561,8 @@ void crearArchivoSWAP(uint32_t pid, uint32_t segmento, uint32_t pagina){
 	strcat(adress, armarSWAPath(pid, segmento, pagina));	// strcat, concatena swap a aux
 
 	system(adress);
+
+	return adress;
 }
 
 char *armarSWAPath(uint32_t pid, uint32_t segmento, uint32_t pagina){
@@ -534,3 +581,174 @@ char *armarSWAPath(uint32_t pid, uint32_t segmento, uint32_t pagina){
 		return aux;
 }
 
+void prepararAlgoritmoReemplazo(t_pagina *pagina){
+
+	if (strcmp(*algoritmo, "LRU") == 0){
+
+		pagina.bonus = pagina.bonus + 1
+
+		}
+
+}
+// Esta mal, bueno eso es lo que presiento, asi que lo guardo de todas maneras
+/*
+t_pagina buscarPaginasEnRAM(t_list lista){
+
+	t_link_element lista_actual = lista->head;
+	t_pagina reemplazo;
+	t_link_element aux;
+
+	// recorro cada segmento
+	while (lista_actual != NULL){
+
+		while (lista_actual->data->paginas != NULL){
+			if (lista_actual->data->bit == 1){
+
+				if (lista_actual>data->bonus == 1){
+
+					reemplazo = lista_actual->data;
+
+					// tengo que guardar el puntero a la posicion siguiente, para la proxima busqueda
+
+					goto encontre;
+					}else{
+						lista_actual->data->bonus = 1;
+
+					}
+			}
+
+		lista_aux = lista_aux->next;
+		encontre:
+		}
+
+	uint32_t size = list_size(swap_total);
+	list_clean(swap_total);
+	return size;
+}*/
+
+t_nodo buscarPaginasCLOCK(t_list *lista, t_nodo *ultimo, t_nodo *elim_swap){
+
+	i=0;
+	while(i <= list_size(lista)){
+
+		t_segmento *seg = list_get(lista, i);
+		s = 0;
+		while (s <= list_size(seg->paginas)){
+
+			t_pagina *pag = list_get(seg.paginas, s);
+
+			if (pag->bit == 1){
+
+							if (pag->bonus == 1){
+
+
+								ultimo->segmento  = seg ;
+								ultimo->pagina  = pag ;
+								// tengo que guardar el puntero a la posicion siguiente, para la proxima busqueda
+								elim_swap->segmento  = seg ;
+								elim_swap->pagina  = pag ;
+								return elim_swap;
+
+								}
+							else{
+
+								pag->bonus = 1;
+
+								}
+			}
+			s++;
+		}
+		i++;
+	}
+
+}
+
+t_nodo buscarPaginasLRU(t_list *lista, t_nodo *retorno){
+
+	uint32_t maximo = 0;
+	t_pagina aux;
+	i = 0;
+
+	while(i <= list_size(lista)){
+
+		t_segmento *seg = list_get(lista, i);
+		s = 0;
+		while (s <= list_size(seg->paginas)){
+
+			t_pagina *pag = list_get(seg.paginas, s);
+
+			if (pag->bit == 1){
+
+							if (maximo == 0 ) maximo = pag->bonus;
+
+							if (pag->bonus < maximo){
+
+								//Me guardo el valor mas chico, ya que es el menos usado, lo saco-
+								maximo = pag->bonus;
+								retorno->pagina = pag;
+								retorno->segmento = seg;
+								//Y luego guardo la pagina para retornar-
+								}
+
+			}
+			s++;
+		}
+		i++;
+	}
+	return retorno;
+
+}
+
+t_nodo buscarReemplazo(t_list list, char *string){
+	if (string == "LRU"){
+
+		return buscarPaginasLRU(list);
+	} else {
+
+		return buscarPaginasCLOCK(list);
+	}
+
+}
+
+void escribirSWAPfile(char *adress, char *bytes, uint32_t tamano){
+
+
+			FILE *ptr;
+
+			ptr = fopen(adress, "wb");
+			if (!ptr)
+			{
+				printf("Unable to open file!");
+				return -1;
+			}
+
+
+			fwrite(bytes, tamano, 1, ptr);
+
+			fclose(ptr);
+			return 0;
+}
+
+void leerSWAPfile(char *adress, char *bytes, int tamano){
+
+
+			FILE *ptr;
+
+			ptr = fopen(adress, "wb");
+			if (!ptr)
+			{
+				printf("Unable to open file!");
+				return -1;
+			}
+
+
+			fread(bytes, tamano, 1, ptr);
+
+			fclose(ptr);
+			return 0;
+}
+
+void borrarSWAPfile(char *adress){
+
+    remove(adress);
+}
