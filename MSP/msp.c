@@ -429,6 +429,7 @@ void escribirMemoria(uint32_t pid, uint32_t direccion_logica, char* bytes, uint3
 
 			//Actualizo el registro de la estructura principal
 			pag->num_marco = memoria.num_marco
+			memoria->bit = 1; //Lamemoria esta ahora ocupada
 			}
 		else{
 			//Tengo que manejar la swap, implementar algoritmo y desarrollar la busqueda y creacion de archivos swap
@@ -483,6 +484,10 @@ void escribirMemoria(uint32_t pid, uint32_t direccion_logica, char* bytes, uint3
 			grabarRAM(point, (outSwap.pagina->num_pagina * 256), 256, dato);
 			//Ahora solo queda eliminar esta SWAP vieja
 			borrarSWAPfile(armarSWAPath(pid, segmento, pagina));
+
+			//Ahora escribo en la seccion q me indicaron al principio
+			grabarRAM(point+(outSwap.pagina->num_pagina * 256), offset, tamano, byte);
+
 		}
 
 
@@ -752,3 +757,70 @@ void borrarSWAPfile(char *adress){
 
     remove(adress);
 }
+// en el puntero bytes te retorna el resultado
+char *solicitarMemoria(uint32_t pid, uint32_t direccion_logica, char* bytes, uint32_t tamano){
+
+	//Consigo el num de segmento
+		uint32_t segmento = dameByte(direccion_logica, 1);
+		//Con el pid y el num de segmento busco el nodo correspondiente
+		t_segmento *seg = list_find(listaSegmentos, (void*) es_igual_pid_and_seg);
+		//Consigo el num de pagina
+		uint32_t pagina = dameByte(direccion_logica, 2);
+		//Busco la pagina correspondiente
+		t_pagina *pag = list_find(seg->paginas, (void*) es_igual_pag);
+
+		prepararAlgoritmoReemplazo(pag); // Aplico el algoritmo a la pagina
+
+		if (pag != NULL){
+			log_debug(logfile,"escribirMemoria()==>Se encontro la posicion logica en la memoria");
+			}
+			else{
+			log_error(logfile,"escribirMemoria()==>No e encontro la posicion logica en la memoria");
+			}
+
+		//Te pido el offset---
+		uint32_t offset = dameByte(direccion_logica, 3);
+
+		if (pag->bit == 0){ //Se reservo pero no se accedio todavia
+
+			log_error(logfile,"solicitarMemoria(0)==>La memoria solamente se reservo, segmentation fault?");
+
+			}
+		else{
+
+			if (pag->bit == 1){
+
+				uint32_t dezplazamiento = 256 * (pag->num_marco); //Calculo el dezplazamiento "virtual" dentro de la memoria
+				char *marco = point + dezplazamiento; // Calculo la direccion exacta a un marco, usando el point (del malloc al principio)
+				leerRAM(marco, offset, tamano, bytes);
+				log_debug(logfile,"escribirMemoria(1)==>Se grabo en la memoria");
+
+			}else{
+				//>>>>>----------Tengo que manejar la swap, es parecido al caso, en u principio, en donde el segmento todavia no se escribio
+				t_nodo outSwap = buscarReemplazo(listaSegmentos, algoritmo);
+
+							outSwap.pagina->bit = 2; //Actualizo el bit a 2, osea en esta en SWAP
+
+							char *adress = crearArchivoSWAP(outSwap.segmento->id, outSwap.segmento->num_segmento, outSwap.pagina->num_pagina);
+							//Creo archivo SWAP con los datos encontrados
+
+							//Salvo la informacion en el SWAP file, de la pagina nueva a reemplazar
+							leerRAM(point, (outSwap.pagina->num_pagina * 256), 256, dato);
+							escribirSWAPfile(adress, dato, 256);
+				//Hasta aca--------------------------------------<<<<<<<<<
+
+				//Ahora debo leer de la SWAP, con la info de la direccion logica
+				leerSWAPfile(armarSWAPath(pid, segmento, pagina), dato, 256);
+				grabarRAM(point, (outSwap.pagina->num_pagina * 256), 256, dato);
+				//Ahora solo queda eliminar esta SWAP vieja
+				borrarSWAPfile(armarSWAPath(pid, segmento, pagina));
+
+				//Ahora escribo en la seccion q me indicaron al principio
+				leerRAM(point+(outSwap.pagina->num_pagina * 256), offset, tamano, byte);
+
+			}
+
+
+		}
+
+	}
