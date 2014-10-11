@@ -11,108 +11,157 @@ void *planificador(void *arg)
 
 		switch(recibido->header.id) {
 			case CPU_CONNECT:
-				//cpu_add(sockfd);
+				cpu_add(recibido->argv[0]);
 				break;
-			case CPU_PROCESS:
-				//assign_process(sockfd);
-				break;
-			case CPU_DISCONNECT:
-				//disconnect_cpu(sockfd);
+			case CPU_TCB:
+				assign_process(recibido->argv[0]);
 				break;
 			case CPU_INTERRUPT:
-				//system_call(args[2]);
+				syscall_start(recibido->argv[0], retrieve_tcb(recibido));
 				break;
 			case NUMERIC_INPUT:
 			case STRING_INPUT:
-				//standard_input(args[2]);
+				standard_input(recibido);
 				break;
 			case STRING_OUTPUT:
-				//standard_output(args[2]);
+				standard_output(recibido);
 				break;
 			case CPU_THREAD:
-				//create_thread(sockfd, args[2]);
+				create_thread(retrieve_tcb(recibido));
 				break;
 			case CPU_JOIN:
-				//join_thread(args[2]);
+				join_thread(recibido->argv[0], recibido->argv[1]);
 				break;
 			case CPU_BLOCK:
-				//block_thread(args[2]);
+				block_thread(recibido->argv[0], retrieve_tcb(recibido));
 				break;
 			case CPU_WAKE:
-				//wake_thread(args[2]);
+				wake_thread(recibido->argv[0]);
 				break;
 			default:
 				errno = EBADMSG;
 				perror("planificador");
 				break;
 		}
-	}
-}
 
-void disconnect_cpu(int sockfd)
-{
-	console_notify(sockfd); /* Chequear si cpu tiene proceso. */
-	//abort_processes();
-}
-
-void cpu_add(int sockfd)
-{
-	t_cpu *new = malloc(sizeof(*new));
-
-	new->cpu_fd = sockfd;
-	new->active_tcb = NULL;
-
-	list_add(cpu_list, new);
-}
-
-
-void console_notify(int sockfd)
-{
-	t_cpu *cpu = cpu_remove(sockfd);
-	if(cpu == NULL) {
-		perror("notificar_consola");
-		exit(EXIT_FAILURE);
-	}
-
-	if(cpu->active_tcb != NULL) {
-		// TODO remove t_hilo
+		destroy_message(recibido);
 	}
 }
 
 
-t_cpu *cpu_remove(int sockfd)
+
+
+
+void cpu_add(uint32_t sock_fd)
 {
-	int i;
-	for(i = 0; i < list_size(cpu_list); i++) {
-		t_cpu *cpu = list_get(cpu_list, i);
+	t_cpu *new_cpu = malloc(sizeof *new_cpu);
 
-		if(cpu->cpu_fd == sockfd) {
-			return list_remove(cpu_list, i);
-		}
-	}
+	new_cpu->cpu_id = get_unique_id(CPU_ID);
+	new_cpu->sock_fd = sock_fd;
+	new_cpu->pid = -1;
+	new_cpu->tid = -1;
+	new_cpu->disponible = true;
+	new_cpu->kernel_mode = false;
 
-	return NULL;
+	list_add(cpu_list, new_cpu);
+
+	conexion_cpu(new_cpu->cpu_id);
 }
 
 
-void create_thread(int sockfd, char *tcb_stream)
+void assign_process(uint32_t sock_fd)
 {
-	t_hilo *tcb = get_tcb(tcb_stream);
-	t_hilo *new_tcb = malloc(sizeof(*new_tcb));
 
-	new_tcb->pid = tcb->pid;
-	new_tcb->tid = get_unique_id();
-	new_tcb->kernel_mode = tcb->kernel_mode;
+}
 
-	t_msg *r_stack = string_message(RESERVE_SEGMENT, "Reservando segmento para nuevo thread.", 0, new_tcb->pid, get_stack_size());
+
+void syscall_start(uint32_t call_dir, t_hilo *tcb)
+{
+	tcb->cola = BLOCK;
+	queue_push(syscall_queue, tcb);
+
+	bool _is_klt(t_hilo *tcb) {
+		return tcb->kernel_mode == true;
+	}
+
+	t_hilo *klt_tcb = list_find(process_list, (void *) _is_klt);
+	memcpy(klt_tcb->registros, tcb->registros, sizeof(int32_t)*5);
+	klt_tcb->pid = tcb->pid;
+	klt_tcb->tid = tcb->tid;
+	klt_tcb->puntero_instruccion = call_dir;
+	klt_tcb->cola = READY;
+}
+
+
+void standard_input(t_msg *msg)
+{
+	uint32_t cpu_sock_fd = msg->argv[0];
+	uint32_t pid = msg->argv[1];
+
+	bool _get_by_sock_fd(t_console *cnsl) {
+		return cnsl->sock_fd == pid;
+	}
+
+	t_console *console = list_find(console_list, (void *) _get_by_sock_fd);
+
+	enviar_mensaje(console->sock_fd, msg);
+
+	t_msg *recibido = recibir_mensaje(console->sock_fd);
+	enviar_mensaje(cpu_sock_fd, recibido);
+}
+
+
+void standard_output(t_msg *msg)
+{
+	uint32_t cpu_sock_fd = msg->argv[0];
+	uint32_t pid = msg->argv[1];
+
+	bool _get_by_sock_fd(t_console *cnsl) {
+		return cnsl->sock_fd == pid;
+	}
+
+	t_console *console = list_find(console_list, (void *) _get_by_sock_fd);
+
+	enviar_mensaje(console->sock_fd, msg);
+}
+
+
+void create_thread(t_hilo *tcb)
+{
+	t_hilo *new_tcb = malloc(sizeof *new_tcb);
+	memcpy(new_tcb, tcb, sizeof *tcb);
+	new_tcb->tid = get_unique_id(THREAD_ID);
+
+	t_msg *r_stack = string_message(RESERVE_SEGMENT, "Reservando segmento de stack para hilo nuevo.", 0, new_tcb->pid, get_stack_size());
 
 	enviar_mensaje(msp_fd, r_stack);
 
 	t_msg *status = recibir_mensaje(msp_fd);
 
-	if(status->header.id == OK_RESERVE) {
-		queue_push(ready_queue, new_tcb);
-	} else if(status->header.id == ENOMEM_RESERVE) {
+	if(status->header.id == OK_RESERVE) { /* Memoria reservada. */
+		/* Setear el hilo a READY y agregarlo a la lista de procesos. */
+		new_tcb->base_stack = status->argv[0];
+		new_tcb->cursor_stack = new_tcb->base_stack;
+		new_tcb->cola = READY;
+		list_add(process_list, new_tcb);
+	} else if(status->header.id == ENOMEM_RESERVE) { /* No hay suficiente memoria. */
+		/* Finalizar todos los hilos del proceso y avisar a consola. */
+
+		void _finalize_by_pid(t_hilo *tcb) {
+			if(tcb->pid == new_tcb->pid && tcb->kernel_mode == false) tcb->cola = EXIT;
+		}
+
+		process_list = list_map(process_list, (void *) _finalize_by_pid);
+
+		bool _get_by_pid(t_console *cnsl) {
+			return cnsl->pid == new_tcb->pid;
+		}
+
+		t_console *console = list_remove_by_condition(console_list, (void *) _get_by_pid);
+
+		t_msg *msg = string_message(KILL_CONSOLE, "No se pudo reservar memoria en la MSP para un hilo nuevo.", 0);
+		enviar_mensaje(console->sock_fd, msg);
+		destroy_message(msg);
 		free(new_tcb);
 	} else {
 		errno = EBADMSG;
@@ -121,29 +170,75 @@ void create_thread(int sockfd, char *tcb_stream)
 	}
 
 	free(tcb);
+	destroy_message(r_stack);
+	destroy_message(status);
 }
 
-t_hilo *get_tcb(char *tcb_stream)
+
+void join_thread(uint32_t tid_caller, uint32_t tid_waiter)
 {
-	int i, j = 0;
+	bool _get_by_tid_c(t_hilo *tcb) {
+		return tcb->tid == tid_caller;
+	}
 
-	t_hilo *tcb = malloc(sizeof(*tcb));
+	t_hilo *caller = list_find(process_list, (void *) _get_by_tid_c);
 
-	char **args = string_split(tcb_stream, ":");
+	bool _get_by_tid_w(t_hilo *tcb) {
+		return tcb->tid == tid_caller;
+	}
 
-	tcb->pid = atoi(args[0]);
-	tcb->tid = atoi(args[1]);
-	tcb->kernel_mode = atoi(args[2]);
-	tcb->segmento_codigo = atoi(args[3]);
-	tcb->segmento_codigo_size = atoi(args[4]);
-	tcb->puntero_instruccion = atoi(args[5]);
-	tcb->base_stack = atoi(args[6]);
-	tcb->cursor_stack = atoi(args[7]);
-	for(i = 8; i < 13; i++)
-		tcb->registros[i] = atoi(args[i]);
+	t_hilo *waiter = list_find(process_list, (void *) _get_by_tid_w);
 
-	while(args[j] != NULL)
-		free(args[j++]);
-	
-	return tcb;
+	caller->cola = BLOCK;
+}
+
+
+void block_thread(uint32_t resource, t_hilo *tcb)
+{
+	uint32_t tid = tcb->tid;
+
+	void _block_by_tid(t_hilo *a_tcb) {
+		if(a_tcb->tid == tid) a_tcb->cola = BLOCK;
+	}
+
+	process_list = list_map(process_list, (void *) _block_by_tid);
+
+	bool _get_resource(t_resource *res) {
+		return res->id_resource == resource;
+	}
+
+	t_resource *rsc = list_find(resource_list, (void *) _get_resource);
+	if(rsc == NULL) { /* Nuevo recurso. */
+		rsc = malloc(sizeof *rsc);
+		rsc->id_resource = resource;
+		rsc->queue = queue_create();
+
+
+	}
+
+	queue_push(rsc->queue, tcb);
+	list_add(resource_list, rsc);
+}
+
+
+void wake_thread(uint32_t resource)
+{
+	bool _get_resource(t_resource *res) {
+		return res->id_resource == resource;
+	}
+
+	t_resource *rsc = list_find(resource_list, (void *) _get_resource);
+
+	t_hilo *woken = queue_pop(rsc->queue);
+
+	woken->cola = READY;
+/*
+	uint32_t tid = woken->tid;
+
+	bool _get_by_tid(t_hilo *a_tcb) {
+		return a_tcb->tid == tid;
+	}
+	list_remove_by_condition(process_list, (void *) _get_by_tid);
+*/
+	list_add(process_list, woken);
 }

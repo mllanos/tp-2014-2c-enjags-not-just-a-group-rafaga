@@ -1,14 +1,12 @@
 #ifndef PANEL_H_
 #define PANEL_H_
 
-	#include <stdint.h>
-	#include <stdbool.h>
-	#include <commons/collections/list.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <commons/collections/list.h>
 
-typedef enum { KERNEL, CPU } t_tipo_proceso;
+typedef enum { KERNEL, CPU } t_tipo_proceso; 
 
-#ifndef T_HILO_
-#define T_HILO_
 typedef enum { NEW, READY, EXEC, BLOCK, EXIT } t_cola;
 
 typedef struct {
@@ -23,7 +21,7 @@ typedef struct {
 	int32_t registros[5];
 	t_cola cola;
 } __attribute__ ((__packed__)) t_hilo;
-#endif
+
 
 	/*Loggeo de eventos Kernel*/
 void conexion_cpu(uint32_t id);

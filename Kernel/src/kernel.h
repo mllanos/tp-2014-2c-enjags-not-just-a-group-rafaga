@@ -28,13 +28,7 @@
 #define PANEL_PATH "../panel"
 
 
-/* Estructuras de datos. */
-typedef struct {
-	int console_fd;
-	t_hilo *main_thread;
-	t_list *threads;
-	int max_thread;
-} t_process;
+typedef enum { THREAD_ID, CONSOLE_ID, CPU_ID } t_unique_id;
 
 
 /* Funciones Kernel. */
@@ -42,10 +36,10 @@ void initialize(char *config_path);
 void finalize(void);
 void boot_kernel(void);
 void receive_messages(void);
-void interpret_message(int sockfd, t_msg *recibido);
-t_hilo *klt_tcb(void);
+void interpret_message(int sock_fd, t_msg *recibido);
 t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg);
-uint32_t get_unique_id(void);
+uint32_t get_unique_id(t_unique_id id);
+int remove_from_lists(uint32_t sock_fd);
 
 
 /* Funciones de acceso a config. */
@@ -61,29 +55,20 @@ char *get_syscalls(void);
 t_config *config;
 
 
-/* Diccionario de sockfd con acceso por pid. */
-t_dictionary *sockfd_dict;
+/* Listas. */
+t_list *process_list;
+t_list *console_list;
+t_list *cpu_list;
+t_list *resource_list;
 
 
-/* Colas de estado de procesos. */
-t_queue *new_queue;
-t_queue *ready_queue;
-t_queue *exec_queue;
-t_queue *block_queue;
-t_queue *exit_queue;
-
-
-/* Colas de mensajes a atender por los subsistemas. */
+/* Colas. */
 t_queue *loader_queue;
 t_queue *planificador_queue;
-
-
-/* Lista de CPU. */
-t_list *cpu_list;
+t_queue *syscall_queue;
 
 
 /* Mutex. */
-pthread_mutex_t new_mutex;
 pthread_mutex_t loader_mutex;
 pthread_mutex_t planificador_mutex;
 

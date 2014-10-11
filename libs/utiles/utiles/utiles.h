@@ -14,6 +14,7 @@
 #include <netdb.h>
 #include <unistd.h>
 #include <commons/string.h>
+#include <panel/panel.h>
 
 #define REG_SIZE 4
 
@@ -26,38 +27,61 @@ typedef enum {
 	INIT_CONSOLE,				/* Pedido de creacion de hilo principal de Consola a Kernel. */
 	KILL_CONSOLE,				/* Respuesta de finalizacion por error de Kernel a Consola. */
 
+	CPU_CONNECT,				/* Pedido de conexion de CPU a Kernel. */
+
+	CPU_TCB,					/* Pedido de TCB de CPU a Kernel. */
+	NEXT_THREAD,				/* Envio de TCB de Kernel a CPU. */
+
+
+	/****************** SERVICIOS EXPUESTOS A CPU: INTERRUPCION. ******************/ 
+	CPU_INTERRUPT,				/* Pedido de interrupcion de un hilo de proceso de CPU a Kernel. */
+
+	/****************** SERVICIOS EXPUESTOS A CPU: ENTRADA ESTANDAR. ******************/
 	NUMERIC_INPUT,				/* Pedido de input numerico de CPU. */
 	STRING_INPUT,				/* Pedido de input de string de CPU. */
 	REPLY_INPUT,				/* Respuesta de input de Consola. */
 
+	/****************** SERVICIOS EXPUESTOS A CPU: SALIDA ESTANDAR. ******************/
 	STRING_OUTPUT,				/* Pedido de salida estandar de CPU. */
 
+	/****************** SERVICIOS EXPUESTOS A CPU: CREAR HILO. ******************/
+	CPU_THREAD,					/* Pedido de nuevo hilo de proceso de CPU a Kernel. */
+
+	/****************** SERVICIOS EXPUESTOS A CPU: JOIN. ******************/
+	CPU_JOIN,					/* Pedido de union a hilo de proceso de CPU a Kernel. */
+
+	/****************** SERVICIOS EXPUESTOS A CPU: BLOQUEAR. ******************/
+	CPU_BLOCK,					/* Pedido de bloqueo de hilo de proceso por recurso de CPU a Kernel. */
+
+	/****************** SERVICIOS EXPUESTOS A CPU: DESPERTAR. ******************/
+	CPU_WAKE,					/* Pedido de desbloqueo hilo de proceso bloqueado por recurso de CPU a Kernel. */
+
+
+	/****************** INTERFAZ MSP: RESERVAR SEGMENTO. ******************/
 	RESERVE_SEGMENT,			/* Pedido de reserva de segmento a MSP. */
 	OK_RESERVE,					/* Respuesta de memoria reservada de MSP. */
 	ENOMEM_RESERVE,				/* Respuesta de memoria insuficiente de MSP. */
 
+	/****************** INTERFAZ MSP: DESTRUIR SEGMENTO. ******************/
+	DESTROY_SEGMENT,			/* Pedido de destruccion de segmento a MSP. */
+
+	/****************** INTERFAZ MSP: SOLICITAR MEMORIA. ******************/
+	MEM_REQUEST,				/* Pedido de datos a la MSP. */
+	OK_REQUEST,					/* Respuesta de lectura correcta de MSP. */
+	SEGFAULT_REQUEST,			/* Respuesta de error de segmento en lectura de MSP. */
+
+	/****************** INTERFAZ MSP: ESCRIBIR MEMORIA. ******************/
 	WRITE_MEMORY,				/* Pedido de escritura en memoria a MSP. */
 	OK_WRITE,					/* Respuesta de escritura correcta de MSP. */
 	SEGFAULT_WRITE,				/* Respuesta de error de segmento en escritura de MSP. */
 
-	OC_REQUEST,					/* Pedido del CPU a la MSP del siguiente código de operación. */
+
+	/****************** DEPRECADOS. ******************/
+	OC_REQUEST,					/* Pedido del CPU a la MSP del siguiente código de operación. */ 
 	NEXT_OC,					/* Código de operación enviado por la MSP al CPU que lo solicitó. */
-	NEXT_THREAD,				/* TCB enviado por el Kernel a una CPU disponible. */
 	ARG_REQUEST,				/* Pedido del CPU a la MSP del siguiente argumento. */
 	NEXT_ARG,					/* Argumento enviado por la MSP al CPU que lo solicitó. */
-	MEM_REQUEST,				/* Pedido de datos a la MSP. */
-	WRITE_MEM,					/* Pedido de escritura en memoria a la MSP. */
-
-	CPU_TCB,					/* TCB devuelto por la CPU */
-	CPU_CONNECT,				/* Pedido de conexion de CPU a Kernel. */
-	CPU_PROCESS,				/* Pedido de conexion a proceso de CPU a Kernel. */
-	CPU_DISCONNECT,				/* Pedido de desconexion de CPU a Kernel. */
-	CPU_INTERRUPT,				/* Pedido de interrupcion de un hilo de proceso de CPU a Kernel. */
-
-	CPU_THREAD,					/* Pedido de nuevo hilo de proceso de CPU a Kernel. */
-	CPU_JOIN,					/* Pedido de union a hilo de proceso de CPU a Kernel. */
-	CPU_BLOCK,					/* Pedido de bloqueo de hilo de proceso por recurso de CPU a Kernel. */
-	CPU_WAKE					/* Pedido de removido de bloqueo a los hilos de procesos bloquedos por recurso de CPU a Kernel. */
+	WRITE_MEM					/* Pedido de escritura en memoria a la MSP. */
 } t_msg_id;
 
 
@@ -75,7 +99,7 @@ typedef struct {
 	uint32_t *argv;
 }__attribute__ ((__packed__)) t_msg;
 
-
+/*
 #ifndef T_HILO_
 #define T_HILO_
 typedef enum { NEW, READY, EXEC, BLOCK, EXIT } t_cola;
@@ -90,10 +114,10 @@ typedef struct {
 	uint32_t base_stack;
 	uint32_t cursor_stack;
 	int32_t registros[5];
-	t_cola cola; /* Es necesario esto? */
+	t_cola cola;
 } __attribute__ ((__packed__)) t_hilo;
 #endif
-
+*/
 
 /****************** FUNCIONES SOCKET. ******************/
 
@@ -110,17 +134,17 @@ int client_socket(char* ip, uint16_t port);
 /*
  * Acepta la conexion de un socket.
  */
-int accept_connection(int sockfd);
+int accept_connection(int sock_fd);
 
 /*
  * Recibe un t_msg a partir de un socket determinado.
  */
-t_msg *recibir_mensaje(int sockfd);
+t_msg *recibir_mensaje(int sock_fd);
 
 /*
  * Envia los contenidos de un t_msg a un socket determinado.
  */
-void enviar_mensaje(int sockfd, t_msg *msg);
+void enviar_mensaje(int sock_fd, t_msg *msg);
 
 
 /****************** FUNCIONES T_MSG. ******************/

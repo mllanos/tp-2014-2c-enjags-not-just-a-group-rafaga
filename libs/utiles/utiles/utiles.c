@@ -2,18 +2,18 @@
 
 int server_socket(uint16_t port)
 {
-	int sockfd, optval = 1;
+	int sock_fd, optval = 1;
 	struct sockaddr_in servername;
 
 	/* Create the socket. */
-	sockfd = socket(PF_INET, SOCK_STREAM, 0);
-	if(sockfd < 0) {
+	sock_fd = socket(PF_INET, SOCK_STREAM, 0);
+	if(sock_fd < 0) {
 		perror("socket");
 		return -1;
 	}
 
 	/* Set socket options. */
-	if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval) == -1) {
+	if (setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval) == -1) {
 		perror("setsockopt");
 		return -2;
 	}
@@ -24,29 +24,29 @@ int server_socket(uint16_t port)
 	servername.sin_port = htons(port);
 
  	/* Give the socket a name. */
-	if(bind(sockfd, (struct sockaddr *) &servername, sizeof servername) < 0) {
+	if(bind(sock_fd, (struct sockaddr *) &servername, sizeof servername) < 0) {
 		perror("bind");
 		return -3;
 	}
 
 	/* Listen to incoming connections. */
-	if (listen(sockfd, 1) < 0) {
+	if (listen(sock_fd, 1) < 0) {
 		perror("listen");
 		return -4;
 	}
 
-	return sockfd;
+	return sock_fd;
 }
 
 
 int client_socket(char *ip, uint16_t port)
 {
-	int sockfd;
+	int sock_fd;
 	struct sockaddr_in servername;
 
 	/* Create the socket. */
-	sockfd = socket(PF_INET, SOCK_STREAM, 0);
-	if(sockfd < 0) {
+	sock_fd = socket(PF_INET, SOCK_STREAM, 0);
+	if(sock_fd < 0) {
 		perror("socket");
 		return -1;
 	}
@@ -58,21 +58,21 @@ int client_socket(char *ip, uint16_t port)
 	memset(&(servername.sin_zero), 0, 8);
 
 	/* Connect to the server. */
-	if(connect(sockfd, (struct sockaddr *) &servername, sizeof servername) < 0) {
+	if(connect(sock_fd, (struct sockaddr *) &servername, sizeof servername) < 0) {
 		perror("connect");
 		return -2;
 	}
 
-	return sockfd;
+	return sock_fd;
 }
 
 
-int accept_connection(int sockfd)
+int accept_connection(int sock_fd)
 {
 	struct sockaddr_in clientname;
 	size_t size = sizeof clientname;
 
-	int new_fd = accept(sockfd, (struct sockaddr *) &clientname, (socklen_t *) &size);
+	int new_fd = accept(sock_fd, (struct sockaddr *) &clientname, (socklen_t *) &size);
 	if (new_fd < 0) {
 		perror("accept");
 		return -1;
@@ -200,8 +200,6 @@ t_msg *beso_message(t_msg_id id, char *beso_path, uint16_t count, ...)
 
 	fread(buffer, fsize, 1, f);
 
-	//buffer[fsize] = '\0';
-
 	t_msg *new = malloc(sizeof *new);
 	new->header.id = id;
 	new->header.argc = count;
@@ -234,8 +232,6 @@ t_msg *tcb_message(t_msg_id id, t_hilo *tcb, uint16_t count, ...)
 
 	memcpy(buffer, tcb, size);
 
-	//buffer[size] = '\0';
-
 	t_msg *new = malloc(sizeof *new);
 	new->header.id = id;
 	new->header.argc = count;
@@ -259,7 +255,7 @@ t_msg *crear_mensaje(t_msg_id id, char *message,uint32_t size)
 }
 
 
-t_msg *recibir_mensaje(int sockfd)
+t_msg *recibir_mensaje(int sock_fd)
 {
 	t_msg *msg = malloc(sizeof *msg);
 	msg->argv = NULL;
@@ -267,7 +263,7 @@ t_msg *recibir_mensaje(int sockfd)
 
 
  	/* Get message info. */
-	int status = recv(sockfd, &(msg->header), sizeof(t_header), MSG_WAITALL);
+	int status = recv(sock_fd, &(msg->header), sizeof(t_header), MSG_WAITALL);
 	if (status < 0) {
  		/* An error has ocurred. */
 		perror("recv");
@@ -282,25 +278,23 @@ t_msg *recibir_mensaje(int sockfd)
  	/* Get message data. */
 	msg->argv = realloc(msg->argv, msg->header.argc * sizeof(uint32_t));
 
-	if(msg->header.argc > 0 && recv(sockfd, msg->argv, msg->header.argc * sizeof(uint32_t), MSG_WAITALL) < 0) {
+	if(msg->header.argc > 0 && recv(sock_fd, msg->argv, msg->header.argc * sizeof(uint32_t), MSG_WAITALL) < 0) {
 		perror("recv");
 		exit(EXIT_FAILURE);
 	}
 
 	msg->stream = realloc(msg->stream, msg->header.length);
 
-	if (msg->header.length > 0 && recv(sockfd, msg->stream, msg->header.length, MSG_WAITALL) < 0) {
+	if (msg->header.length > 0 && recv(sock_fd, msg->stream, msg->header.length, MSG_WAITALL) < 0) {
 		perror("recv");
 		exit(EXIT_FAILURE);
 	}
 	
-	//msg->stream[msg->header.length] = '\0';
-
 	return msg;
 }
 
 
-void enviar_mensaje(int sockfd, t_msg *msg)
+void enviar_mensaje(int sock_fd, t_msg *msg)
 {
 	int total = 0;
 	int pending = msg->header.length + sizeof(t_header) + msg->header.argc * sizeof(uint32_t);
@@ -317,7 +311,7 @@ void enviar_mensaje(int sockfd, t_msg *msg)
 
  	/* Send message(s). */
 	while(total < pending) {
-		int sent = send(sockfd, buffer, msg->header.length + sizeof msg->header + msg->header.argc * sizeof(uint32_t), MSG_NOSIGNAL);
+		int sent = send(sock_fd, buffer, msg->header.length + sizeof msg->header + msg->header.argc * sizeof(uint32_t), MSG_NOSIGNAL);
 		if(sent < 0) {
 			perror("send");
 			exit(EXIT_FAILURE);
@@ -427,7 +421,7 @@ void deserializar_tcb(t_hilo *tcb, char *stream)
 }
 
 
-char *read_file(char *path) // sacar si nadie lo usa
+char *read_file(char *path)
 {
 	FILE *f = fopen(path, "rb");
 	if(f == NULL) {
@@ -488,13 +482,14 @@ void putmsg(t_msg *msg)
 {
 	int i;
 	puts("\n**************************************************");
-	printf("Contenidos del mensaje:\n");
+	printf("CONTENIDOS DEL MENSAJE:\n");
 	printf("- ID: %s\n", id_string(msg->header.id));
 
 	for(i = 0; i < msg->header.argc; i++) {;
 		printf("- Argumento %d: %d\n", i + 1, msg->argv[i]);
 	}
 
+	printf("Tamaño: %d\n", msg->header.length);
 	printf("- Cuerpo: ");
 
 	for(i = 0; i < msg->header.length; i++)
@@ -547,10 +542,6 @@ char *id_string(t_msg_id id)
 			return "CPU_TCB";
 		case CPU_CONNECT:
 			return "CPU_CONNECT";
-		case CPU_PROCESS:
-			return "CPU_PROCESS";
-		case CPU_DISCONNECT:
-			return "CPU_DISCONNECT";
 		case CPU_INTERRUPT:
 			return "CPU_INTERRUPT";
 		case CPU_THREAD:
@@ -564,6 +555,6 @@ char *id_string(t_msg_id id)
 		default:
 			break;
 
-		return string_from_format("%d <AGREGAR A LA LISTA>", id);
+		return string_from_format("%d, <AGREGAR A LA LISTA>", id);
 	}
 }
