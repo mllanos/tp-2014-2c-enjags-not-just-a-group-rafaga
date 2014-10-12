@@ -6,7 +6,7 @@ int main(int argc, char **argv)
 	boot_kernel();
 	receive_messages();
 	finalize();
-	return EXIT_SUCCESS;
+	return 0;
 }
 
 
@@ -34,7 +34,7 @@ void initialize(char *config_path)
 void boot_kernel(void)
 {
 	t_hilo *_klt_tcb(void) {
-		t_hilo *new = malloc(sizeof *new);
+		t_hilo *new = malloc(sizeof(*new));
 		new->pid = 0;
 		new->tid = 0;
 		new->kernel_mode = true;
@@ -42,7 +42,7 @@ void boot_kernel(void)
 	}
 
 	t_hilo *k_tcb = reservar_memoria(_klt_tcb(), beso_message(INIT_CONSOLE, get_syscalls(), 0));
-	if (k_tcb == NULL) {
+	if(k_tcb == NULL) {
 		/* Couldn't allocate memory. */
 		errno = ENOMEM;
 		perror("boot_kernel");
@@ -50,7 +50,7 @@ void boot_kernel(void)
 	}
 
 	int i;
-	for (i = 0; i < 5; i++)
+	for(i = 0; i < 5; i++)
 		k_tcb->registros[i] = 0;
 	k_tcb->cola = BLOCK;
 
@@ -60,78 +60,59 @@ void boot_kernel(void)
 
 void receive_messages(void)
 {
-	struct epoll_event event;
-	struct epoll_event *events;
+	fd_set master, read_fds;
 
-	int sfd = server_socket(get_puerto());
+	/* Create the socket and set it up to accept connections. */
+	int listener = server_socket(get_puerto());
 
-	int efd = epoll_create1(0);
-	if (efd == -1) {
-		perror ("epoll_create");
-		exit (EXIT_FAILURE);
-	}
+	/* Initialize the set of active sockets. */
+	FD_ZERO (&master);
+	FD_SET (listener, &master);
 
-	event.data.fd = sfd;
-	event.events = EPOLLIN | EPOLLET;
-	int s = epoll_ctl(efd, EPOLL_CTL_ADD, sfd, &event);
-	if (s == -1) {
-		perror("epoll_ctl");
-		exit(EXIT_FAILURE);
-	}
+	int fdmax = listener;
 
-	/* Buffer where events are returned. */
-	events = calloc(MAXEVENTS, sizeof event);
+	while (1) {
+		/* Block until input arrives on one or more active sockets. */
+		memcpy(&read_fds, &master, sizeof(read_fds));
 
-	/* The event loop. */
-	while(1) {
-		int n, i;
-
-		n = epoll_wait(efd, events, MAXEVENTS, -1);
-		for (i = 0; i < n; i++) {
-			if ((events[i].events & EPOLLERR) || (events[i].events & EPOLLHUP) || (!(events[i].events & EPOLLIN))) {
-			/* An error has occured on this fd, or the socket is not ready for reading. */
-				perror("epoll error");
-				close(events[i].data.fd);
-			} else if (sfd == events[i].data.fd) {
-				/* We have a notification on the listening socket, which means one incoming connection. */
-				int infd = accept_connection(sfd);
-
-				/* Make the incoming socket non-blocking and add it to the list of fds to monitor. */
-				s = make_socket_non_blocking (infd);
-				if (s == -1) {
-					exit(EXIT_FAILURE);
-				}
-
-				event.data.fd = infd;
-				event.events = EPOLLIN | EPOLLET;
-				s = epoll_ctl(efd, EPOLL_CTL_ADD, infd, &event);
-				if (s == -1) {
-					perror("epoll_ctl");
-					exit(EXIT_FAILURE);
-				}
-			} else {
-				/* We have data on the fd waiting to be read. */
-
-				t_msg *msg = recibir_mensaje(events[i].data.fd);
-
-				if (msg == NULL) {
-					int status = remove_from_lists(events[i].data.fd);
-
-					/* Closing the descriptor will make epoll remove it from the set of descriptors which are monitored. */
-					close(events[i].data.fd);
-
-					if (status == -1) {
-						/* Exit program. */
-						free(events);
-						close(sfd);
-						return;
-					}
-				} else {
-					putmsg(msg);
-					interpret_message(events[i].data.fd, msg);
-				}
-			}
+		if (select (fdmax + 1, &read_fds, NULL, NULL, NULL) < 0) {
+			perror ("select");
+			exit(EXIT_FAILURE);
 		}
+		/* Service all the sockets with input pending. */
+		int i;
+		for (i = 0; i <= fdmax; i++)
+			if (FD_ISSET (i, &read_fds))
+				if (i == listener) {
+					/* Connection request on original socket. */
+					int newfd = accept_connection(listener);
+					if (newfd < 0) {
+						perror ("accept");
+						exit(EXIT_FAILURE);
+					}
+					FD_SET (newfd, &master);
+					fdmax = newfd > fdmax ? newfd : fdmax;
+				}
+				else {
+					/* Data arriving on an already-connected socket. */
+					t_msg *recibido = recibir_mensaje(i);
+					if(recibido == NULL) {
+						/* Socket closed connection. */
+						int status = remove_from_lists(i);
+						close(i);
+						FD_CLR(i, &master);
+
+						if(status == -1) {
+							/* Exit program. */
+							close(listener);
+							return;
+						}
+					} else {
+						/* Socket received message. */
+						putmsg(recibido);
+						interpret_message(i, recibido);
+					}	
+				}
 	}
 }
 
@@ -164,7 +145,7 @@ void interpret_message(int sock_fd, t_msg *recibido)
 {
 	hilos(process_list);
 
-	switch (recibido->header.id) {
+	switch(recibido->header.id) {
 		/* Mensaje de Consola. */
 		case INIT_CONSOLE: 										/* <BESO_STRING> */
 			
@@ -223,29 +204,29 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 	message[1] = string_message(RESERVE_SEGMENT, "Reserva de segmento de stack.", 2, tcb->pid, get_stack_size());
 	message[2] = remake_message(WRITE_MEMORY, msg, 1, tcb->pid);
 
-	for (i = 0; i < 3 && cont; i++) {
+	for(i = 0; i < 3 && cont; i++) {
 		enviar_mensaje(msp_fd, message[i]);
 		putmsg(message[i]);
 
 		status[i] = recibir_mensaje(msp_fd);
 		putmsg(status[i]);
 		
-		if (i < 2) {												/* Status de reserva de memoria. */
-			if (status[i]->header.id == ENOMEM_RESERVE) {
+		if(i < 2) {												/* Status de reserva de memoria. */
+			if(status[i]->header.id == ENOMEM_RESERVE) {
 				cont = 0;
 				free(tcb);
 				tcb = NULL;
-			} else if (status[i]->header.id != OK_RESERVE) {
+			} else if(status[i]->header.id != OK_RESERVE) {
 				errno = EBADMSG;
 				perror("reservar_memoria");
 				exit(EXIT_FAILURE);
 			}
 		} else {												/* Status de escritura de codigo. */
-			if (status[i]->header.id == SEGFAULT_WRITE) {
+			if(status[i]->header.id == SEGFAULT_WRITE) {
 				cont = 0;
 				free(tcb);
 				tcb = NULL;
-			} else if (status[i]->header.id != OK_WRITE) {
+			} else if(status[i]->header.id != OK_WRITE) {
 				errno = EBADMSG;
 				perror("reservar_memoria");
 				exit(EXIT_FAILURE);
@@ -254,7 +235,7 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 
 	} 
 
-	if (cont) {
+	if(cont) {
 		tcb->segmento_codigo = status[0]->argv[0];
 		tcb->segmento_codigo_size = msg->header.length;
 		tcb->puntero_instruccion = tcb->segmento_codigo;
@@ -262,7 +243,7 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 		tcb->cursor_stack = tcb->base_stack;
 	}
 
-	for (i = 0; i < 6; i++)
+	for(i = 0; i < 6; i++)
 		destroy_message(message[i]);
 
 	return tcb;
@@ -283,27 +264,27 @@ int remove_from_lists(uint32_t sock_fd)
 
 	t_cpu *out_cpu = list_remove_by_condition(cpu_list, (void *) _remove_by_sock_fd_cpu);
 
-	if (out_console != NULL) { /* Es una consola. */
+	if(out_console != NULL) { /* Es una consola. */
 		desconexion_consola(out_console->console_id);
 
 		/* Finalizar todos los procesos de la consola. */
 
 		void _finalize_process_from_pid(t_hilo *tcb) {
-			if (tcb->pid == out_console->pid && tcb->kernel_mode == false) tcb->cola = EXIT;
+			if(tcb->pid == out_console->pid && tcb->kernel_mode == false) tcb->cola = EXIT;
 		}
 
 		list_iterate(process_list, (void *) _finalize_process_from_pid);
 
 		free(out_console);
-	} else if (out_cpu != NULL) { /* Es una CPU. */
+	} else if(out_cpu != NULL) { /* Es una CPU. */
 		desconexion_cpu(out_cpu->cpu_id);
 
-		if (out_cpu->kernel_mode == false) { /* La CPU saliente tiene un hilo comun ejecutando. */
+		if(out_cpu->kernel_mode == false) { /* La CPU saliente tiene un hilo comun ejecutando. */
 
 			/* Borrar los procesos del CPU y avisar a consola. */
 
 			void _notify_from_pid(t_hilo *tcb) {
-				if (tcb->pid == out_cpu->pid && tcb->pid == tcb->tid) { /* Hilo principal. */
+				if(tcb->pid == out_cpu->pid && tcb->pid == tcb->tid) { /* Hilo principal. */
 					tcb->cola = EXIT;
 
 					bool _has_console(t_console *cons) {
@@ -315,7 +296,7 @@ int remove_from_lists(uint32_t sock_fd)
 					t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: CPU saliente.", 0);
 					enviar_mensaje(out_cons->sock_fd, msg);
 					destroy_message(msg);
-				} else if (tcb->pid == out_cpu->pid) { /* Hilo secundario. */
+				} else if(tcb->pid == out_cpu->pid) { /* Hilo secundario. */
 					tcb->cola = EXIT;
 				}
 			}
@@ -325,16 +306,16 @@ int remove_from_lists(uint32_t sock_fd)
 
 			/* Finalizar todos los procesos y salir del programa. */
 
-			void _notify_all_consoles(t_console *a_cnsl) {
+			void _notify_all_consoles(t_console *cnsl) {
 				t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: CPU saliente.", 0);
-				enviar_mensaje(a_cnsl->sock_fd, msg);
+				enviar_mensaje(cnsl->sock_fd, msg);
 				destroy_message(msg);
 			}
 
 			list_iterate(console_list, (void *) _notify_all_consoles);
 
 			return -1;
-		} 
+		}
 
 		free(out_cpu);
 	}
@@ -387,7 +368,7 @@ uint32_t get_unique_id(t_unique_id id)
 
 	int ret = -1;
 
-	switch (id) {
+	switch(id) {
 		case THREAD_ID:
 			ret = ++tid;
 			break;
@@ -402,25 +383,4 @@ uint32_t get_unique_id(t_unique_id id)
 	}
 
 	return ret;
-}
-
-
-static int make_socket_non_blocking(int sfd)
-{
-	int flags, s;
-
-	flags = fcntl(sfd, F_GETFL, 0);
-	if (flags == -1) {
-		perror("fcntl");
-		return -1;
-	}
-
-	flags |= O_NONBLOCK;
-	s = fcntl(sfd, F_SETFL, flags);
-	if (s == -1) {
-		perror("fcntl");
-		return -1;
-	}
-
-	return 0;
 }

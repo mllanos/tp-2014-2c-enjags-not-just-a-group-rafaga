@@ -11,7 +11,6 @@
 #include <commons/config.h>
 #include <commons/collections/list.h>
 #include <commons/collections/queue.h>
-#include <commons/collections/dictionary.h>
 #include <utiles/utiles.h>
 #include <panel/panel.h>
 #include <panel/kernel.h>
@@ -22,10 +21,12 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <sys/epoll.h>
 #include "loader.h"
 #include "planificador.h"
 
 #define PANEL_PATH "../panel"
+#define MAXEVENTS 64
 
 
 typedef enum { THREAD_ID, CONSOLE_ID, CPU_ID } t_unique_id;
@@ -75,13 +76,14 @@ uint32_t get_unique_id(t_unique_id id);
 int remove_from_lists(uint32_t sock_fd);
 
 
-/* Funciones de acceso a config. */
+/* Funciones auxiliares. */
 int get_puerto(void);
 char *get_ip_msp(void);
 int get_puerto_msp(void);
 int get_quantum(void);
 int get_stack_size(void);
 char *get_syscalls(void);
+static int make_socket_non_blocking(int sfd);
 
 
 /* Archivo de configuracion. */

@@ -7,7 +7,7 @@ int server_socket(uint16_t port)
 
 	/* Create the socket. */
 	sock_fd = socket(PF_INET, SOCK_STREAM, 0);
-	if(sock_fd < 0) {
+	if (sock_fd < 0) {
 		perror("socket");
 		return -1;
 	}
@@ -24,7 +24,7 @@ int server_socket(uint16_t port)
 	servername.sin_port = htons(port);
 
  	/* Give the socket a name. */
-	if(bind(sock_fd, (struct sockaddr *) &servername, sizeof servername) < 0) {
+	if (bind(sock_fd, (struct sockaddr *) &servername, sizeof servername) < 0) {
 		perror("bind");
 		return -3;
 	}
@@ -46,7 +46,7 @@ int client_socket(char *ip, uint16_t port)
 
 	/* Create the socket. */
 	sock_fd = socket(PF_INET, SOCK_STREAM, 0);
-	if(sock_fd < 0) {
+	if (sock_fd < 0) {
 		perror("socket");
 		return -1;
 	}
@@ -58,7 +58,7 @@ int client_socket(char *ip, uint16_t port)
 	memset(&(servername.sin_zero), 0, 8);
 
 	/* Connect to the server. */
-	if(connect(sock_fd, (struct sockaddr *) &servername, sizeof servername) < 0) {
+	if (connect(sock_fd, (struct sockaddr *) &servername, sizeof servername) < 0) {
 		perror("connect");
 		return -2;
 	}
@@ -90,7 +90,7 @@ t_msg *string_message(t_msg_id id, char *message, uint16_t count, ...)
 	uint32_t *val = malloc(count * sizeof *val);
 
 	int i;
-	for(i = 0; i < count; i++) {
+	for (i = 0; i < count; i++) {
 		val[i] = va_arg(arguments, uint32_t);
 	}
 
@@ -118,7 +118,7 @@ t_msg *modify_message(t_msg_id new_id, t_msg *old_msg, uint16_t new_count, ...)
 	uint32_t *val_old = val + new_count;
 
 	int i;
-	for(i = 0; i < new_count; i++) {
+	for (i = 0; i < new_count; i++) {
 		val[i] = va_arg(arguments, uint32_t);
 	}
 
@@ -151,7 +151,7 @@ t_msg *remake_message(t_msg_id new_id, t_msg *old_msg, uint16_t new_count, ...)
 	uint32_t *val = malloc(new_count * sizeof *val);
 
 	int i;
-	for(i = 0; i < new_count; i++) {
+	for (i = 0; i < new_count; i++) {
 		val[i] = va_arg(arguments, uint32_t);
 	}
 
@@ -182,12 +182,12 @@ t_msg *beso_message(t_msg_id id, char *beso_path, uint16_t count, ...)
 	uint32_t *val = malloc(count * sizeof *val);
 
 	int i;
-	for(i = 0; i < count; i++) {
+	for (i = 0; i < count; i++) {
 		val[i] = va_arg(arguments, uint32_t);
 	}
 
 	FILE *f = fopen(beso_path, "rb");
-	if(f == NULL) {
+	if (f == NULL) {
 		perror("fopen");
 		exit(EXIT_FAILURE);
 	}
@@ -223,7 +223,7 @@ t_msg *tcb_message(t_msg_id id, t_hilo *tcb, uint16_t count, ...)
 	uint32_t *val = malloc(count * sizeof *val);
 
 	int i;
-	for(i = 0; i < count; i++) {
+	for (i = 0; i < count; i++) {
 		val[i] = va_arg(arguments, uint32_t);
 	}
 
@@ -278,7 +278,7 @@ t_msg *recibir_mensaje(int sock_fd)
  	/* Get message data. */
 	msg->argv = realloc(msg->argv, msg->header.argc * sizeof(uint32_t));
 
-	if(msg->header.argc > 0 && recv(sock_fd, msg->argv, msg->header.argc * sizeof(uint32_t), MSG_WAITALL) < 0) {
+	if (msg->header.argc > 0 && recv(sock_fd, msg->argv, msg->header.argc * sizeof(uint32_t), MSG_WAITALL) < 0) {
 		perror("recv");
 		exit(EXIT_FAILURE);
 	}
@@ -304,15 +304,15 @@ void enviar_mensaje(int sock_fd, t_msg *msg)
 	memcpy(buffer, &(msg->header), sizeof(t_header));
 
 	int i;
-	for(i = 0; i < msg->header.argc; i++)
+	for (i = 0; i < msg->header.argc; i++)
 		memcpy(buffer + sizeof(t_header) + i * sizeof(uint32_t), msg->argv + i, sizeof(uint32_t));
 
 	memcpy(buffer + sizeof(t_header) + msg->header.argc * sizeof(uint32_t), msg->stream, msg->header.length);
 
  	/* Send message(s). */
-	while(total < pending) {
+	while (total < pending) {
 		int sent = send(sock_fd, buffer, msg->header.length + sizeof msg->header + msg->header.argc * sizeof(uint32_t), MSG_NOSIGNAL);
-		if(sent < 0) {
+		if (sent < 0) {
 			perror("send");
 			exit(EXIT_FAILURE);
 		}
@@ -381,7 +381,7 @@ char *serializar_tcb(t_hilo *tcb,uint16_t quantum) // lo dejo por ahora, pero el
 	memcpy(stream + (i+= REG_SIZE),&tcb->puntero_instruccion,REG_SIZE);
 	memcpy(stream + (i+= REG_SIZE),&tcb->base_stack,REG_SIZE);
 	memcpy(stream + (i+= REG_SIZE),&tcb->cursor_stack,REG_SIZE);
-	for(j = 0;j < 5;++j)
+	for (j = 0;j < 5;++j)
 		memcpy(stream + (i+= REG_SIZE),&tcb->registros[j],REG_SIZE);
 	memcpy(stream + (i+= REG_SIZE),&tcb->cola,sizeof tcb->cola);
 */
@@ -413,7 +413,7 @@ void deserializar_tcb(t_hilo *tcb, char *stream)
 	memcpy(&tcb->puntero_instruccion,stream + (i+= REG_SIZE),REG_SIZE);
 	memcpy(&tcb->base_stack,stream + (i+= REG_SIZE),REG_SIZE);
 	memcpy(&tcb->cursor_stack,stream + (i+= REG_SIZE),REG_SIZE);
-	for(j = 0;j < 5;++j)
+	for (j = 0;j < 5;++j)
 		memcpy(&tcb->registros[j],stream + (i+= REG_SIZE),REG_SIZE);
 	memcpy(&tcb->cola,stream + (i+= REG_SIZE),sizeof tcb->cola);
 	*/
@@ -424,7 +424,7 @@ void deserializar_tcb(t_hilo *tcb, char *stream)
 char *read_file(char *path)
 {
 	FILE *f = fopen(path, "rb");
-	if(f == NULL) {
+	if (f == NULL) {
 		perror("fopen");
 		exit(EXIT_FAILURE);
 	}
@@ -434,7 +434,7 @@ char *read_file(char *path)
 	fseek(f, 0, SEEK_SET);
 
 	char *buffer = malloc(fsize + 1);
-	if(buffer == NULL) {
+	if (buffer == NULL) {
 		perror("malloc");
 		exit(EXIT_FAILURE);
 	}
@@ -485,14 +485,14 @@ void putmsg(t_msg *msg)
 	printf("CONTENIDOS DEL MENSAJE:\n");
 	printf("- ID: %s\n", id_string(msg->header.id));
 
-	for(i = 0; i < msg->header.argc; i++) {;
-		printf("- Argumento %d: %d\n", i + 1, msg->argv[i]);
+	for (i = 0; i < msg->header.argc; i++) {;
+		printf("- ARGUMENTO %d: %d\n", i + 1, msg->argv[i]);
 	}
 
-	printf("Tamaño: %d\n", msg->header.length);
-	printf("- Cuerpo: ");
+	printf("- TAMAÑO: %d\n", msg->header.length);
+	printf("- CUERPO: ");
 
-	for(i = 0; i < msg->header.length; i++)
+	for (i = 0; i < msg->header.length; i++)
 		putchar(*(msg->stream + i));
 	puts("\n**************************************************\n");
 }

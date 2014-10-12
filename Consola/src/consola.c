@@ -21,7 +21,7 @@ void kernel_connect(char *beso_path)
 	log_trace(logger, "Bienvenido al proceso Consola.");
 
 	kernel_fd = client_socket(get_ip_kernel(), get_puerto_kernel());
-	if(kernel_fd == -2) {
+	if (kernel_fd == -2) {
 		log_trace(logger, "Error al conectar con Kernel.");
 		exit(EXIT_FAILURE);
 	}
@@ -34,7 +34,7 @@ void kernel_connect(char *beso_path)
 void receive_messages(void)
 {
 	int status = 1;
-	while(status) {
+	while (status) {
 		t_msg *recibido = recibir_mensaje(kernel_fd);
 		status = interpret_message(recibido);
 		destroy_message(recibido);
@@ -50,7 +50,7 @@ int interpret_message(t_msg *recibido)
 
 	log_trace(logger, "RECIBIDO: %s", recibido->stream);
 
-	switch(recibido->header.id) {
+	switch (recibido->header.id) {
 		case NUMERIC_INPUT:
 			puts("Ingrese un valor numerico.");
 			scanf("%ld", &num_input);

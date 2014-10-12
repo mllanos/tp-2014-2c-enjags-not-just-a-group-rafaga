@@ -2,7 +2,7 @@
 
 void *loader(void *arg)
 {
-	while(1) {
+	while (1) {
 		sem_wait(&sem_loader);
 
 		pthread_mutex_lock(&loader_mutex);
@@ -12,7 +12,7 @@ void *loader(void *arg)
 		uint32_t sock_fd = recibido->argv[0];
 
 		t_hilo *new_tcb = reservar_memoria(ult_tcb(), recibido);
-		if(new_tcb == NULL) {
+		if (new_tcb == NULL) {
 			/* Couldn't allocate memory. */
 			t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: no hay espacio suficiente en MSP.", 0);
 			enviar_mensaje(sock_fd, msg);
@@ -20,7 +20,7 @@ void *loader(void *arg)
 		} else {
 			/* Add NEW process to list. */
 			int i;
-			for(i = 0; i < 5; i++)
+			for (i = 0; i < 5; i++)
 				new_tcb->registros[i] = 0;
 			new_tcb->cola = NEW;
 			list_add(process_list, new_tcb);
