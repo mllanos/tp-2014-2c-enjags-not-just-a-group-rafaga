@@ -1,0 +1,3 @@
+#!/bin/bash
+
+./bin/MSP config/msp.conf log/msp.log
