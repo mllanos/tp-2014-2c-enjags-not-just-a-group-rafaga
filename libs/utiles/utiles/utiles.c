@@ -331,46 +331,21 @@ void destroy_message(t_msg *msg)
 	free(msg);
 }
 
-
-int max(int a, int b)
-{
-	return a < b ? b : a;
-}
-
-
-int randomize(int limit)
-{
-	return rand() % (limit + 1);
-}
-
-
 void seedgen(void)
 {
 	long s, seed, pid;
 	time_t seconds;
 	pid = getpid();
-    s = time (&seconds); /* get CPU seconds since 01/01/1970 */
+    	s = time (&seconds); /* get CPU seconds since 01/01/1970 */
 	seed = abs(((s*181)*((pid-83)*359))%104729);
 	srand(seed);
 }
 
-
-int msleep(useconds_t usecs)
-{
-	return usleep(usecs*1000);
-}
-
-
-char *serializar_tcb(t_hilo *tcb,uint16_t quantum) // lo dejo por ahora, pero el quantum no debe ir aca.
+char *serializar_tcb(t_hilo *tcb,uint16_t quantum)
 {
 
-	//int i = 2,j;
-	char *stream = malloc(sizeof *tcb + sizeof quantum);
-
-	memcpy(stream, &quantum, sizeof quantum);
-	memcpy(stream + sizeof quantum, tcb, sizeof *tcb);
-
-	/*
+	int i = 2,j;
+	char* stream;
 
 	memcpy(stream,&quantum,sizeof quantum);
 	memcpy(stream + 2,&tcb->pid,REG_SIZE);
@@ -384,7 +359,7 @@ char *serializar_tcb(t_hilo *tcb,uint16_t quantum) // lo dejo por ahora, pero el
 	for(j = 0;j < 5;++j)
 		memcpy(stream + (i+= REG_SIZE),&tcb->registros[j],REG_SIZE);
 	memcpy(stream + (i+= REG_SIZE),&tcb->cola,sizeof tcb->cola);
-*/
+
 	return stream;
 
 }
@@ -400,9 +375,6 @@ t_hilo *retrieve_tcb(t_msg *msg)
 void deserializar_tcb(t_hilo *tcb, char *stream)
 {
 
-	memcpy(tcb, stream, sizeof *tcb);
-	/*
-
 	int i = 0,j;
 
 	memcpy(&tcb->pid,stream + i,REG_SIZE);
@@ -416,7 +388,6 @@ void deserializar_tcb(t_hilo *tcb, char *stream)
 	for(j = 0;j < 5;++j)
 		memcpy(&tcb->registros[j],stream + (i+= REG_SIZE),REG_SIZE);
 	memcpy(&tcb->cola,stream + (i+= REG_SIZE),sizeof tcb->cola);
-	*/
 
 }
 
@@ -445,32 +416,6 @@ char *read_file(char *path)
 
 	return buffer;
 }
-
-/*
-int socket_cliente(char* ip, char * port){
-
-	struct addrinfo hints;
-	struct addrinfo *serverInfo;
-
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_UNSPEC;		// Permite que la maquina se encargue de verificar si usamos IPv4 o IPv6
-	hints.ai_socktype = SOCK_STREAM;	// Indica que usaremos el protocolo TCP
-
-	getaddrinfo(ip, port, &hints, &serverInfo);	// Carga en serverInfo los datos de la conexion
-
-
-	int serverSocket;
-	serverSocket = socket(serverInfo->ai_family, serverInfo->ai_socktype, serverInfo->ai_protocol);
-
-
-	connect(serverSocket, serverInfo->ai_addr, serverInfo->ai_addrlen);
-	freeaddrinfo(serverInfo);	// No lo necesitamos mas
-
-	return serverSocket;
-
-}
-*/
-
 
 void clean_stdin_buffer(void)
 {
@@ -508,36 +453,38 @@ char *id_string(t_msg_id id)
 			return "KILL_CONSOLE";
 		case NUMERIC_INPUT:
 			return "NUMERIC_INPUT";
+		case REPLY_INPUT:
+			return "REPLY_INPUT";
 		case STRING_INPUT:
 			return "STRING_INPUT";
 		case STRING_OUTPUT:
 			return "STRING_OUTPUT";
-		case RESERVE_SEGMENT:
-			return "RESERVE_SEGMENT";
-		case OK_RESERVE:
-			return "OK_RESERVE";
-		case ENOMEM_RESERVE:
-			return "ENOMEM_RESERVE";
+		case CREATE_SEGMENT:
+			return "CREATE_SEGMENT";
+		case OK_CREATE:
+			return "OK_CREATE";
+		case FULL_MEMORY:
+			return "FULL_MEMORY";
+		case INVALID_SEG_SIZE:
+			return "INVALID_SEG_SIZE";
+		case MAX_SEG_NUM_REACHED:
+			return "MAX_SEG_NUM_REACHED";
 		case WRITE_MEMORY:
 			return "WRITE_MEMORY";
 		case OK_WRITE:
 			return "OK_WRITE";
-		case SEGFAULT_WRITE:
-			return "SEGFAULT_WRITE";
-		case OC_REQUEST:
-			return "OC_REQUEST";
-		case NEXT_OC:
-			return "NEXT_OC";
+		case SEGMENTATION_FAULT:
+			return "SEGMENTATION_FAULT";
+		case INVALID_DIR:
+			return "INVALID_DIR";
+		case DESTROY_SEGMENT:
+			return "DESTROY_SEGMENT";
+		case REQUEST_MEMORY:
+			return "REQUEST_MEMORY";
+		case OK_REQUEST:
+			return "OK_REQUEST";
 		case NEXT_THREAD:
 			return "NEXT_THREAD";
-		case ARG_REQUEST:
-			return "ARG_REQUEST";
-		case NEXT_ARG:
-			return "NEXT_ARG";
-		case MEM_REQUEST:
-			return "MEM_REQUEST";
-		case WRITE_MEM:
-			return "WRITE_MEM";
 		case CPU_TCB:
 			return "CPU_TCB";
 		case CPU_CONNECT:
@@ -553,8 +500,6 @@ char *id_string(t_msg_id id)
 		case CPU_WAKE:
 			return "CPU_WAKE";
 		default:
-			break;
-
-		return string_from_format("%d, <AGREGAR A LA LISTA>", id);
+			return string_from_format("%d, <AGREGAR A LA LISTA>", id);
 	}
 }

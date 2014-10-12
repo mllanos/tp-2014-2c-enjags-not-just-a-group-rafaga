@@ -12,14 +12,15 @@
 
 int main(int argc, char **argv) {
 
-	//Levantar archivo de configuracion
+	/* Levantar archivo de configuracion */
 	t_config* config = config_create(argv[1]);
 	uint16_t puerto_kernel = config_get_int_value(config,"PUERTO_KERNEL");
 	char *direccionIP_kernel = config_get_string_value(config,"IP_KERNEL");
 	uint16_t puerto_msp = config_get_int_value(config,"PUERTO_MSP");
 	char *direccionIP_msp = config_get_string_value(config,"IP_MSP");
 	int retardo = config_get_int_value(config,"RETARDO");
-	//FIN levantar archivo de configuracion
+	config_destroy(config);
+	/* FIN levantar archivo de configuracion */
 
 	conectar_a_kernel(direccionIP_kernel,puerto_kernel);
 		//log("error_conectar_kernel") ?
@@ -31,7 +32,7 @@ int main(int argc, char **argv) {
 
 	while(1) {
 
-		obtener_siguiente_hilo();								//solicita un nuevo hilo para ejecutar (TCB y quantum) al Kernel.
+		obtener_siguiente_hilo();				/* Solicita un nuevo hilo para ejecutar (TCB y quantum) al Kernel */
 		comienzo_ejecucion(&hilo,quantum);
 		eu_cargar_registros();
 
@@ -45,7 +46,7 @@ int main(int argc, char **argv) {
 
 		}
 
-		devolver_hilo();										//devuelve el hilo al kernel.
+		devolver_hilo();	/* Devuelve el hilo al kernel */
 		fin_ejecucion();
 	}
 

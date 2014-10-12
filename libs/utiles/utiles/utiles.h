@@ -18,70 +18,95 @@
 
 #define REG_SIZE 4
 
+/* Funciones Macro */
+
+/*
+ * Compara dos numeros y retorna el mínimo.
+ */
+#define min(n,m) (n < m ? n : m)
+
+/*
+ * Compara dos numeros y retorna el máximo.
+ */
+#define max(n,m) (n > m ? n : m)
+
+/*
+ * Sleep en microsegundos.
+ */
+#define msleep(usecs) usleep(usecs*1000)
+
+/*
+ * RNG. Retorna valores entre 0 y limit.
+ */
+#define randomize(limit) (rand() % (limit + 1))
+
+/*
+ * Divide dos enteros redondeando hacia arriba.
+ */
+#define divRoundUp(n,m) (n % m == 0 ? n / m : n / m + 1)
+
+/* FIN Funciones Macro */
 
 /****************** IDS DE MENSAJES. ******************/
 
 typedef enum {
-	NO_NEW_ID,					/* Valor centinela para evitar la modificacion de id en modify_message(). */
+	NO_NEW_ID,				/* Valor centinela para evitar la modificación de id en modify_message(). */
 
-	INIT_CONSOLE,				/* Pedido de creacion de hilo principal de Consola a Kernel. */
-	KILL_CONSOLE,				/* Respuesta de finalizacion por error de Kernel a Consola. */
+	INIT_CONSOLE,				/* Pedido de creación de hilo principal de Consola a Kernel. */
+	KILL_CONSOLE,				/* Respuesta de finalización por error de Kernel a Consola. */
 
-	CPU_CONNECT,				/* Pedido de conexion de CPU a Kernel. */
+	CPU_CONNECT,				/* Pedido de conexión de CPU a Kernel. */
 
-	CPU_TCB,					/* Pedido de TCB de CPU a Kernel. */
-	NEXT_THREAD,				/* Envio de TCB de Kernel a CPU. */
+	CPU_TCB,				/* Pedido de TCB de CPU a Kernel. */
+	NEXT_THREAD,				/* Envío de TCB de Kernel a CPU. */
 
 
-	/****************** SERVICIOS EXPUESTOS A CPU: INTERRUPCION. ******************/ 
-	CPU_INTERRUPT,				/* Pedido de interrupcion de un hilo de proceso de CPU a Kernel. */
+	/****************** SERVICIOS EXPUESTOS A CPU: INTERRUPCIÓN. ******************/ 
+	CPU_INTERRUPT,				/* Pedido de interrupción de un hilo de proceso de CPU a Kernel. */
 
-	/****************** SERVICIOS EXPUESTOS A CPU: ENTRADA ESTANDAR. ******************/
-	NUMERIC_INPUT,				/* Pedido de input numerico de CPU. */
+	/****************** SERVICIOS EXPUESTOS A CPU: ENTRADA ESTÁNDAR. ******************/
+	NUMERIC_INPUT,				/* Pedido de input numérico de CPU. */
 	STRING_INPUT,				/* Pedido de input de string de CPU. */
 	REPLY_INPUT,				/* Respuesta de input de Consola. */
 
-	/****************** SERVICIOS EXPUESTOS A CPU: SALIDA ESTANDAR. ******************/
-	STRING_OUTPUT,				/* Pedido de salida estandar de CPU. */
+	/****************** SERVICIOS EXPUESTOS A CPU: SALIDA ESTÁNDAR. ******************/
+	STRING_OUTPUT,				/* Pedido de salida estándar de CPU. */
 
 	/****************** SERVICIOS EXPUESTOS A CPU: CREAR HILO. ******************/
-	CPU_THREAD,					/* Pedido de nuevo hilo de proceso de CPU a Kernel. */
+	CPU_THREAD,				/* Pedido de nuevo hilo de proceso de CPU a Kernel. */
 
 	/****************** SERVICIOS EXPUESTOS A CPU: JOIN. ******************/
-	CPU_JOIN,					/* Pedido de union a hilo de proceso de CPU a Kernel. */
+	CPU_JOIN,				/* Pedido de unión a hilo de proceso de CPU a Kernel. */
 
 	/****************** SERVICIOS EXPUESTOS A CPU: BLOQUEAR. ******************/
-	CPU_BLOCK,					/* Pedido de bloqueo de hilo de proceso por recurso de CPU a Kernel. */
+	CPU_BLOCK,				/* Pedido de bloqueo de hilo de proceso por recurso de CPU a Kernel. */
 
 	/****************** SERVICIOS EXPUESTOS A CPU: DESPERTAR. ******************/
-	CPU_WAKE,					/* Pedido de desbloqueo hilo de proceso bloqueado por recurso de CPU a Kernel. */
+	CPU_WAKE,				/* Pedido de desbloqueo hilo de proceso bloqueado por recurso de CPU a Kernel. */
 
 
 	/****************** INTERFAZ MSP: RESERVAR SEGMENTO. ******************/
-	RESERVE_SEGMENT,			/* Pedido de reserva de segmento a MSP. */
-	OK_RESERVE,					/* Respuesta de memoria reservada de MSP. */
-	ENOMEM_RESERVE,				/* Respuesta de memoria insuficiente de MSP. */
+	CREATE_SEGMENT,				/* Pedido de creación de segmento a MSP. */
+	OK_CREATE,				/* Respuesta de segmento creado de MSP. */
+	FULL_MEMORY,				/* Respuesta de memoria llena. */
+	INVALID_SEG_SIZE,			/* Respuesta de tamaño de segmento inválido. */
+	MAX_SEG_NUM_REACHED,			/* Respuesta de máxima cantidad de segmentos del proceso alcanzada. */
 
 	/****************** INTERFAZ MSP: DESTRUIR SEGMENTO. ******************/
-	DESTROY_SEGMENT,			/* Pedido de destruccion de segmento a MSP. */
+	DESTROY_SEGMENT,			/* Pedido de destrucción de segmento a MSP. */
 
 	/****************** INTERFAZ MSP: SOLICITAR MEMORIA. ******************/
-	MEM_REQUEST,				/* Pedido de datos a la MSP. */
-	OK_REQUEST,					/* Respuesta de lectura correcta de MSP. */
-	SEGFAULT_REQUEST,			/* Respuesta de error de segmento en lectura de MSP. */
+	REQUEST_MEMORY,				/* Pedido de datos a la MSP. */
+	OK_REQUEST,				/* Respuesta de lectura correcta de MSP. */
 
 	/****************** INTERFAZ MSP: ESCRIBIR MEMORIA. ******************/
 	WRITE_MEMORY,				/* Pedido de escritura en memoria a MSP. */
-	OK_WRITE,					/* Respuesta de escritura correcta de MSP. */
-	SEGFAULT_WRITE,				/* Respuesta de error de segmento en escritura de MSP. */
+	OK_WRITE,				/* Respuesta de escritura correcta de MSP. */
 
+	/****************** INTERFAZ MSP: SOLICITAR/ESCRIBIR MEMORIA. ******************/
+	INVALID_DIR,				/* Respuesta de dirección inválida. */
+	SEGMENTATION_FAULT,			/* Respuesta de error de segmento en lectura/escritura de memoria. */
 
-	/****************** DEPRECADOS. ******************/
-	OC_REQUEST,					/* Pedido del CPU a la MSP del siguiente código de operación. */ 
-	NEXT_OC,					/* Código de operación enviado por la MSP al CPU que lo solicitó. */
-	ARG_REQUEST,				/* Pedido del CPU a la MSP del siguiente argumento. */
-	NEXT_ARG,					/* Argumento enviado por la MSP al CPU que lo solicitó. */
-	WRITE_MEM					/* Pedido de escritura en memoria a la MSP. */
 } t_msg_id;
 
 
@@ -99,25 +124,6 @@ typedef struct {
 	uint32_t *argv;
 }__attribute__ ((__packed__)) t_msg;
 
-/*
-#ifndef T_HILO_
-#define T_HILO_
-typedef enum { NEW, READY, EXEC, BLOCK, EXIT } t_cola;
-
-typedef struct {
-	uint32_t pid;
-	uint32_t tid;
-	bool kernel_mode;
-	uint32_t segmento_codigo;
-	uint32_t segmento_codigo_size;
-	uint32_t puntero_instruccion;
-	uint32_t base_stack;
-	uint32_t cursor_stack;
-	int32_t registros[5];
-	t_cola cola;
-} __attribute__ ((__packed__)) t_hilo;
-#endif
-*/
 
 /****************** FUNCIONES SOCKET. ******************/
 
@@ -190,7 +196,7 @@ void destroy_message(t_msg *mgs);
 /*
  * Recibe un puntero al tcb y el quantum, retorna el stream listo a enviar.
  */
-char *serializar_tcb(t_hilo *tcb,uint16_t quantum); // TODO QUITAR QUANTUM DE ACA
+char *serializar_tcb(t_hilo *tcb,uint16_t quantum);
 
 /*
  * Recibe un puntero al tcb y el stream del mensaje recibido. Guarda en el tcb la info recibida.
@@ -201,24 +207,9 @@ void deserializar_tcb(t_hilo *tcb, char *stream);
 /****************** FUNCIONES AUXILIARES. ******************/
 
 /*
- * Compara dos numeros y retorna el maximo.
- */
-int max(int a, int b);
-
-/*
  * Genera una nueva secuencia de enteros pseudo-random a retornar por rand().
  */
 void seedgen(void);
-
-/*
- * RNG. Retorna valores entre 0 y limit.
- */
-int randomize(int limit);
-
-/*
- * Sleep en microsegundos.
- */
-int msleep(useconds_t usecs);
 
 /*
  * Lee un archivo y retorna sus contenidos.
