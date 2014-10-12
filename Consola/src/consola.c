@@ -56,20 +56,21 @@ int interpret_message(t_msg *recibido)
 			scanf("%ld", &num_input);
 			clean_stdin_buffer();
 			str_tmp = string_itoa(num_input);
-			msg = string_message(STRING_OUTPUT, str_tmp, 0);
+			/* Adjuntamos el cpu_sock_fd del mensaje recibido. */
+			msg = string_message(REPLY_INPUT, str_tmp, 1, recibido->argv[0]);
 			enviar_mensaje(kernel_fd, msg);
 			destroy_message(msg);
 			free(str_tmp);
 			break;
 		case STRING_INPUT:
 			puts("Ingrese un literal cadena.");
-			msg = string_message(STRING_OUTPUT, fgets(str_input, sizeof(str_input), stdin), 0);
+			/* Adjuntamos el cpu_sock_fd del mensaje recibido. */
+			msg = string_message(REPLY_INPUT, fgets(str_input, sizeof(str_input), stdin), 1, recibido->argv[0]);
 			enviar_mensaje(kernel_fd, msg);
 			destroy_message(msg);
 			break;
 		case STRING_OUTPUT:
-			puts("Mensaje recibido:");
-			puts(recibido->stream);
+			printf("Mensaje recibido: %s\n", recibido->stream);
 			break;
 		case KILL_CONSOLE:
 			printf("Cerrando consola. Razon: %s\n", msg->stream);

@@ -90,7 +90,6 @@ void receive_messages(void)
 						perror ("accept");
 						exit(EXIT_FAILURE);
 					}
-					puts("Conexion.");
 					FD_SET (newfd, &master);
 					fdmax = newfd > fdmax ? newfd : fdmax;
 				}
@@ -99,7 +98,6 @@ void receive_messages(void)
 					t_msg *recibido = recibir_mensaje(i);
 					if(recibido == NULL) {
 						/* Socket closed connection. */
-						puts("Desconexion.");
 						int status = remove_from_lists(i);
 						close(i);
 						FD_CLR(i, &master);
@@ -159,6 +157,7 @@ void interpret_message(int sock_fd, t_msg *recibido)
 		/* Mensaje de CPU. */
 		case CPU_CONNECT:										/* <[STRING]> */
 		case CPU_TCB:											/* <[STRING]> */
+		case RETURN_TCB:										/* <TCB_STRING> */
 		case CPU_INTERRUPT: 									/* <MEM_DIR, TCB_STRING> */
 		case NUMERIC_INPUT: 									/* <PID, [STRING]> */
 		case STRING_INPUT: 										/* <PID, [STRING]> */
@@ -170,6 +169,15 @@ void interpret_message(int sock_fd, t_msg *recibido)
 			
 			pthread_mutex_lock(&planificador_mutex);
 			queue_push(planificador_queue, modify_message(NO_NEW_ID, recibido, 1, sock_fd));
+			pthread_mutex_unlock(&planificador_mutex);
+
+			sem_post(&sem_planificador);
+
+			break;
+		/* Mensaje para CPU de Consola. */
+		case REPLY_INPUT:										/* <CPU_SOCK_FD, REPLY_STRING> */
+			pthread_mutex_lock(&planificador_mutex);
+			queue_push(planificador_queue, recibido);
 			pthread_mutex_unlock(&planificador_mutex);
 
 			sem_post(&sem_planificador);
@@ -242,17 +250,17 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 
 int remove_from_lists(uint32_t sock_fd)
 {
-	bool _is_console(t_console *console) { 
+	bool _remove_by_sock_fd_cnsl(t_console *console) { 
 		return console->sock_fd == sock_fd; 
 	}
 
-	t_console *out_console = list_remove_by_condition(console_list, (void *) _is_console);
+	t_console *out_console = list_remove_by_condition(console_list, (void *) _remove_by_sock_fd_cnsl);
 
-	bool _is_cpu(t_cpu *cpu) { 
+	bool _remove_by_sock_fd_cpu(t_cpu *cpu) { 
 		return cpu->sock_fd == sock_fd; 
 	}
 
-	t_cpu *out_cpu = list_remove_by_condition(cpu_list, (void *) _is_cpu);
+	t_cpu *out_cpu = list_remove_by_condition(cpu_list, (void *) _remove_by_sock_fd_cpu);
 
 	if(out_console != NULL) { /* Es una consola. */
 		desconexion_consola(out_console->console_id);
@@ -263,7 +271,7 @@ int remove_from_lists(uint32_t sock_fd)
 			if(tcb->pid == out_console->pid && tcb->kernel_mode == false) tcb->cola = EXIT;
 		}
 
-		process_list = list_map(process_list, (void *)_finalize_process_from_pid);
+		list_iterate(process_list, (void *) _finalize_process_from_pid);
 
 		free(out_console);
 	} else if(out_cpu != NULL) { /* Es una CPU. */
@@ -291,7 +299,7 @@ int remove_from_lists(uint32_t sock_fd)
 				}
 			}
 
-			list_map(process_list, (void *) _notify_from_pid);
+			list_iterate(process_list, (void *) _notify_from_pid);
 		} else { /* La CPU saliente tiene el hilo kernel.*/
 
 			/* Finalizar todos los procesos y salir del programa. */
@@ -302,7 +310,7 @@ int remove_from_lists(uint32_t sock_fd)
 				destroy_message(msg);
 			}
 
-			list_map(console_list, (void *) _notify_all_consoles);
+			list_iterate(console_list, (void *) _notify_all_consoles);
 
 			return -1;
 		}

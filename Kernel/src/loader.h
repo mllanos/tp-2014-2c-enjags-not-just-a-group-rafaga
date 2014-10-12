@@ -12,8 +12,20 @@ typedef struct {
 
 
 /* Funciones loader. */
+
+/*
+ * Hilo principal del Loader.
+ */
 void *loader(void *arg);
+
+/*
+ * Crea un nuevo TCB de usuario.
+ */
 t_hilo *ult_tcb(void);
+
+/*
+ * Crea una nueva estructura de consola.
+ */
 t_console *new_console(uint32_t pid, uint32_t sock_fd);
 
 #endif

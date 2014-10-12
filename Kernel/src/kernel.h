@@ -32,13 +32,46 @@ typedef enum { THREAD_ID, CONSOLE_ID, CPU_ID } t_unique_id;
 
 
 /* Funciones Kernel. */
+
+/*
+ * Inicializa variables globales.
+ */
 void initialize(char *config_path);
+
+/*
+ * Libera los recursos de las variables globales.
+ */
 void finalize(void);
+
+/*
+ * Crea el TCB Kernel y lo encola en BLOCK.
+ */
 void boot_kernel(void);
+
+/*
+ * Recibe las conexiones y mensajes de CPU y Consola.
+ */
 void receive_messages(void);
+
+/*
+ * Interpreta mensajes y los asigna a las colas compartidas.
+ */
 void interpret_message(int sock_fd, t_msg *recibido);
+
+/*
+ * Se encarga de pedir memoria a MSP para un proceso inicial.
+ */
 t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg);
+
+/*
+ * Nos devuelve tres tipos de id unicos segun parametro.
+ */
 uint32_t get_unique_id(t_unique_id id);
+
+/*
+ * Se encarga de sacar de las listas a los CPUs y Consolas salientes.
+ * En caso de ser una CPU con el TCB Kernel finaliza el programa.
+ */
 int remove_from_lists(uint32_t sock_fd);
 
 
