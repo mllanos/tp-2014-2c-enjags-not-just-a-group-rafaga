@@ -22,19 +22,19 @@ endif
 # Add inputs and outputs from these tool invocations to the build variables 
 
 # All Target
-all: MSPP
+all: MSP
 
 # Tool invocations
-MSPP: $(OBJS) $(USER_OBJS)
+MSP: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C Linker'
-	gcc  -o "MSPP" $(OBJS) $(USER_OBJS) $(LIBS)
+	gcc  -o "MSP" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(OBJS)$(C_DEPS)$(EXECUTABLES) MSPP
+	-$(RM) $(OBJS)$(C_DEPS)$(EXECUTABLES) MSP
 	-@echo ' '
 
 .PHONY: all clean dependents

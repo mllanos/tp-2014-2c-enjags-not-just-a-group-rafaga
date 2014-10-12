@@ -17,7 +17,7 @@
 typedef struct tipo_segmento{	//Esto representa a un segmento (una fila de la tabla)
 	u_int32_t id;
 	u_int32_t num_segmento;
-	struct t_list *paginas;
+	t_list *paginas;
 } t_segmento;
 
 typedef struct tipo_pagina{		//Esto representa a una pagina
@@ -63,19 +63,20 @@ t_log *crearLog(char *archivo);
 void cargarConficuracion(char* path);
 void crearEstructuras();
 void atenderConexion(int sock_msp);
-void reservarMemoria(int tamano);
-
-t_memoria *crearMarco(u_int32_t marco, u_int32_t);
+int reservarMemoria(u_int32_t pid, u_int32_t tamano);
+t_pagina *crearPagina(u_int32_t pagina);
+t_memoria *crearMarco(u_int32_t marco);
+t_segmento *crearSegmento(u_int32_t id, u_int32_t segmento, t_list *pagina) ;
 u_int32_t armarDireccion(u_int32_t segmento, u_int32_t pagina, u_int32_t offset);
 void iniciarBasesegmento(u_int32_t *segmento, u_int32_t *pagina, u_int32_t *offset);
 void retornarDireccion(u_int32_t pid, u_int32_t direccion_logica);
 
-void destruirSegmento(u_int32_t direccion_logica);
+void destruirSegmento(u_int32_t direccion_logica, t_list *li);
 void escribirMemoria(u_int32_t pid, u_int32_t direccion_logica, char* bytes,
 		u_int32_t tamano);
 u_int32_t calcularRAMocupada();
-u_int32_t calcularSWAPocupada();
-u_int32_t espacioTotalOcupado();
+u_int32_t calcularSWAPocupada(t_list *lista);
+u_int32_t espacioTotalOcupado(t_list *lista);
 void grabarRAM(char* point, u_int32_t mem_pos, u_int32_t size, char* dato);
 void leerRAM(char* point, u_int32_t mem_pos, u_int32_t size, char* dato);
 char *crearArchivoSWAP(u_int32_t pid, u_int32_t segmento, u_int32_t pagina);
@@ -83,8 +84,9 @@ char *armarSWAPath(u_int32_t pid, u_int32_t segmento, u_int32_t pagina);
 void prepararAlgoritmoReemplazo(t_pagina *pagina);
 t_memoria *buscarMarcoDisponible(t_list *li);
 t_nodo *buscarPaginasCLOCK(t_list *lista, t_nodo *ultimo, t_nodo *elim_swap);
+
 t_nodo *buscarPaginasLRU(t_list *lista, t_nodo *retorno);
-t_nodo *buscarReemplazo(t_list *lista, char *string);
+t_nodo *buscarReemplazo(t_list *lista, char *string, t_nodo ultimo);
 int escribirSWAPfile(char *adress, char *bytes, u_int32_t tamano);
 int  leerSWAPfile(char *adress, char *bytes, int tamano);
 void borrarSWAPfile(char *adress);
@@ -185,7 +187,7 @@ void cargarConficuracion(char* path) {
 			ip, puerto, cmemoria, cswap, algoritmo);
 }
 
-void crearEstructuras(t_nodo ultimo, t_nodo elim_swap) {
+void crearEstructuras() {
 
 	listaSegmentos = list_create();
 	point = (char*) malloc(cmemoria);  // Creo memoria principal (malloc).
@@ -198,8 +200,7 @@ void crearEstructuras(t_nodo ultimo, t_nodo elim_swap) {
 		t_memoria *marc = crearMarco(i);
 		list_add(listaMemoriaPrincipal, marc);
 	}
-	t_nodo ultimo = malloc(sizeof(t_nodo)); //Nodo que guarde la ultima posicion de busqueda por el CLOCK
-	t_nodo elim_swap = malloc(sizeof(t_nodo)); //Para guardar los datos del swap a eliminar
+
 	log_debug(logfile,
 			"crearEstructuras()-Se creo la memoria principal del tp con la direccion fisica %i...",
 			(int) (cmemoria));
@@ -236,15 +237,17 @@ int reservarMemoria(u_int32_t pid, u_int32_t tamano) { //Saco id y utilizo el pi
 	//usar esto al momento de pasar las paginas a memoria y tambien luego al reemplazarlas. para eso me sirve el -1, osea saber en la lista que paginas todavia no se escribieron.
 	//el algoritmo de reemplazo influye al reemplazar no ahora, asi que el bonus lo inicio en 0.
 	div_t c;
-	u_int32_t c_paginas;
-	if (espacioTotalOcupado() > pag_mem_total) {
+	int c_paginas, i;
+	t_list *listaPaginas;
+
+	if (espacioTotalOcupado(listaSegmentos) > pag_mem_total) {
 
 			//error
 			log_error(logfile, "crearSegmento()-No se puede crear el segmendo, debido a exceder el valor maximo de memoria disponible, pedido por el proceso: %i ..",pid);
 			return -1;
 	}
 
-	if (tamano > SEG_MAX) {
+		if (tamano > SEG_MAX) {
 
 			//error
 			log_error(logfile,"crearSegmento()-No se puede crear el segmendo, debido a exceder el valor maximo de segmento, pedido por el proceso: %i ..",pid);
@@ -260,11 +263,13 @@ int reservarMemoria(u_int32_t pid, u_int32_t tamano) { //Saco id y utilizo el pi
 				c_paginas = c.quot + 1;
 			} //Si la ultima pagina va a estar media vacia. Fragmentacion externa?
 
-		t_list listaPaginas = list_create();
+		listaPaginas = list_create();
 
 		//Creo las paginas correspondientes
-		for(int i=0; i < c_paginas; i++){
-				t_segmento *pagina = crearPagina(i);
+
+		for(i=0; i < c_paginas; i++){
+				t_segmento *pagina;
+				pagina = crearPagina(i);
 				list_add(listaPaginas, pagina);
 			}
 		//Anexo la listaPaginas a un segmento que vamos a crear
@@ -371,7 +376,7 @@ case 3:
 	byte3 = value & 0xff;
 	return byte3;
 
-}
+	}
 }
 /* Example value: 0x01020304
  case 1:
@@ -450,7 +455,7 @@ void escribirMemoria(u_int32_t pid, u_int32_t direccion_logica, char* bytes,
 	//Consigo el num de pagina
 	u_int32_t pagina = dameByte(direccion_logica, 2);
 	//Busco la pagina correspondiente
-	t_pagina *pag = list_find((int)seg->paginas, (void*) es_igual_pag);
+	t_pagina *pag = list_find(seg->paginas, (void*) es_igual_pag);
 
 	prepararAlgoritmoReemplazo(pag); // Aplico el algoritmo a la pagina
 
@@ -480,7 +485,7 @@ void escribirMemoria(u_int32_t pid, u_int32_t direccion_logica, char* bytes,
 		memoria->bit = 1; //Lamemoria esta ahora ocupada
 	} else {
 		//Tengo que manejar la swap, implementar algoritmo y desarrollar la busqueda y creacion de archivos swap
-		t_nodo outSwap = buscarReemplazo(listaSegmentos, algoritmo);
+		t_nodo outSwap = buscarReemplazo(listaSegmentos, algoritmo, ultimo);
 
 		outSwap.pagina->bit = 2; //Actualizo el bit a 2, osea en esta en SWAP
 
@@ -552,38 +557,51 @@ u_int32_t calcularRAMocupada() { //Utilizo la lista secundaria de la RAM || En t
 return size;
 }
 
-u_int32_t calcularSWAPocupada() { //Utilizo la lista principal, utilizando el bit == 2 || En terminos de numero de paginas
-t_list lista_aux = listaSegmentos->head;
-t_list swap_total;
+u_int32_t calcularSWAPocupada(t_list *lista) { //Utilizo la lista principal, utilizando el bit == 2
 
-while (lista_aux != NULL ) {
-	// recorro cada segmento y filtro las paginas
-	t_list *swap_list = list_filter(lista_aux->data->paginas,
-			(void*) pagina_dos);
-	// esa lista la agrego a swap_total
-	list_add_all(swap_total, swap_list);
-	lista_aux = lista_aux->next;
+u_int32_t size = 0;
+int i = 0;
+while (i <= list_size(lista)) {
 
+	t_segmento *seg = list_get(lista, i);
+
+	int s = 0;
+	while (s <= list_size(seg->paginas)) {
+
+		t_pagina *pag = list_get(seg->paginas, s);
+
+		if (pag->bit == 2) {
+
+			size++;
+
+		}
+		s++;
+	}
+	i++;
 }
-
-u_int32_t size = list_size(swap_total);
-list_clean(swap_total);
 return size;
 }
 
-u_int32_t espacioTotalOcupado() { //|| En terminos de numero de paginas
+u_int32_t espacioTotalOcupado(t_list *lista) { //|| En terminos de numero de paginas
 /*En este caso utilizo la estructura principal, solo cuento todas las paginas que tiene
  ya que no puedo ceder mas paginas de mi limite (swap + ram)*/
-u_int32_t total = 0;
-t_list lista_aux = listaSegmentos->head;
-	while (lista_aux != NULL ) {
+	u_int32_t size = 0;
+	int i = 0;
+	while (i <= list_size(lista)) {
 
-		u_int32_t pag = list_size(lista_aux->data->paginas);
-		total = total + pag;
-		lista_aux = lista_aux->next;
+		t_segmento *seg = list_get(lista, i);
+
+		int s = 0;
+		while (s <= list_size(seg->paginas)) {
+
+			size++;
+
+			s++;
+		}
+		i++;
 	}
-	return total;
-}
+	return size;
+	}
 
 void grabarRAM(char* point, u_int32_t mem_pos, u_int32_t size, char* dato) {
 
@@ -684,6 +702,7 @@ int i = 0;
 while (i <= list_size(lista)) {
 
 	t_segmento *seg = list_get(lista, i);
+
 	int s = 0;
 	while (s <= list_size(seg->paginas)) {
 
@@ -749,7 +768,7 @@ return retorno;
 
 }
 
-t_nodo *buscarReemplazo(t_list *lista, char *string) {
+t_nodo *buscarReemplazo(t_list *lista, char *string, t_nodo ultimo) {
 	t_nodo *retorno;
 	if (strcmp(string,"LRU") == 0) {
 		 buscarPaginasLRU(lista, retorno);
@@ -839,7 +858,7 @@ int solicitarMemoria(u_int32_t pid, u_int32_t direccion_logica, char* bytes, u_i
 	}
 	if (pag->bit == 2) {
 		//>>>>>----------Tengo que manejar la swap, es parecido al caso, en u principio, en donde el segmento todavia no se escribio
-		t_nodo *outSwap = buscarReemplazo(listaSegmentos, algoritmo);
+		t_nodo *outSwap = buscarReemplazo(listaSegmentos, algoritmo,ultimo);
 
 		outSwap->pagina->bit = 2; //Actualizo el bit a 2, osea en esta en SWAP
 
