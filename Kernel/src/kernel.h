@@ -52,7 +52,8 @@ void boot_kernel(void);
 /*
  * Recibe las conexiones y mensajes de CPU y Consola.
  */
-void receive_messages(void);
+void receive_messages_epoll(void);
+void receive_messages_select(void);
 
 /*
  * Interpreta mensajes y los asigna a las colas compartidas.

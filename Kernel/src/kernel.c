@@ -4,7 +4,7 @@ int main(int argc, char **argv)
 {
 	initialize(argv[1]);
 	boot_kernel();
-	receive_messages();
+	receive_messages_epoll();
 	finalize();
 	return EXIT_SUCCESS;
 }
@@ -58,7 +58,7 @@ void boot_kernel(void)
 }
 
 
-void receive_messages(void)
+void receive_messages_epoll(void)
 {
 	struct epoll_event event;
 	struct epoll_event *events;
@@ -97,7 +97,7 @@ void receive_messages(void)
 				int infd = accept_connection(sfd);
 
 				/* Make the incoming socket non-blocking and add it to the list of fds to monitor. */
-				s = make_socket_non_blocking (infd);
+				s = make_socket_non_blocking(infd);
 				if (s == -1) {
 					exit(EXIT_FAILURE);
 				}
@@ -136,11 +136,70 @@ void receive_messages(void)
 }
 
 
+void receive_messages_select(void)
+{
+	fd_set master, read_fds;
+
+	/* Create the socket and set it up to accept connections. */
+	int listener = server_socket(get_puerto());
+
+	/* Initialize the set of active sockets. */
+	FD_ZERO (&master);
+	FD_SET (listener, &master);
+
+	int fdmax = listener;
+
+	while (1) {
+		/* Block until input arrives on one or more active sockets. */
+		memcpy(&read_fds, &master, sizeof(read_fds));
+
+		if (select (fdmax + 1, &read_fds, NULL, NULL, NULL) < 0) {
+			perror ("select");
+			exit(EXIT_FAILURE);
+		}
+		/* Service all the sockets with input pending. */
+		int i;
+		for (i = 0; i <= fdmax; i++)
+			if (FD_ISSET (i, &read_fds))
+				if (i == listener) {
+					/* Connection request on original socket. */
+					int newfd = accept_connection(listener);
+					if (newfd < 0) {
+						perror ("accept");
+						exit(EXIT_FAILURE);
+					}
+					FD_SET (newfd, &master);
+					fdmax = newfd > fdmax ? newfd : fdmax;
+				}
+				else {
+					/* Data arriving on an already-connected socket. */
+					t_msg *recibido = recibir_mensaje(i);
+					if(recibido == NULL) {
+						/* Socket closed connection. */
+						int status = remove_from_lists(i);
+						close(i);
+						FD_CLR(i, &master);
+
+						if(status == -1) {
+							/* Exit program. */
+							close(listener);
+							return;
+						}
+					} else {
+						/* Socket received message. */
+						putmsg(recibido);
+						interpret_message(i, recibido);
+					}	
+				}
+	}
+}
+
+
 void finalize(void)
 {
-	void _resource_destroyer(t_resource *res) {
-		queue_destroy_and_destroy_elements(res->queue, (void *) free);
-		free(res);
+	void _resource_destroyer(t_resource *a_res) {
+		queue_destroy_and_destroy_elements(a_res->queue, (void *) free);
+		free(a_res);
 	}
 
 	config_destroy(config);
@@ -288,8 +347,9 @@ int remove_from_lists(uint32_t sock_fd)
 
 		/* Finalizar todos los procesos de la consola. */
 
-		void _finalize_process_from_pid(t_hilo *tcb) {
-			if (tcb->pid == out_console->pid && tcb->kernel_mode == false) tcb->cola = EXIT;
+		void _finalize_process_from_pid(t_hilo *a_tcb) {
+			if (a_tcb->pid == out_console->pid && a_tcb->kernel_mode == false) 
+				a_tcb->cola = EXIT;
 		}
 
 		list_iterate(process_list, (void *) _finalize_process_from_pid);
@@ -298,45 +358,49 @@ int remove_from_lists(uint32_t sock_fd)
 	} else if (out_cpu != NULL) { /* Es una CPU. */
 		desconexion_cpu(out_cpu->cpu_id);
 
-		if (out_cpu->kernel_mode == false) { /* La CPU saliente tiene un hilo comun ejecutando. */
+		if(out_cpu->disponible == false) { /* La CPU  saliente tiene hilos ejecutando. */
 
-			/* Borrar los procesos del CPU y avisar a consola. */
+			if (out_cpu->kernel_mode == false) { /* La CPU saliente tiene un hilo comun ejecutando. */
 
-			void _notify_from_pid(t_hilo *tcb) {
-				if (tcb->pid == out_cpu->pid && tcb->pid == tcb->tid) { /* Hilo principal. */
-					tcb->cola = EXIT;
+				/* Borrar los procesos del CPU y avisar a consola. */
 
-					bool _has_console(t_console *cons) {
-						return cons->pid == tcb->pid && tcb->kernel_mode == false;
+				void _notify_from_pid(t_hilo *a_tcb) {
+					if (a_tcb->pid == out_cpu->pid && a_tcb->pid == a_tcb->tid) { /* Hilo principal. */
+						a_tcb->cola = EXIT;
+
+						bool _has_console(t_console *a_cnsl) {
+							return a_cnsl->pid == a_tcb->pid && a_tcb->kernel_mode == false;
+						}
+
+						t_console *out_cons = list_remove_by_condition(console_list, (void *) _has_console);
+
+						t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: CPU saliente.", 0);
+						enviar_mensaje(out_cons->sock_fd, msg);
+						destroy_message(msg);
+					} else if (a_tcb->pid == out_cpu->pid) { /* Hilo secundario. */
+						a_tcb->cola = EXIT;
 					}
-
-					t_console *out_cons = list_remove_by_condition(console_list, (void *) _has_console);
-
-					t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: CPU saliente.", 0);
-					enviar_mensaje(out_cons->sock_fd, msg);
-					destroy_message(msg);
-				} else if (tcb->pid == out_cpu->pid) { /* Hilo secundario. */
-					tcb->cola = EXIT;
 				}
-			}
 
-			list_iterate(process_list, (void *) _notify_from_pid);
-		} else { /* La CPU saliente tiene el hilo kernel.*/
+				list_iterate(process_list, (void *) _notify_from_pid);
+			} else { /* La CPU saliente tiene el hilo kernel.*/
 
-			/* Finalizar todos los procesos y salir del programa. */
+				/* Finalizar todos los procesos y salir del programa. */
 
-			void _notify_all_consoles(t_console *a_cnsl) {
-				t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: CPU saliente.", 0);
-				enviar_mensaje(a_cnsl->sock_fd, msg);
-				destroy_message(msg);
-			}
+				void _notify_all_consoles(t_console *a_cnsl) {
+					t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: CPU saliente.", 0);
+					enviar_mensaje(a_cnsl->sock_fd, msg);
+					destroy_message(msg);
+				}
 
-			list_iterate(console_list, (void *) _notify_all_consoles);
+				list_iterate(console_list, (void *) _notify_all_consoles);
 
-			return -1;
-		} 
+				return -1;
+			} 
 
-		free(out_cpu);
+			free(out_cpu);
+		}
+
 	}
 
 	return 0;

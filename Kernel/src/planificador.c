@@ -67,7 +67,7 @@ void bprr_algorithm(void)
 	/* Ordeno los procesos READY por prioridades. */
 	bool _ordenar_por_prioridades(t_hilo *a_tcb, t_hilo *b_tcb) {
 		if (a_tcb->cola == READY && b_tcb->cola == READY)
-			return a_tcb->kernel_mode < b_tcb->kernel_mode;
+			return a_tcb->kernel_mode <= b_tcb->kernel_mode;
 	return true;
 	}
 
@@ -171,6 +171,8 @@ void return_process(uint32_t sock_fd, t_hilo *tcb)
 
 void syscall_start(uint32_t call_dir, t_hilo *tcb)
 {
+	/* Seteamos TCB a BLOCK y lo encolamos en la cola de syscalls. */
+
 	void _block_by_tid(t_hilo *a_tcb) {
 		if (a_tcb->tid == tcb->tid) {
 			memcpy(a_tcb, tcb, sizeof *tcb),
@@ -181,8 +183,10 @@ void syscall_start(uint32_t call_dir, t_hilo *tcb)
 
 	list_iterate(process_list, (void *) _block_by_tid);
 
-	bool _find_kernel_tcb(t_hilo *tcb) {
-		return tcb->kernel_mode == true;
+	/* Copiamos registros, pid y tid del TCB a hilo Kernel y lo encolamos a READY. */
+
+	bool _find_kernel_tcb(t_hilo *a_tcb) {
+		return a_tcb->kernel_mode == true;
 	}
 
 	t_hilo *klt_tcb = list_find(process_list, (void *) _find_kernel_tcb);
@@ -239,8 +243,9 @@ void create_thread(t_hilo *padre)
 	} else if (status->header.id == ENOMEM_RESERVE) { /* No hay suficiente memoria. */
 		/* Finalizar todos los hilos del proceso y avisar a consola. */
 
-		void _finalize_by_pid(t_hilo *tcb) {
-			if (tcb->pid == new_tcb->pid && tcb->kernel_mode == false) tcb->cola = EXIT;
+		void _finalize_by_pid(t_hilo *a_tcb) {
+			if (a_tcb->pid == new_tcb->pid && a_tcb->kernel_mode == false) 
+				a_tcb->cola = EXIT;
 		}
 
 		list_iterate(process_list, (void *) _finalize_by_pid);
@@ -269,14 +274,14 @@ void create_thread(t_hilo *padre)
 
 void join_thread(uint32_t tid_caller, uint32_t tid_towait) /* TODO implementacion. */
 {
-	bool _find_by_tid_c(t_hilo *tcb) {
-		return tcb->tid == tid_caller;
+	bool _find_by_tid_c(t_hilo *a_tcb) {
+		return a_tcb->tid == tid_caller;
 	}
 
 	t_hilo *caller = list_find(process_list, (void *) _find_by_tid_c);
 
-	bool _find_by_tid_w(t_hilo *tcb) {
-		return tcb->tid == tid_towait;
+	bool _find_by_tid_w(t_hilo *a_tcb) {
+		return a_tcb->tid == tid_towait;
 	}
 
 	t_hilo *towait = list_find(process_list, (void *) _find_by_tid_w);
@@ -287,8 +292,8 @@ void join_thread(uint32_t tid_caller, uint32_t tid_towait) /* TODO implementacio
 
 void block_thread(uint32_t resource, t_hilo *tcb)
 {
-	bool _find_by_id(t_resource *res) {
-		return res->id_resource == resource;
+	bool _find_by_id(t_resource *a_res) {
+		return a_res->id_resource == resource;
 	}
 
 	t_resource *rsc = list_find(resource_list, (void *) _find_by_id);
@@ -312,8 +317,8 @@ void block_thread(uint32_t resource, t_hilo *tcb)
 
 void wake_thread(uint32_t resource)
 {
-	bool _find_by_id(t_resource *res) {
-		return res->id_resource == resource;
+	bool _find_by_id(t_resource *a_res) {
+		return a_res->id_resource == resource;
 	}
 
 	t_resource *rsc = list_find(resource_list, (void *) _find_by_id);
