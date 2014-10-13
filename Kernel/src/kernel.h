@@ -11,7 +11,6 @@
 #include <commons/config.h>
 #include <commons/collections/list.h>
 #include <commons/collections/queue.h>
-#include <commons/collections/dictionary.h>
 #include <utiles/utiles.h>
 #include <panel/panel.h>
 #include <panel/kernel.h>
@@ -22,33 +21,70 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <sys/epoll.h>
 #include "loader.h"
 #include "planificador.h"
 
 #define PANEL_PATH "../panel"
+#define MAXEVENTS 64
 
 
 typedef enum { THREAD_ID, CONSOLE_ID, CPU_ID } t_unique_id;
 
 
 /* Funciones Kernel. */
+
+/*
+ * Inicializa variables globales.
+ */
 void initialize(char *config_path);
+
+/*
+ * Libera los recursos de las variables globales.
+ */
 void finalize(void);
+
+/*
+ * Crea el TCB Kernel y lo encola en BLOCK.
+ */
 void boot_kernel(void);
-void receive_messages(void);
+
+/*
+ * Recibe las conexiones y mensajes de CPU y Consola.
+ */
+void receive_messages_epoll(void);
+void receive_messages_select(void);
+
+/*
+ * Interpreta mensajes y los asigna a las colas compartidas.
+ */
 void interpret_message(int sock_fd, t_msg *recibido);
+
+/*
+ * Se encarga de pedir memoria a MSP para un proceso inicial.
+ */
 t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg);
+
+/*
+ * Nos devuelve tres tipos de id unicos segun parametro.
+ */
 uint32_t get_unique_id(t_unique_id id);
+
+/*
+ * Se encarga de sacar de las listas a los CPUs y Consolas salientes.
+ * En caso de ser una CPU con el TCB Kernel finaliza el programa.
+ */
 int remove_from_lists(uint32_t sock_fd);
 
 
-/* Funciones de acceso a config. */
+/* Funciones auxiliares. */
 int get_puerto(void);
 char *get_ip_msp(void);
 int get_puerto_msp(void);
 int get_quantum(void);
 int get_stack_size(void);
 char *get_syscalls(void);
+static int make_socket_non_blocking(int sfd);
 
 
 /* Archivo de configuracion. */

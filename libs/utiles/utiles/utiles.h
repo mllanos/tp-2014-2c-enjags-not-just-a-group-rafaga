@@ -60,6 +60,8 @@ typedef enum {
 	CPU_TCB,				/* Pedido de TCB de CPU a Kernel. */
 	NEXT_THREAD,				/* Envío de TCB de Kernel a CPU. */
 
+	RETURN_TCB,					/* Retorno de TCB de CPU a Kernel. */
+
 
 	/****************** SERVICIOS EXPUESTOS A CPU: INTERRUPCIÓN. ******************/ 
 	CPU_INTERRUPT,				/* Pedido de interrupción de un hilo de proceso de CPU a Kernel. */

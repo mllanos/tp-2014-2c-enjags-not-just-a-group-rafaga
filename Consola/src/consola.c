@@ -21,7 +21,7 @@ void kernel_connect(char *beso_path)
 	log_trace(logger, "Bienvenido al proceso Consola.");
 
 	kernel_fd = client_socket(get_ip_kernel(), get_puerto_kernel());
-	if(kernel_fd == -2) {
+	if (kernel_fd == -2) {
 		log_trace(logger, "Error al conectar con Kernel.");
 		exit(EXIT_FAILURE);
 	}
@@ -34,7 +34,7 @@ void kernel_connect(char *beso_path)
 void receive_messages(void)
 {
 	int status = 1;
-	while(status) {
+	while (status) {
 		t_msg *recibido = recibir_mensaje(kernel_fd);
 		status = interpret_message(recibido);
 		destroy_message(recibido);
@@ -50,26 +50,27 @@ int interpret_message(t_msg *recibido)
 
 	log_trace(logger, "RECIBIDO: %s", recibido->stream);
 
-	switch(recibido->header.id) {
+	switch (recibido->header.id) {
 		case NUMERIC_INPUT:
 			puts("Ingrese un valor numerico.");
 			scanf("%ld", &num_input);
 			clean_stdin_buffer();
 			str_tmp = string_itoa(num_input);
-			msg = string_message(STRING_OUTPUT, str_tmp, 0);
+			/* Adjuntamos el cpu_sock_fd del mensaje recibido. */
+			msg = string_message(REPLY_INPUT, str_tmp, 1, recibido->argv[0]);
 			enviar_mensaje(kernel_fd, msg);
 			destroy_message(msg);
 			free(str_tmp);
 			break;
 		case STRING_INPUT:
 			puts("Ingrese un literal cadena.");
-			msg = string_message(STRING_OUTPUT, fgets(str_input, sizeof(str_input), stdin), 0);
+			/* Adjuntamos el cpu_sock_fd del mensaje recibido. */
+			msg = string_message(REPLY_INPUT, fgets(str_input, sizeof(str_input), stdin), 1, recibido->argv[0]);
 			enviar_mensaje(kernel_fd, msg);
 			destroy_message(msg);
 			break;
 		case STRING_OUTPUT:
-			puts("Mensaje recibido:");
-			puts(recibido->stream);
+			printf("Mensaje recibido: %s\n", recibido->stream);
 			break;
 		case KILL_CONSOLE:
 			printf("Cerrando consola. Razon: %s\n", msg->stream);
