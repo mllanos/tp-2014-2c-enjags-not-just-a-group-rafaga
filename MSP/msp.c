@@ -50,13 +50,14 @@ fd_set descriptoresLectura;
 
 u_int32_t pid;             //Tengo presente el pid y el num segmento del proceso
 u_int32_t num_segmento;	// entrante y lo uso por ej para eliminar segmentos...
+u_int32_t pagina;
 
 //Espacios en terminos de paginas ;)
 u_int32_t pag_mem_total = 0;
 u_int32_t pag_tot_mem;
 u_int32_t pag_tot_swap;
 
-t_nodo ultimo;
+t_nodo *ultimo;
 
 void borrarSWAPfile(char *adress);
 t_log *crearLog(char *archivo);
@@ -70,7 +71,7 @@ t_segmento *crearSegmento(u_int32_t id, u_int32_t segmento, t_list *pagina) ;
 u_int32_t armarDireccion(u_int32_t segmento, u_int32_t pagina, u_int32_t offset);
 void iniciarBasesegmento(u_int32_t *segmento, u_int32_t *pagina, u_int32_t *offset);
 void retornarDireccion(u_int32_t pid, u_int32_t direccion_logica);
-
+bool es_igual_pid(t_segmento *p);
 void destruirSegmento(u_int32_t direccion_logica, t_list *li);
 void escribirMemoria(u_int32_t pid, u_int32_t direccion_logica, char* bytes,
 		u_int32_t tamano);
@@ -86,7 +87,7 @@ t_memoria *buscarMarcoDisponible(t_list *li);
 t_nodo *buscarPaginasCLOCK(t_list *lista, t_nodo *ultimo, t_nodo *elim_swap);
 
 t_nodo *buscarPaginasLRU(t_list *lista, t_nodo *retorno);
-t_nodo *buscarReemplazo(t_list *lista, char *string, t_nodo ultimo);
+t_nodo *buscarReemplazo(t_list *lista, char *string, t_nodo *ultimo);
 int escribirSWAPfile(char *adress, char *bytes, u_int32_t tamano);
 int  leerSWAPfile(char *adress, char *bytes, int tamano);
 void borrarSWAPfile(char *adress);
@@ -268,7 +269,7 @@ int reservarMemoria(u_int32_t pid, u_int32_t tamano) { //Saco id y utilizo el pi
 		//Creo las paginas correspondientes
 
 		for(i=0; i < c_paginas; i++){
-				t_segmento *pagina;
+				t_pagina *pagina;
 				pagina = crearPagina(i);
 				list_add(listaPaginas, pagina);
 			}
@@ -377,6 +378,7 @@ case 3:
 	return byte3;
 
 	}
+return -1;
 }
 /* Example value: 0x01020304
  case 1:
@@ -428,7 +430,7 @@ destroy_message(new_msg);
 
 void destruirSegmento(u_int32_t direccion_logica, t_list *li) {
 
-	u_int32_t num_segmento = dameByte(direccion_logica, 1)
+	num_segmento = dameByte(direccion_logica, 1);
 	t_segmento *delete = list_remove_by_condition(li, (void*) es_igual_pid_and_seg);
 
 	if (delete != NULL ) {
@@ -445,9 +447,9 @@ void destruirSegmento(u_int32_t direccion_logica, t_list *li) {
 
 }
 
-void escribirMemoria(u_int32_t pid, u_int32_t direccion_logica, char* bytes,
-	u_int32_t tamano) {
-
+void escribirMemoria(u_int32_t pid, u_int32_t direccion_logica, char* bytes, u_int32_t tamano) {
+	char* dato; //para guardar datos en caso de traslado
+	t_nodo *outSwap;
 	//Consigo el num de segmento
 	u_int32_t segmento = dameByte(direccion_logica, 1);
 	//Con el pid y el num de segmento busco el nodo correspondiente
@@ -485,21 +487,20 @@ void escribirMemoria(u_int32_t pid, u_int32_t direccion_logica, char* bytes,
 		memoria->bit = 1; //Lamemoria esta ahora ocupada
 	} else {
 		//Tengo que manejar la swap, implementar algoritmo y desarrollar la busqueda y creacion de archivos swap
-		t_nodo outSwap = buscarReemplazo(listaSegmentos, algoritmo, ultimo);
+		outSwap = buscarReemplazo(listaSegmentos, algoritmo, ultimo);
 
-		outSwap.pagina->bit = 2; //Actualizo el bit a 2, osea en esta en SWAP
+		outSwap->pagina->bit = 2; //Actualizo el bit a 2, osea en esta en SWAP
 
-		char *adress = crearArchivoSWAP(outSwap.segmento->id,
-				outSwap.segmento->num_segmento, outSwap.pagina->num_pagina);
+		char *adress = crearArchivoSWAP(outSwap->segmento->id, outSwap->segmento->num_segmento, outSwap->pagina->num_pagina);
 		//Creo archivo SWAP con los datos encontrados
 
 		//Salvo la informacion en el SWAP file, de la pagina nueva a reemplazar
-		leerRAM(point, (outSwap.pagina->num_pagina * 256), 256, dato);
+		leerRAM(point, (outSwap->pagina->num_pagina * 256), 256, dato);
 		escribirSWAPfile(adress, dato, 256);
 
 		//Ahora utilizo los datos bytes y tamano, osea para grabar lo q queremos grabar en principio
 
-		u_int32_t dezplazamiento = 256 * (outSwap.pagina->num_marco); //Calculo el dezplazamiento "virtual" dentro de la memoria
+		u_int32_t dezplazamiento = 256 * (outSwap->pagina->num_marco); //Calculo el dezplazamiento "virtual" dentro de la memoria
 		char *marco = point + dezplazamiento; // Calculo la direccion exacta a un marco, usando el point (del malloc al principio)
 		grabarRAM(marco, offset, tamano, bytes);
 
@@ -520,27 +521,27 @@ void escribirMemoria(u_int32_t pid, u_int32_t direccion_logica, char* bytes,
 		log_debug(logfile, "escribirMemoria(1)==>Se grabo en la memoria");
 	} else {
 		//>>>>>----------Tengo que manejar la swap, es parecido al caso, en u principio, en donde el segmento todavia no se escribio
-		t_nodo outSwap = buscarReemplazo(listaSegmentos, algoritmo);
+		outSwap = buscarReemplazo(listaSegmentos, algoritmo,ultimo);
 
-		outSwap.pagina->bit = 2; //Actualizo el bit a 2, osea en esta en SWAP
+		outSwap->pagina->bit = 2; //Actualizo el bit a 2, osea en esta en SWAP
 
-		char *adress = crearArchivoSWAP(outSwap.segmento->id,
-				outSwap.segmento->num_segmento, outSwap.pagina->num_pagina);
+		char *adress = crearArchivoSWAP(outSwap->segmento->id,
+				outSwap->segmento->num_segmento, outSwap->pagina->num_pagina);
 		//Creo archivo SWAP con los datos encontrados
 
 		//Salvo la informacion en el SWAP file, de la pagina nueva a reemplazar
-		leerRAM(point, (outSwap.pagina->num_pagina * 256), 256, dato);
+		leerRAM(point, (outSwap->pagina->num_pagina * 256), 256, dato);
 		escribirSWAPfile(adress, dato, 256);
 		//Hasta aca--------------------------------------<<<<<<<<<
 
 		//Ahora debo leer de la SWAP, con la info de la direccion logica
 		leerSWAPfile(armarSWAPath(pid, segmento, pagina), dato, 256);
-		grabarRAM(point, (outSwap.pagina->num_pagina * 256), 256, dato);
+		grabarRAM(point, (outSwap->pagina->num_pagina * 256), 256, dato);
 		//Ahora solo queda eliminar esta SWAP vieja
 		borrarSWAPfile(armarSWAPath(pid, segmento, pagina));
 
 		//Ahora escribo en la seccion q me indicaron al principio
-		grabarRAM(point + (outSwap.pagina->num_pagina * 256), offset, tamano,
+		grabarRAM(point + (outSwap->pagina->num_pagina * 256), offset, tamano,
 				bytes);
 
 	}
@@ -768,7 +769,7 @@ return retorno;
 
 }
 
-t_nodo *buscarReemplazo(t_list *lista, char *string, t_nodo ultimo) {
+t_nodo *buscarReemplazo(t_list *lista, char *string, t_nodo *ultimo) {
 	t_nodo *retorno;
 	if (strcmp(string,"LRU") == 0) {
 		 buscarPaginasLRU(lista, retorno);
