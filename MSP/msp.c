@@ -1,5 +1,6 @@
 #include "msp.h"
 #include <stdlib.h>
+#include <utiles/utiles.h>
 #include <commons/string.h>
 #include <commons/collections/node.h>
 #include <commons/collections/list.h>
@@ -64,17 +65,16 @@ t_log *crearLog(char *archivo);
 void cargarConficuracion(char* path);
 void crearEstructuras();
 void atenderConexion(int sock_msp);
-int reservarMemoria(u_int32_t pid, u_int32_t tamano);
+u_int32_t reservarMemoria(u_int32_t pid, u_int32_t tamano);
 t_pagina *crearPagina(u_int32_t pagina);
 t_memoria *crearMarco(u_int32_t marco);
 t_segmento *crearSegmento(u_int32_t id, u_int32_t segmento, t_list *pagina) ;
 u_int32_t armarDireccion(u_int32_t segmento, u_int32_t pagina, u_int32_t offset);
 void iniciarBasesegmento(u_int32_t *segmento, u_int32_t *pagina, u_int32_t *offset);
-void retornarDireccion(u_int32_t pid, u_int32_t direccion_logica);
+
 bool es_igual_pid(t_segmento *p);
-void destruirSegmento(u_int32_t direccion_logica, t_list *li);
-void escribirMemoria(u_int32_t pid, u_int32_t direccion_logica, char* bytes,
-		u_int32_t tamano);
+void destruirSegmento(u_int32_t pid,u_int32_t direccion_logica);
+void escribirMemoria(u_int32_t pid, u_int32_t direccion_logica, char* bytes,u_int32_t tamano);
 u_int32_t calcularRAMocupada();
 u_int32_t calcularSWAPocupada(t_list *lista);
 u_int32_t espacioTotalOcupado(t_list *lista);
@@ -85,7 +85,6 @@ char *armarSWAPath(u_int32_t pid, u_int32_t segmento, u_int32_t pagina);
 void prepararAlgoritmoReemplazo(t_pagina *pagina);
 t_memoria *buscarMarcoDisponible(t_list *li);
 t_nodo *buscarPaginasCLOCK(t_list *lista, t_nodo *ultimo, t_nodo *elim_swap);
-
 t_nodo *buscarPaginasLRU(t_list *lista, t_nodo *retorno);
 t_nodo *buscarReemplazo(t_list *lista, char *string, t_nodo *ultimo);
 int escribirSWAPfile(char *adress, char *bytes, u_int32_t tamano);
@@ -211,29 +210,16 @@ void crearEstructuras() {
 void atenderConexion(int sock_msp) {
 
 	int sockt;
-	pthread_t hiloKernel;
-	pthread_t hiloCPU;
-	t_msg mensaje;
-	mensaje.flujoDatos = NULL;
+	pthread_t hilo;
 
 	sockt = aceptarConexion(sock_msp);
-	recibirMsg(sockt, &mensaje);
 
-	if (mensaje.encabezado.codMsg == KERNEL) {
-		socketKernel = sockt;
-		log_debug(logfile,
-				"atenderConexion()==>Se detecto una nueva conexion KERNEL, se lanzara un hilo para que la atienda...");
-		pthread_create(&idHiloKernel, NULL, &hiloAtencionKernel, NULL );
-	}
-	if (mensaje.encabezado.codMsg == CPU) {
-		socketHilo = sockt;
-		log_debug(logfile,
-				"atenderConexion()==>Se detecto una nueva conexion CPU, se lanzara un hilo para que la atienda...");
-		pthread_create(&threadHilo, NULL, &hiloAtencionCPU, &socketHilo);
-	}
+	log_debug(logfile, "atenderConexion()==>Se detecto una nueva conexion CPU, se lanzara un hilo para que la atienda...");
+	pthread_create(&hilo, NULL, &atencionCPK, &sockt);
+
 }
 
-int reservarMemoria(u_int32_t pid, u_int32_t tamano) { //Saco id y utilizo el pid que es como variable global
+u_int32_t reservarMemoria(u_int32_t pid, u_int32_t tamano) { //Saco id y utilizo el pid que es como variable global
 	//acordar usar lista de segmentos para calcular el espacio libre de memoria, vercuales estan en (0)y (1) para saber le de la swap, porque tienen un limite.
 	//usar esto al momento de pasar las paginas a memoria y tambien luego al reemplazarlas. para eso me sirve el -1, osea saber en la lista que paginas todavia no se escribieron.
 	//el algoritmo de reemplazo influye al reemplazar no ahora, asi que el bonus lo inicio en 0.
@@ -290,11 +276,10 @@ int reservarMemoria(u_int32_t pid, u_int32_t tamano) { //Saco id y utilizo el pi
 		u_int32_t offset;
 		iniciarBasesegmento(&segmento, &pagina, &offset);
 		u_int32_t direccion = armarDireccion(pagina, segmento, offset);
-		retornarDireccion(pid, direccion);
 		log_debug(logfile,"reservarSegmento()==>Se creo un segmento exitosamente...");
 
 
-	return 0;
+	return direccion;
 }
 
 bool es_igual_pid(t_segmento *p) {
@@ -414,35 +399,19 @@ pagina = 0;
 offset = 0;
 }
 
-void retornarDireccion(u_int32_t pid, u_int32_t direccion_logica) {
-
-int stream_size = 2 * REG_SIZE;
-char *stream = malloc(stream_size);
-memcpy(stream, &pid, REG_SIZE);
-memcpy(stream + REG_SIZE, &direccion_logica, REG_SIZE);
-
-t_msg *new_msg = crear_mensaje(id, stream, stream_size);
-
-enviar_mensaje(sockt, new_msg);
-destroy_message(new_msg);
-
-}
-
-void destruirSegmento(u_int32_t direccion_logica, t_list *li) {
+void destruirSegmento(u_int32_t pid,u_int32_t direccion_logica) {
 
 	num_segmento = dameByte(direccion_logica, 1);
-	t_segmento *delete = list_remove_by_condition(li, (void*) es_igual_pid_and_seg);
+	t_segmento *delete = list_remove_by_condition(listaSegmentos, (void*) es_igual_pid_and_seg);
 
 	if (delete != NULL ) {
 
-	free(delete);
-	log_debug(logfile, "destruirSegmento()==>Se destruyo un segmento exitosamente...");
+		free(delete);
+		log_debug(logfile, "destruirSegmento()==>Se destruyo un segmento exitosamente...");
 
 	} else {
-	//error no se encontro segmento, segmentation fault??
-	log_error(logfile,
-			"destruirSegmento()-No se puede eliminar el segmendo pedido por el proceso: %i ..",
-			pid);
+		//error no se encontro segmento, segmentation fault??
+		log_error(logfile,"destruirSegmento()-No se puede eliminar el segmendo pedido por el proceso: %i ..",pid);
 	}
 
 }
@@ -887,3 +856,83 @@ int solicitarMemoria(u_int32_t pid, u_int32_t direccion_logica, char* bytes, u_i
 	return 0;
 }
 
+void atencionCPK(void *sock_fd){ //Notar que en la creacion de mensaje, el id es el pid, creo que lo debo corregir luego, dependiendo lo que ustedes deseen recibir...
+
+while(1){
+
+	t_msg *msg = recibir_mensaje(sock_fd);
+
+	u_int32_t id;
+	u_int32_t size;
+	u_int32_t direccion;
+	char *datos;
+
+	log_debug(logfile,"atencionCPK()==>Se recibio el msg");
+
+	switch(msg->header){
+
+		case RESERVE_SEGMENT:
+
+				memcpy(&id,msg->stream,REG_SIZE);
+				memcpy(&size, msg->stream + REG_SIZE,REG_SIZE);
+
+				direccion = reservarMemoria(id, size);
+
+				int stream_size = 2*REG_SIZE ;
+				char *stream = malloc(stream_size);
+				memcpy(stream,&pid,REG_SIZE);
+				memcpy(stream + REG_SIZE,&direccion,REG_SIZE);
+
+						t_msg *new_msg = crear_mensaje(id,stream,stream_size);
+
+						enviar_mensaje(sock_fd,new_msg);
+						destroy_message(new_msg);
+
+				break;
+
+		case DESTROY_SEGMENT:
+
+			    memcpy(&id,msg->stream,REG_SIZE);
+				memcpy(&direccion,msg->stream + REG_SIZE,REG_SIZE);
+
+				destruirSegmento(id, direccion);
+
+				break;
+		case MEM_REQUEST:
+
+				memcpy(&id,msg->stream,REG_SIZE);
+				memcpy(&direccion,msg->stream + REG_SIZE,REG_SIZE);
+				memcpy(&size,msg->stream + 2*REG_SIZE,sizeof size);
+
+				if (solicitarMemoria(id, direccion, datos, size) < 0) {
+					//error
+				}else{
+						int stream_size = REG_SIZE + sizeof size;
+						char *stream = malloc(stream_size);
+						memcpy(stream,&pid,REG_SIZE);
+						memcpy(stream + REG_SIZE,datos,sizeof size);
+
+						t_msg *new_msg = crear_mensaje(id,stream,stream_size);
+
+						enviar_mensaje(sock_fd,new_msg);
+						destroy_message(new_msg);
+
+				}
+
+				break;
+
+		case WRITE_MEMORY:
+
+				memcpy(&id,msg->stream,REG_SIZE);
+				memcpy(&direccion,msg->stream + REG_SIZE,REG_SIZE);
+				memcpy(&size,msg->stream + 2*REG_SIZE,sizeof size);
+				memcpy(&datos,msg->stream + 2*REG_SIZE + sizeof size,size);
+
+				escribirMemoria(id, direccion, datos, size);
+
+				//error
+				break;
+	}
+	destroy_message(msg);
+	}
+}
