@@ -17,7 +17,7 @@ int main (int argc, char** argv) {
 	Logger = log_create(argv[2],"MSP",false,LOG_LEVEL_TRACE);
 
 	cargarConfiguracion(argv[1]);
-	inicializarMSP();
+	inicializarMSP(argv[3]);
 
 	log_trace(Logger,"Inicio de MSP\nTamaño de página: %d\nTamaño de swap: %d",MaxMem,MaxSwap);
 

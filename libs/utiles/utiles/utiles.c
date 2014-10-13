@@ -341,28 +341,6 @@ void seedgen(void)
 	srand(seed);
 }
 
-char *serializar_tcb(t_hilo *tcb,uint16_t quantum)
-{
-
-	int i = 2,j;
-	char* stream;
-
-	memcpy(stream,&quantum,sizeof quantum);
-	memcpy(stream + 2,&tcb->pid,REG_SIZE);
-	memcpy(stream + (i+= REG_SIZE),&tcb->tid,REG_SIZE);
-	memcpy(stream + (i+= REG_SIZE),&tcb->kernel_mode,sizeof tcb->kernel_mode);
-	memcpy(stream + (i+= sizeof tcb->kernel_mode),&tcb->segmento_codigo,REG_SIZE);
-	memcpy(stream + (i+= REG_SIZE),&tcb->segmento_codigo_size,REG_SIZE);
-	memcpy(stream + (i+= REG_SIZE),&tcb->puntero_instruccion,REG_SIZE);
-	memcpy(stream + (i+= REG_SIZE),&tcb->base_stack,REG_SIZE);
-	memcpy(stream + (i+= REG_SIZE),&tcb->cursor_stack,REG_SIZE);
-	for (j = 0;j < 5;++j)
-		memcpy(stream + (i+= REG_SIZE),&tcb->registros[j],REG_SIZE);
-	memcpy(stream + (i+= REG_SIZE),&tcb->cola,sizeof tcb->cola);
-
-	return stream;
-
-}
 
 t_hilo *retrieve_tcb(t_msg *msg)
 {
@@ -372,54 +350,145 @@ t_hilo *retrieve_tcb(t_msg *msg)
 	return new;
 }
 
-void deserializar_tcb(t_hilo *tcb, char *stream)
-{
 
-	int i = 0,j;
 
-	memcpy(&tcb->pid,stream + i,REG_SIZE);
-	memcpy(&tcb->tid,stream + (i+= REG_SIZE),REG_SIZE);
-	memcpy(&tcb->kernel_mode,stream + (i+= REG_SIZE),sizeof tcb->kernel_mode);
-	memcpy(&tcb->segmento_codigo,stream + (i+= sizeof tcb->kernel_mode),REG_SIZE);
-	memcpy(&tcb->segmento_codigo_size,stream + (i+= REG_SIZE),REG_SIZE);
-	memcpy(&tcb->puntero_instruccion,stream + (i+= REG_SIZE),REG_SIZE);
-	memcpy(&tcb->base_stack,stream + (i+= REG_SIZE),REG_SIZE);
-	memcpy(&tcb->cursor_stack,stream + (i+= REG_SIZE),REG_SIZE);
-	for (j = 0;j < 5;++j)
-		memcpy(&tcb->registros[j],stream + (i+= REG_SIZE),REG_SIZE);
-	memcpy(&tcb->cola,stream + (i+= REG_SIZE),sizeof tcb->cola);
 
+
+void create_file(char *path,size_t size) {
+
+	FILE *f = fopen(path, "wb");
+
+	fseek(f,size,SEEK_SET);
+
+	fputc('\n', f);
+
+	fclose(f);
 }
 
 
-char *read_file(char *path)
-{
+void clean_file(char *path) {
+
+	FILE *f = fopen(path, "wb");
+
+	fclose(f);
+}
+
+
+char* read_file(char *path, size_t size) {
+
 	FILE *f = fopen(path, "rb");
-	if (f == NULL) {
+	if(f == NULL) {
 		perror("fopen");
 		exit(EXIT_FAILURE);
 	}
-	
+
+	char *buffer = malloc(size + 1);
+	if(buffer == NULL) {
+		perror("malloc");
+		exit(EXIT_FAILURE);
+	}
+
+	fread(buffer, size, 1, f);
+
+	fclose(f);
+
+	buffer[size] = '\0';
+
+	return buffer;
+}
+
+
+char* read_file_and_clean(char *path, size_t size) {
+
+	FILE *f = fopen(path, "rb");
+	if(f == NULL) {
+		perror("fopen");
+		exit(EXIT_FAILURE);
+	}
+
+	char *buffer = malloc(size + 1);
+	if(buffer == NULL) {
+		perror("malloc");
+		exit(EXIT_FAILURE);
+	}
+
+	fread(buffer, size, 1, f);
+
+	fclose(f);
+
+	f = fopen(path, "wb");
+
+	fclose(f);
+
+	buffer[size] = '\0';
+
+	return buffer;
+}
+
+
+char* read_whole_file(char *path) {
+
+	FILE *f = fopen(path, "rb");
+	if(f == NULL) {
+		perror("fopen");
+		exit(EXIT_FAILURE);
+	}
+
 	fseek(f, 0, SEEK_END);
 	long fsize = ftell(f);
 	fseek(f, 0, SEEK_SET);
 
 	char *buffer = malloc(fsize + 1);
-	if (buffer == NULL) {
+	if(buffer == NULL) {
 		perror("malloc");
 		exit(EXIT_FAILURE);
 	}
 
 	fread(buffer, fsize, 1, f);
 
+	fclose(f);
+
 	buffer[fsize] = '\0';
 
 	return buffer;
 }
 
-void clean_stdin_buffer(void)
-{
-	scanf ("%*[^\n]");
+
+char* read_whole_file_and_clean(char *path) {
+
+	FILE *f = fopen(path, "rb");
+	if(f == NULL) {
+		perror("fopen");
+		exit(EXIT_FAILURE);
+	}
+
+	fseek(f, 0, SEEK_END);
+	long fsize = ftell(f);
+	fseek(f, 0, SEEK_SET);
+
+	char *buffer = malloc(fsize + 1);
+	if(buffer == NULL) {
+		perror("malloc");
+		exit(EXIT_FAILURE);
+	}
+
+	fread(buffer, fsize, 1, f);
+
+	fclose(f);
+
+	buffer[fsize] = '\0';
+
+	return buffer;
+}
+
+
+void write_file(char *path,char *data,size_t size) {
+
+	FILE *f = fopen(path, "wb");
+
+	fwrite(data,1,size,f);
+
+	fclose(f);
 }
 
 

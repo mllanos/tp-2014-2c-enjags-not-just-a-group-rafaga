@@ -5,6 +5,7 @@
  *      Author: matias
  */
 
+#include "msp.h"
 #include "administradorDeConexionesYConfig.h"
 
 void cargarConfiguracion(char* path) {
@@ -20,7 +21,7 @@ void cargarConfiguracion(char* path) {
 
 void *atenderConsola(void* parametro) {
 
-	return NULL;
+	return NULL;	//para que no joda eclipse con el warning
 
 }
 
@@ -33,19 +34,19 @@ void *atenderProceso(void* parametro) {
 		msg = recibir_mensaje(fd);
 		//recuperar_tipo_de_solicitud()
 		switch(idSolicitud) {
-		case WRITE_MEM:
+		case 0://WRITE_MEMORY:
 			//recuperar_parametros()
 			//ejecutar_rutina_correspondiente()
 			break;
-		case 1://CREATE_SEG:
+		case 1://CREATE_SEGMENT:
 			//recuperar_parametros()
 			//ejecutar_rutina_correspondiente()
 			break;
-		case 2://DESTROY_SEG:
+		case 2://DESTROY_SEGMENT:
 			//recuperar_parametros()
 			//ejecutar_rutina_correspondiente()
 			break;
-		case 3://REQUEST_MEM:
+		case 3://REQUEST_MEMORY:
 			//recuperar_parametros()
 			//ejecutar_rutina_correspondiente()
 			break;

@@ -36,6 +36,11 @@
 #define msleep(usecs) usleep(usecs*1000)
 
 /*
+ * Alternativa sin undefined behavior a fflush(STDIN) para usar con scanf().
+ */
+#define clean_stdin_buffer() scanf ("%*[^\n]")
+
+/*
  * RNG. Retorna valores entre 0 y limit.
  */
 #define randomize(limit) (rand() % (limit + 1))
@@ -192,19 +197,42 @@ t_msg *crear_mensaje(t_msg_id id, char *message, uint32_t size);
  */
 void destroy_message(t_msg *mgs);
 
-
-/****************** SERIALIZACION TCB. ******************/ 
-
-/*
- * Recibe un puntero al tcb y el quantum, retorna el stream listo a enviar.
- */
-char *serializar_tcb(t_hilo *tcb,uint16_t quantum);
+/****************** FUNCIONES FILE SYSTEM. ******************/
 
 /*
- * Recibe un puntero al tcb y el stream del mensaje recibido. Guarda en el tcb la info recibida.
+ * Crea un archivo de size bytes de tamaño.
  */
-void deserializar_tcb(t_hilo *tcb, char *stream);
+void create_file(char *path,size_t size);
 
+/*
+ * Vacía el archivo indicado por path.
+ */
+void clean_file(char *path);
+
+/*
+ * Lee un archivo y retorna los primeros size bytes de su contenido.
+ */
+char* read_file(char *path, size_t size);
+
+/*
+ * Elimina los primeros size bytes del archivo path, y los retorna.
+ */
+char* read_file_and_clean(char *path, size_t size);
+
+/*
+ * Lee un archivo y retorna todo su contenido.
+ */
+char* read_whole_file(char *path);
+
+/*
+ * Lee un archivo y retorna todo su contenido, vaciándolo.
+ */
+char* read_whole_file_and_clean(char *path);
+
+/*
+ * Abre el archivo indicado por path (si no existe lo crea) y escribe size bytes de data.
+ */
+void write_file(char *path,char* data,size_t size);
 
 /****************** FUNCIONES AUXILIARES. ******************/
 
@@ -212,16 +240,6 @@ void deserializar_tcb(t_hilo *tcb, char *stream);
  * Genera una nueva secuencia de enteros pseudo-random a retornar por rand().
  */
 void seedgen(void);
-
-/*
- * Lee un archivo y retorna sus contenidos.
- */
-char *read_file(char *path);
-
-/*
- * Alternativa sin undefined behavior a fflush(STDIN) para usar con scanf().
- */
-void clean_stdin_buffer(void);
 
 /*
  * Muestra los contenidos y argumentos de un t_msg.

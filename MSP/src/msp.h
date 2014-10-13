@@ -29,17 +29,16 @@
 /* FIN Funciones Macro */
 
 typedef uint8_t bit;
-typedef enum{INVALID_SEG_SIZE,MAX_SEG_NUM_REACHED,FULL_MEMORY} erroresMSP_t;
 
 /* Estructuras */
 typedef struct {
+	bit ocupado;	/* 1: ocupado - 0: disponible */
 	char marco[PAG_SIZE];
 } __attribute__ ((__packed__)) t_marco;
 
 typedef struct {
+	bit bitPresencia;		/* 1: está en memoria - 0: está en swap */
 	uint32_t numMarco;		/* Número de marco: indica la posición en el array MemoriaPrincipal */
-	bit bitPresencia;	/* 1: está en memoria - 0: está en swap */
-	//uint32_t vecesAccedido;
 } __attribute__ ((__packed__)) t_pagina;
 
 typedef struct {
@@ -54,9 +53,10 @@ int  Puerto;
 t_log *Logger;
 uint32_t MaxMem;
 uint32_t MaxSwap;
+char *SwapPath;
 char *AlgoritmoSustitucion;
 /* FIN Variables Globales */
 
-void inicializarMSP(void);
+void inicializarMSP(char* swapPath);
 
 #endif /* MSP_H_ */
