@@ -9,7 +9,7 @@
 #include "set_instrucciones.h"
 #include "execution_unit.h"
 
-void load (void){
+void load (void) {
 
 	uint32_t i = fetch_operand(REGISTRO) - 'A';		//posicion del registro leido en el array registros
 
@@ -22,10 +22,10 @@ void getm (void) {
 	uint32_t i = fetch_operand(REGISTRO) - 'A';
 	uint32_t j = fetch_operand(REGISTRO) - 'A';
 
-	t_msg *new_msg = msp_solicitar_memoria(registros.I,registros.M + registros.registros_programacion[j],REG_SIZE,MEM_REQUEST);
+	t_msg *new_msg = msp_solicitar_memoria(registros.I, registros.M + registros.registros_programacion[j], REG_SIZE, MEM_REQUEST);
 	//if(new_msg->header.id != ???) //falta elegir un msg_id
 			;//abortar la ejecucion?
-	memcpy(&registros.registros_programacion[i],new_msg->stream,REG_SIZE); //4bytes? preguntar qué es "memoria apuntada"
+	registros.registros_programacion[i] = new_msg->argv[i]; //4bytes? preguntar qué es "memoria apuntada"
 	destroy_message(new_msg);
 
 }
@@ -36,7 +36,7 @@ void setm (void) {
 	uint32_t i = fetch_operand(REGISTRO) - 'A';
 	uint32_t j = fetch_operand(REGISTRO) - 'A';
 
-	memcpy(&registros.registros_programacion[i],&registros.registros_programacion[j],cantidad);
+	memcpy(registros.registros_programacion + i,registros.registros_programacion + j, cantidad);
 
 }
 
@@ -199,11 +199,11 @@ void take (void) {
 	uint32_t cantidad_bytes = fetch_operand(NUMERO);
 	uint32_t i = fetch_operand(REGISTRO) - 'A';
 
-	t_msg *new_msg = msp_solicitar_memoria(registros.I,registros.X + registros.S,cantidad_bytes,MEM_REQUEST); //por ahi conviene poner otro id
+	t_msg *new_msg = msp_solicitar_memoria(registros.I, registros.X + registros.S, cantidad_bytes, MEM_REQUEST); //por ahi conviene poner otro id
 	registros.S -= cantidad_bytes;
 	//if(new_msg->header.id != ???) //falta elegir un msg_id
 		;//abortar la ejecucion?
-	memcpy(&registros.registros_programacion[i],new_msg->stream,cantidad_bytes);
+	memcpy(registros.registros_programacion + i, new_msg->argv, cantidad_bytes);
 	destroy_message(new_msg);
 
 }
@@ -211,7 +211,7 @@ void take (void) {
 void xxxx (void) {
 
 	//servicio_kernel(FINISHED_THREAD);
-	exit(0);
+	exit(0); // Aca se muere el CPU? :|
 
 }
 

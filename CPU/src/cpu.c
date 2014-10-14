@@ -21,10 +21,10 @@ int main(int argc, char **argv) {
 	int retardo = config_get_int_value(config,"RETARDO");
 	//FIN levantar archivo de configuracion
 
-	conectar_a_kernel(direccionIP_kernel,puerto_kernel);
+	conectar_a_kernel(direccionIP_kernel, puerto_kernel);
 		//log("error_conectar_kernel") ?
 
-	conectar_a_msp(direccionIP_msp,puerto_msp);
+	conectar_a_msp(direccionIP_msp, puerto_msp);
 		//log("error_conectar_msp")?
 
 	inicializar_tabla_instrucciones();
@@ -53,22 +53,22 @@ int main(int argc, char **argv) {
 
 }
 
-int conectar_a_kernel(char *direccionIP,uint16_t puerto){
+int conectar_a_kernel(char *direccionIP,uint16_t puerto) {
 
-	return kernel = client_socket(direccionIP,puerto);
+	return kernel = client_socket(direccionIP, puerto);
 
 }
 
-int conectar_a_msp(char *direccionIP,uint16_t puerto){
+int conectar_a_msp(char *direccionIP,uint16_t puerto) {
 
-	return msp = client_socket(direccionIP,puerto);
+	return msp = client_socket(direccionIP, puerto);
 }
 
 /*dummy*/
 void imprimir_tcb(void) {
 
 	int i;
-	for(i = 0;i < 5; ++i){
+	for (i = 0;i < 5; ++i) {
 		printf("Registro %c. Valor: %4d\n",('A'+i), hilo.registros[i]);
 		//fflush(stdout);
 	}

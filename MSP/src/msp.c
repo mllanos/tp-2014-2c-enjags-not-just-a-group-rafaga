@@ -14,6 +14,7 @@
 #define STDIN 0
 #define SEG_MAX 1048576
 #define PAG_MAX 256
+#define LOG_DIR log/MSP.log
 
 typedef struct tipo_segmento{	//Esto representa a un segmento (una fila de la tabla)
 	u_int32_t id;
@@ -98,7 +99,7 @@ int main(int argc, char** argv) {
 
 	//Nos loguemos (utilizando la libreria commons)
 
-	logfile = crearLog(argv[0]);
+	logfile = crearLog(LOG_DIR);
 
 	//Cargamos el archivo de configuracion
 	cargarConficuracion(argv[1]);
