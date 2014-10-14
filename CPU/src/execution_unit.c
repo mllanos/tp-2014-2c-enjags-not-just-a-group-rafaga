@@ -10,11 +10,11 @@
 /*Variables Locales*/
 static t_list *parametros;
 static char oc_instruccion[5];											//operation code
-static int cursor_tabla,fin_tabla;
+static int cursor_tabla, fin_tabla;
 /*FIN_Variables Locales*/
 
-void obtener_siguiente_hilo (void) {
-
+void obtener_siguiente_hilo(void) {
+	/*
 	t_msg *buffer;
 	parametros = list_create();
 
@@ -25,19 +25,21 @@ void obtener_siguiente_hilo (void) {
 	memcpy(&quantum,buffer->stream,sizeof quantum);
 	deserializar_tcb(&hilo,buffer->stream + sizeof quantum);
 	destroy_message(buffer);
+	*/
 
+	t_msg *buffer = recibir_mensaje(kernel);
+	quantum = buffer->argv[0];
+	hilo = *retrieve_tcb(buffer);
+	destroy_message(buffer);
 }
 
-void avanzar_puntero_instruccion(size_t desplazamiento){
-
+void avanzar_puntero_instruccion(size_t desplazamiento) {
 	registros.P += instruccion_size;
-
 }
 
-void eu_cargar_registros(void){
-
+void eu_cargar_registros(void) {
 	int i;
-	for(i = 0;i < 5; ++i)
+	for (i = 0;i < 5; ++i)
 		registros.registros_programacion[i] = hilo.registros[i];
 
 	registros.I = hilo.pid;
@@ -46,43 +48,41 @@ void eu_cargar_registros(void){
 	registros.S = hilo.cursor_stack;
 	registros.M = hilo.segmento_codigo;
 	registros.P = hilo.puntero_instruccion;
-
 }
 
-void eu_actualizar_registros(void){
-
+void eu_actualizar_registros(void) {
 	int i;
-	for(i = 0;i < 5; ++i)
+	for (i = 0;i < 5; ++i)
 		hilo.registros[i] = registros.registros_programacion[i];
 
 	hilo.cursor_stack = registros.S;
 	hilo.puntero_instruccion = registros.P;
-
 }
 
-void eu_fetch_instruccion(void){
+void eu_fetch_instruccion(void) {
 
 	instruccion_size = OPERATION_CODE_SIZE;
-	t_msg *new_msg = msp_solicitar_memoria(registros.I,registros.M + registros.P,OPERATION_CODE_SIZE,OC_REQUEST);
+	t_msg *new_msg = msp_solicitar_memoria(registros.I, registros.M + registros.P,OPERATION_CODE_SIZE, MEM_REQUEST);
 	//if(new_msg->header.id != NEXT_ARG)
-		;//abortar la ejecucion?
+		//abortar la ejecucion?
+
 	memcpy(oc_instruccion,new_msg->stream,OPERATION_CODE_SIZE);
 	destroy_message(new_msg);
 
-	list_destroy(parametros);
-	parametros = list_create();
+	//list_destroy(parametros);
+	//parametros = list_create();
+	list_clean(parametros);
 }
 
-void eu_decode(void){
+void eu_decode(void) {
 
-	if(registros.K == 0)
+	if (registros.K == 0)
 		fin_tabla = 22;
 	else
 		fin_tabla = 32;
 
-	for(cursor_tabla = 0;cursor_tabla <= fin_tabla && strcmp(oc_instruccion,tabla_instrucciones[cursor_tabla].mnemonico);++cursor_tabla )
-		;
-
+	for (cursor_tabla = 0; cursor_tabla <= fin_tabla && strcmp(oc_instruccion,tabla_instrucciones[cursor_tabla].mnemonico); ++cursor_tabla)
+	;
 	//if(cursor_tabla > fin_tabla)
 		;//hacer algo con las instrucciones inválidas (no existe o no tiene privilegios para ejecutarla)
 
@@ -95,7 +95,7 @@ void eu_ejecutar(int retardo){
 	--quantum;
 	ejecucion_instruccion(tabla_instrucciones[cursor_tabla].mnemonico, parametros);
 	cambio_registros(registros);
-	printf("\n\nREGISTRO A: %X\n\n",registros.registros_programacion[A]);
+	printf("\n\nREGISTRO A: %X\n\n", registros.registros_programacion[A]);
 	fflush(stdout);
 
 }
@@ -110,52 +110,53 @@ int fetch_operand(t_operandos tipo_operando){
 	else
 		size = sizeof(int32_t);
 
-	t_msg *new_msg = msp_solicitar_memoria(registros.I,registros.M + registros.P,size,ARG_REQUEST);
+	t_msg *new_msg = msp_solicitar_memoria(registros.I,registros.M + registros.P, size, ARG_REQUEST);
 	//if(new_msg->header.id != NEXT_OC)
 			;//abortar la ejecucion?
-	memcpy(&arg,new_msg->stream,size);
+	//memcpy(&arg,new_msg->stream,size);
+	arg = new_msg->argv[0];
 	instruccion_size += size;
 	destroy_message(new_msg);
 
-	list_add(parametros,(void*)&arg);
+	list_add(parametros, &arg);
 
 	return arg;
-
 }
 
 void devolver_hilo(void) {
-
-	t_msg *buffer = crear_mensaje(CPU_TCB,(char*) &hilo,sizeof(t_hilo));
-	enviar_mensaje(kernel,buffer);
-	free(buffer);
-
+	t_msg *buffer = tcb_message(CPU_TCB, &hilo, 0);
+	enviar_mensaje(kernel, buffer);
+	destroy_message(buffer);
 }
 
-t_msg* msp_solicitar_memoria(uint32_t pid,uint32_t direccion_logica,uint32_t size, t_msg_id id) {
+t_msg* msp_solicitar_memoria(uint32_t pid, uint32_t direccion_logica, uint32_t size, t_msg_id id) {
 
-	int stream_size = 2*REG_SIZE + sizeof size;
+	/*
+	int stream_size = 2 * REG_SIZE + sizeof size;
 	char *stream = malloc(stream_size);
 	memcpy(stream,&pid,REG_SIZE);
 	memcpy(stream + REG_SIZE,&direccion_logica,REG_SIZE);
 	memcpy(stream + 2*REG_SIZE,&size,sizeof size);
+	*/
 
-	t_msg *new_msg = crear_mensaje(id,stream,stream_size);
+	t_msg *new_msg = string_message(id, "Solicitando memoria.", 3, pid, direccion_logica, size);
 
 	enviar_mensaje(msp,new_msg);
 	destroy_message(new_msg);
 
 	return recibir_mensaje(msp);
-
 }
 
-t_msg* msp_escribir_memoria(uint32_t pid,uint32_t direccion_logica,void *bytes_a_escribir,uint32_t size) {
+t_msg* msp_escribir_memoria(uint32_t pid, uint32_t direccion_logica, void *bytes_a_escribir, uint32_t size) {
 
-	char *stream = malloc(2*REG_SIZE + size);
+	/*
+	char *stream = malloc(2 * REG_SIZE + size);
 	memcpy(stream,&pid,REG_SIZE);
 	memcpy(stream + REG_SIZE,&direccion_logica,REG_SIZE);
-	memcpy(stream + 2*REG_SIZE,&bytes_a_escribir,size);
+	memcpy(stream + 2 * REG_SIZE,&bytes_a_escribir,size);
+	*/
 
-	t_msg *new_msg = crear_mensaje(WRITE_MEM,stream,size);
+	t_msg *new_msg = string_message(WRITE_MEMORY, bytes_a_escribir, 2, pid, direccion_logica);
 
 	enviar_mensaje(msp,new_msg);
 	destroy_message(new_msg);
@@ -169,3 +170,4 @@ void servicio_kernel() {
 
 
 }
+
