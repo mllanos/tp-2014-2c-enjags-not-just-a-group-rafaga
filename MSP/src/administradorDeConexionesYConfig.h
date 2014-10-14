@@ -9,6 +9,7 @@
 #define ADMINISTRADORDECONEXIONESYCONFIG_H_
 
 #include "msp.h"
+#include "administradorDeMemoria.h"
 
 /* el archivo configuracion será del tipo:
  * PUERTO=[1024-65535]

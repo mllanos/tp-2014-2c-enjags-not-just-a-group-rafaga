@@ -20,39 +20,63 @@ void cargarConfiguracion(char* path) {
 
 void *atenderConsola(void* parametro) {
 
-	return NULL;	//para que no joda eclipse con el warning
+	return NULL;
 
 }
 
 void *atenderProceso(void* parametro) {
 
 	t_msg *msg;
-	int idSolicitud = 0,fd = *((int*)parametro);
+	char* bytesAEscribir;
+	int proceso = *((int*)parametro);
+	uint32_t pid,size,direccionLogica,numeroSegmento;
 
 	while(true) {
-		msg = recibir_mensaje(fd);
-		//recuperar_tipo_de_solicitud()
-		switch(idSolicitud) {
+
+		msg = recibir_mensaje(proceso);
+
+		switch(msg->header.id) {
 		case WRITE_MEMORY:
-			//recuperar_parametros()
-			//ejecutar_rutina_correspondiente()
+			log_trace(Logger,"Recepción de solicitud Escribir Memoria\nPID: %d\nDirección Lógica: %d\nBytes a Escribir: %s\nTamaño: %d",pid,direccionLogica,bytesAEscribir,size);
+			pid = msg->argv[0];
+			direccionLogica = msg->argv[1];
+			bytesAEscribir = msg->stream;
+			size = msg->argv[2];
+			msg->header.id = escribirMemoria(pid,direccionLogica,bytesAEscribir,size);
+			free(msg->stream);
+			msg->header.length = 0;
 			break;
 		case CREATE_SEGMENT:
-			//recuperar_parametros()
-			//ejecutar_rutina_correspondiente()
+			log_trace(Logger,"Recepción de solicitud Crear Segmento\nPID: %d\nTamaño: %d",pid,size);
+			pid = msg->argv[0];
+			size = msg->argv[1];
+			crearSegmento(pid,size,&msg->header.id);
 			break;
 		case DESTROY_SEGMENT:
-			//recuperar_parametros()
-			//ejecutar_rutina_correspondiente()
+			log_trace(Logger,"Recepción de solicitud Destruir Segmento\nPID: %d\nNúmero de Segmento: %d",pid,numeroSegmento);
+			pid = msg->argv[0];
+			numeroSegmento = msg->argv[1];
+			msg->header.id = destruirSegmento(pid,numeroSegmento);
 			break;
 		case REQUEST_MEMORY:
-			//recuperar_parametros()
-			//ejecutar_rutina_correspondiente()
+			log_trace(Logger,"Recepción de solicitud Escribir Memoria\nPID: %d\nDirección Lógica: %d\nTamaño: %d",pid,direccionLogica,size);
+			pid = msg->argv[0];
+			direccionLogica = msg->argv[1];
+			size = msg->argv[2];
+			msg->stream = solicitarMemoria(pid,direccionLogica,size,&msg->header.id);
+			msg->header.length = size;
 			break;
+		default:
+			log_error(Logger,"Solicitud inválida recibida");
 		}
+
+		free(msg->argv);
+		msg->header.argc = 0;
+
+		enviar_mensaje(proceso,msg);
 
 		destroy_message(msg);
 	}
 
-	return NULL;	//para que no joda eclipse con el warning
+	return NULL;
 }

@@ -41,13 +41,13 @@ void inicializarMSP(char* swapPath) {
 
 }
 
-uint32_t crearSegmento(uint32_t pid, size_t size) {
+uint32_t crearSegmento(uint32_t pid, size_t size, t_msg_id* id) {
 
 	uint16_t numSegmento;
 	uint16_t cantPaginas = divRoundUp(size,PAG_SIZE);
 
 	if(size > SEG_MAX_SIZE) {
-		Error = INVALID_SEG_SIZE;
+		*id = INVALID_SEG_SIZE;
 		return 0;
 	}
 
@@ -67,7 +67,7 @@ uint32_t crearSegmento(uint32_t pid, size_t size) {
 		}
 
 		if( (numSegmento = primerEntradaLibre(tablaLocal)) == NUM_SEG_MAX ) {
-			Error = MAX_SEG_NUM_REACHED;
+			*id = MAX_SEG_NUM_REACHED;
 			return 0;
 		}
 
@@ -87,10 +87,11 @@ uint32_t crearSegmento(uint32_t pid, size_t size) {
 		free(stringSEG);
 	}
 	else {
-		Error = FULL_MEMORY;
+		*id = FULL_MEMORY;
 		return 0;
 	}
 
+	*id = OK_CREATE;
 	return generarDireccionLogica(numSegmento,0,0);
 }
 
@@ -127,7 +128,7 @@ t_msg_id escribirMemoria(uint32_t pid,uint32_t direccionLogica,char* bytesAEscri
 
 }
 
-char* solicitarMemoria(uint32_t pid,uint32_t direccionLogica,uint32_t size) {
+char* solicitarMemoria(uint32_t pid,uint32_t direccionLogica,uint32_t size,t_msg_id id) {
 
 	uint8_t offset;
 	char* bytesSolicitados;
@@ -155,10 +156,11 @@ char* solicitarMemoria(uint32_t pid,uint32_t direccionLogica,uint32_t size) {
 		}
 	}
 	else {
-		Error = SEGMENTATION_FAULT;
+		*id = SEGMENTATION_FAULT;
 		return NULL;
 	}
 
+	*id = OK_REQUEST;
 	return bytesSolicitados;
 
 }
@@ -200,7 +202,7 @@ t_msg_id destruirSegmento(uint32_t pid, uint16_t numeroSegmento){
 	else
 		return INVALID_DIR;
 
-	return 0;//OK_DESTROY;
+	return OK_DESTROY;
 
 }
 

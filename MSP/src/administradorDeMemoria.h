@@ -67,9 +67,9 @@ void (*ActualizarEnEstructuraDeSustitucion) (uint32_t pid,uint16_t seg,uint16_t 
 /* FIN Variables Globales */
 
 /* Interfaz MSP */
-uint32_t crearSegmento(uint32_t pid, size_t size);
+uint32_t crearSegmento(uint32_t pid, size_t size,t_msg_id id);
 t_msg_id destruirSegmento(uint32_t pid, uint16_t numeroSegmento);
-char* solicitarMemoria(uint32_t pid,uint32_t direccionLogica,uint32_t size);
+char* solicitarMemoria(uint32_t pid,uint32_t direccionLogica,uint32_t size,t_msg_id id);
 t_msg_id escribirMemoria(uint32_t pid,uint32_t direccionLogica,char* bytesAEscribir,uint32_t size);
 /* FIN Interfaz MSP */
 

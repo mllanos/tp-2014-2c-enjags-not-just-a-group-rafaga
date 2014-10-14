@@ -14,6 +14,7 @@ int main (int argc, char** argv) {
 	int listener,nuevaConexion;
 
 	/* Creación de archivo log */
+	clean_file(argv[2]);
 	Logger = log_create(argv[2],"MSP",false,LOG_LEVEL_TRACE);
 
 	cargarConfiguracion(argv[1]);

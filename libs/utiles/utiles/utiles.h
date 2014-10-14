@@ -101,6 +101,7 @@ typedef enum {
 
 	/****************** INTERFAZ MSP: DESTRUIR SEGMENTO. ******************/
 	DESTROY_SEGMENT,			/* Pedido de destrucción de segmento a MSP. */
+	OK_DESTROY,				/* Respuesta de eliminado correcto de MSP. */
 
 	/****************** INTERFAZ MSP: SOLICITAR MEMORIA. ******************/
 	REQUEST_MEMORY,				/* Pedido de datos a la MSP. */
