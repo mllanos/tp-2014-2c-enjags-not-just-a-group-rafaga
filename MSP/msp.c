@@ -942,9 +942,11 @@ void consolaMSP () {
 	char command[35];
 	char action[15];
 	char stream[10];
+	char *texto;
 	u_int32_t pid;
 	u_int32_t size;
 	u_int32_t direccion;
+	u_int32_t direccionVirtual;
 	while(1){
 		scanf("%s",command);
 		int i=0;
@@ -954,7 +956,9 @@ void consolaMSP () {
 		}
 		int j=i+1;
 		i=0;
-		if (strcmp(action,"createSegment",i)==0) {
+
+
+		if (strcmp(action,"createSegment",i)==0) { //CREAR_SEGMENTO
 			while(command[j]!=",") {
 				stream[i]=command[j];
 				i++;
@@ -962,31 +966,125 @@ void consolaMSP () {
 			}
 			j++;
 			i=0;
-			pid=atoi(stream);
+			pid=atoi(stream); //capturo el pid
 			stream[0]="\0";
 			while(command[j]!="\0") {
 				stream[i]=command[j];
+				i++;
+				j++;
 			}
 			size=atoi(stream);
-			reservarMemoria(pid, size);
+			direccion = reservarMemoria(pid, size); // capturo direcionBase
+			printf(direccion); //imprimo por pantalla y en el log
+			log_trace(logfile,"Direccion Base:%n",direccion);
 		}
-		else if (strcmp(action,"destroySegment",i)==0) {
 
-		}
-		else if (strcmp(action,"memoryWrite",i)==0) {
 
+		else if (strcmp(action,"destroySegment",i)==0) { //DESTRUIR_SEGMENTO
+			while(command[j]!=",") {
+				stream[i]=command[j];
+				i++;
+				j++;
+			}
+			j++;
+			i=0;
+			pid=atoi(stream); // capturo pid
+			stream[0]="\0";
+			while(command[j]!="\0") {
+				stream[i]=command[j];
+				i++;
+				j++;
+			}
+			direccion=atoi(stream); // capturo direccion
+			destruirSegmento(pid,direccion); // destruccion de segmento
 		}
+
+
+		else if (strcmp(action,"memoryWrite",i)==0) { //ESCRIBIR_MEMORIA
+			while(command[j]!=",") {
+				stream[i]=command[j];
+				i++;
+				j++;
+			}
+				j++;
+				i=0;
+				pid=atoi(stream); // capturo pid
+				stream[0]="\0";
+			while(command[j]!=",") {
+				stream[i]=command[j];
+				i++;
+				j++;
+			}
+				direccionVirtual=atoi(stream);
+				j++;
+				i=0;
+				stream[0]="\0";
+			while(command[j]!=",") {
+				stream[i]=command[j];
+				i++;
+				j++;
+			}
+				size=atoi(stream);
+				j++;
+				i=0;
+				stream[0]="\0";
+			while(command[j]!="\0") {
+				stream[i]=command[j];
+				i++;
+				j++;
+			}
+				texto=stream;
+				escribirMemoria(pid,direccion,texto,size);
+		}
+
+
 		else if (strcmp(action,"memoryRead",i)==0) {
-
+			while(command[j]!=",") {
+				stream[i]=command[j];
+				i++;
+				j++;
+			}
+				j++;
+				i=0;
+				pid=atoi(stream); // capturo pid
+				stream[0]="\0";
+			while(command[j]!=",") {
+				stream[i]=command[j];
+				i++;
+				j++;
+			}
+				direccionVirtual=atoi(stream);
+				j++;
+				i=0;
+				stream[0]="\0";
+			while(command[j]!="\0") {
+				stream[i]=command[j];
+				i++;
+				j++;
+			}
+				size=atoi(stream);
+				//falta leerMemoria
 		}
+
+
 		else if (strcmp(action,"segmentsTable",i)==0) {
-
+				//tabla de segmentos
 		}
+
+
 		else if (strcmp(action,"pagesTable",i)==0) {
-
+			while(command[j]!=",") {
+				stream[i]=command[j];
+				i++;
+				j++;
+			}
+				pid=atoi(stream); // capturo pid
+				//imprimir tabla de paginas
 		}
-		else if (strcmp(action,"listFrames",i)==0) {
 
+
+		else if (strcmp(action,"listFrames",i)==0) {
+				//listar marcos
 		}
 
 
