@@ -5,7 +5,6 @@
  *      Author: matias
  */
 
-#include "msp.h"
 #include "administradorDeConexionesYConfig.h"
 
 void cargarConfiguracion(char* path) {
@@ -34,19 +33,19 @@ void *atenderProceso(void* parametro) {
 		msg = recibir_mensaje(fd);
 		//recuperar_tipo_de_solicitud()
 		switch(idSolicitud) {
-		case 0://WRITE_MEMORY:
+		case WRITE_MEMORY:
 			//recuperar_parametros()
 			//ejecutar_rutina_correspondiente()
 			break;
-		case 1://CREATE_SEGMENT:
+		case CREATE_SEGMENT:
 			//recuperar_parametros()
 			//ejecutar_rutina_correspondiente()
 			break;
-		case 2://DESTROY_SEGMENT:
+		case DESTROY_SEGMENT:
 			//recuperar_parametros()
 			//ejecutar_rutina_correspondiente()
 			break;
-		case 3://REQUEST_MEMORY:
+		case REQUEST_MEMORY:
 			//recuperar_parametros()
 			//ejecutar_rutina_correspondiente()
 			break;

@@ -936,3 +936,59 @@ while(1){
 	destroy_message(msg);
 	}
 }
+
+void consolaMSP () {
+	char command[35];
+	char action[15];
+	char stream[10];
+	u_int32_t pid;
+	u_int32_t size;
+	u_int32_t direccion;
+	while(1){
+		scanf("%s",command);
+		int i=0;
+		while(command[i]!="" || command[i]!="\0"){
+			action[i]=command[i];
+			i++;
+		}
+		int j=i+1;
+		i=0;
+		if (strcmp(action,"createSegment",i)==0) {
+			while(command[j]!=",") {
+				stream[i]=command[j];
+				i++;
+				j++;
+			}
+			j++;
+			i=0;
+			pid=atoi(stream);
+			stream[0]="\0";
+			while(command[j]!="\0") {
+				stream[i]=command[j];
+			}
+			size=atoi(stream);
+			reservarMemoria(pid, size);
+		}
+		else if (strcmp(action,"destroySegment",i)==0) {
+
+		}
+		else if (strcmp(action,"memoryWrite",i)==0) {
+
+		}
+		else if (strcmp(action,"memoryRead",i)==0) {
+
+		}
+		else if (strcmp(action,"segmentsTable",i)==0) {
+
+		}
+		else if (strcmp(action,"pagesTable",i)==0) {
+
+		}
+		else if (strcmp(action,"listFrames",i)==0) {
+
+		}
+
+
+	}
+}
+

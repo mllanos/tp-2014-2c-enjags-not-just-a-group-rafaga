@@ -23,11 +23,6 @@
 #define NUM_PAG_MAX NUM_SEG_MAX
 #define SEG_MAX_SIZE 1048576
 
-/* Funciones Macro */
-#define min(n,m) (n < m ? n : m)
-#define divRoundUp(n,m) (n % m == 0 ? n / m : n / m + 1)
-/* FIN Funciones Macro */
-
 typedef uint8_t bit;
 
 /* Estructuras */

@@ -8,6 +8,8 @@
 #ifndef ADMINISTRADORDECONEXIONESYCONFIG_H_
 #define ADMINISTRADORDECONEXIONESYCONFIG_H_
 
+#include "msp.h"
+
 /* el archivo configuracion será del tipo:
  * PUERTO=[1024-65535]
  * CANTIDAD_MEMORIA=[KB]
