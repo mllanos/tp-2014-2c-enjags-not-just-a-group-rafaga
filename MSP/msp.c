@@ -1068,7 +1068,12 @@ void consolaMSP () {
 
 
 		else if (strcmp(action,"segmentsTable",i)==0) {
-				//tabla de segmentos
+			t_link_element *element = listaMemoriaPrincipal->head;
+			while (element != NULL) {
+				printf(element->data);
+				// faltan los sizes
+				element = element->next;
+			}
 		}
 
 
@@ -1078,15 +1083,24 @@ void consolaMSP () {
 				i++;
 				j++;
 			}
-				pid=atoi(stream); // capturo pid
+				pid=atoi(stream);
 				//imprimir tabla de paginas
 		}
 
 
 		else if (strcmp(action,"listFrames",i)==0) {
-				//listar marcos
+			t_link_element *element = listaMemoriaPrincipal->head;
+			while (element != NULL) {
+				printf(element->data);
+				// falta sacar el pid
+				element = element->next;
+			}
 		}
 
+		else {
+			printf("Error de comando");
+			log_trace(logfile,"Error de comando");
+		}
 
 	}
 }
