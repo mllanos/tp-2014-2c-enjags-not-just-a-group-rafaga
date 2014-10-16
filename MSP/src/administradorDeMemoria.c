@@ -13,9 +13,11 @@ void inicializarMSP(char* swapPath) {
 
 	SwapPath = swapPath;
 
-	CantidadMarcosTotal = MaxMem / PAG_SIZE;	// Preguntar que pasa si la memoria no se puede repartir en exactamente n marcos
 	CantPaginasEnSwapMax = MaxSwap / PAG_SIZE;
-	CantPaginasDisponibles = CantPaginasTotalMax = CantidadMarcosTotal + CantPaginasEnSwapMax;
+	CantPaginasEnSwapDisponibles = CantPaginasEnSwapMax - 1; 					/* Dejo un lugar disponible para hacer los intercambios */
+	CantPaginasEnMemoriaDisponibles = CantidadMarcosTotal = MaxMem / PAG_SIZE;	// Preguntar que pasa si la memoria no se puede repartir en exactamente n marcos
+	CantPaginasDisponibles = CantPaginasEnMemoriaDisponibles + CantPaginasEnSwapDisponibles;
+
 
 	MemoriaPrincipal = malloc(CantidadMarcosTotal);
 
@@ -39,6 +41,9 @@ void inicializarMSP(char* swapPath) {
 		ActualizarEnEstructuraDeSustitucion = actualizarEnListaLRU;
 	}
 
+	pthread_mutex_init(&LogMutex,NULL);
+	pthread_mutex_init(&MemMutex,NULL);
+
 }
 
 uint32_t crearSegmento(uint32_t pid, size_t size, t_msg_id* id) {
@@ -54,6 +59,7 @@ uint32_t crearSegmento(uint32_t pid, size_t size, t_msg_id* id) {
 	if(CantPaginasDisponibles >= cantPaginas) {
 
 		int pag;
+		char* path;
 		char* stringPID;
 		char* stringSEG;
 		t_segmento *tablaLocal;
@@ -74,15 +80,41 @@ uint32_t crearSegmento(uint32_t pid, size_t size, t_msg_id* id) {
 		CantPaginasDisponibles -= cantPaginas;
 		tablaLocal[numSegmento].limite = size;
 		tablaLocal[numSegmento].bytesOcupados = 0;
-		tablaLocal[numSegmento].tablaPaginas = malloc(divRoundUp(size,PAG_SIZE) * sizeof(t_pagina));
+		tablaLocal[numSegmento].tablaPaginas = malloc(cantPaginas * sizeof(t_pagina));
 
 		stringPID = string_itoa(pid);
 		stringSEG = string_itoa(numSegmento);
 
 		/* Creo las páginas que va a ocupar el segmento en el espacio de SWAP */
-		for(pag = 0;pag < cantPaginas;++pag)
-			create_file(string_from_format("%s%s%s%s",SwapPath,stringPID,stringSEG,string_itoa(pag)),PAG_SIZE);
+		for(pag = 0;pag < cantPaginas && CantPaginasEnSwapDisponibles;++pag,--CantPaginasEnSwapDisponibles) {
+			create_file(path = string_from_format("%s%s%s%s",SwapPath,stringPID,stringSEG,string_itoa(pag)),PAG_SIZE);
+			paginaEnMemoria(tablaLocal,numSegmento,pag) = false;
 
+		}
+
+		if(CantPaginasEnSwapDisponibles == 0) {
+			pthread_mutex_lock(&LogMutex);
+			log_trace(Logger,"Espacio de intercambio llleno");
+			pthread_mutex_unlock(&LogMutex);
+		}
+
+		/* Si la SWAP se llena reservo marcos de Memoria Principal para el resto de las páginas */
+		for(;pag < cantPaginas;++pag,--CantPaginasEnMemoriaDisponibles) {
+			MemoriaPrincipal[ marcoDePagina(tablaLocal,numSegmento,pag) = marcoVacio() ].ocupado = true;
+			paginaEnMemoria(tablaLocal,numSegmento,pag) = true;
+			AgregarPaginaAEstructuraSustitucion(pid,numSegmento,pag);
+			pthread_mutex_lock(&LogMutex);
+			log_trace(Logger,"Marco %d asignado al proceso %d",marcoDePagina(tablaLocal,numSegmento,pag),pid);
+			pthread_mutex_unlock(&LogMutex);
+		}
+
+		if(CantPaginasEnMemoriaDisponibles == 0) {
+			pthread_mutex_lock(&LogMutex);
+			log_trace(Logger,"Memoria Principal lllena");
+			pthread_mutex_unlock(&LogMutex);
+		}
+
+		free(path);
 		free(stringPID);
 		free(stringSEG);
 	}
@@ -101,17 +133,19 @@ t_msg_id escribirMemoria(uint32_t pid,uint32_t direccionLogica,char* bytesAEscri
 	uint16_t numSegmento,numPagina;
 	t_segmento* tablaLocal;
 
-	if((tablaLocal = traducirDireccion(pid,direccionLogica,&numSegmento,&numPagina,&offset)) && bytesLibresSegmento(tablaLocal,numSegmento) >= size) {
-	//Si excede el tamaño se escribe lo que puede o también es SEGMENTATION_FAULT de una?
+	/* Valido la dirección y me fijo que haya espacio suficiente en el segmento. */
+	if((tablaLocal = traducirDireccion(pid,direccionLogica,&numSegmento,&numPagina,&offset)) && bytesEscribiblesDesde(tablaLocal,numSegmento,numPagina,offset) >= size) {
+
 		int i = 0;
 		size_t bytesEscritos,bytesPorEscribir = size;
 
 		while(bytesPorEscribir) {
 
-			if(!paginaEnMemoria(tablaLocal,numSegmento,numPagina))
+			if(paginaEnMemoria(tablaLocal,numSegmento,numPagina))
+				ActualizarEnEstructuraDeSustitucion(pid,numSegmento,numPagina);
+			else
 				traerPaginaAMemoria(tablaLocal,pid,numSegmento,numPagina);
 
-			ActualizarEnEstructuraDeSustitucion(pid,numSegmento,numPagina);
 			memcpy(direccionFisica(tablaLocal,numSegmento,numPagina,offset),bytesAEscribir+i,bytesEscritos = min((PAG_SIZE - offset),bytesPorEscribir));
 			tablaLocal[numSegmento].bytesOcupados += bytesEscritos;
 			bytesPorEscribir -= bytesEscritos;
@@ -119,7 +153,7 @@ t_msg_id escribirMemoria(uint32_t pid,uint32_t direccionLogica,char* bytesAEscri
 			++numPagina;
 			offset = 0;
 		}
-		//no olvidarse de liberar bytesAEscribir, o acá adentro, o en la rutina que atiende a los procesos
+
 	}
 	else
 		return SEGMENTATION_FAULT;
@@ -128,13 +162,14 @@ t_msg_id escribirMemoria(uint32_t pid,uint32_t direccionLogica,char* bytesAEscri
 
 }
 
-char* solicitarMemoria(uint32_t pid,uint32_t direccionLogica,uint32_t size,t_msg_id id) {
+char* solicitarMemoria(uint32_t pid,uint32_t direccionLogica,uint32_t size,t_msg_id* id) {
 
 	uint8_t offset;
 	char* bytesSolicitados;
 	t_segmento* tablaLocal;
 	uint16_t numSegmento,numPagina;
 
+	//Valido la dirección, y me fijo si quiere leer memoria no inicializada. En vez de devolverle basura le digo que se pasó de los límites. Por ahí esto no deberia ser asi
 	if((tablaLocal = traducirDireccion(pid,direccionLogica,&numSegmento,&numPagina,&offset)) && bytesOcupadosDesde(tablaLocal,numSegmento,numPagina,offset) >= size) {
 
 		int i = 0;
@@ -171,16 +206,21 @@ t_msg_id destruirSegmento(uint32_t pid, uint16_t numeroSegmento){
 
 	if(tabla && segmentoValido(tabla,numeroSegmento)) {
 
-		int pag;
-		char* shellInstruction;
+		int pag,cantPagEnMemoria;
 		char* stringPID;
 		char* stringSEG;
-		uint16_t cantPaginas = cantidadPaginas(tabla,numeroSegmento);
+		char* shellInstruction;
+		uint16_t cantPaginas = cantidadPaginasDelSegmento(tabla,numeroSegmento);
 
-		for(pag = 0;pag < cantPaginas;++pag)
+		for(cantPagEnMemoria = 0,pag = 0;pag < cantPaginas;++pag)
 			if(paginaEnMemoria(tabla,numeroSegmento,pag)) {
+				++cantPagEnMemoria;
+				++CantPaginasEnMemoriaDisponibles;
 				liberarMarco(tabla,numeroSegmento,pag);
 				QuitarDeEstructuraDeSeleccion(pid,numeroSegmento,pag);
+				pthread_mutex_lock(&LogMutex);
+				log_trace(Logger,"Marco %d desasignado al proceso %d",marcoDePagina(tabla,numeroSegmento,pag),pid);
+				pthread_mutex_unlock(&LogMutex);
 			}
 
 		/* Borra todas las páginas swappeadas del segmento */
@@ -191,6 +231,8 @@ t_msg_id destruirSegmento(uint32_t pid, uint16_t numeroSegmento){
 
 		system(shellInstruction);
 
+		CantPaginasDisponibles += cantPaginas;
+		CantPaginasEnSwapDisponibles += cantPaginas - cantPagEnMemoria;
 		free(tabla[numeroSegmento].tablaPaginas);
 		tabla[numeroSegmento].limite = 0;
 
@@ -198,6 +240,7 @@ t_msg_id destruirSegmento(uint32_t pid, uint16_t numeroSegmento){
 		free(stringPID);
 		free(stringSEG);
 		//validar si es el único segmento del proceso, en ese caso probablemente habría que eliminar la entrada del diccionario
+		//Por ahi el kernel me puede avisar, total los últimos segmentos en borrarse son stack y código, y coinciden con la finalización del programa
 	}
 	else
 		return INVALID_DIR;
@@ -233,22 +276,39 @@ t_segmento* traducirDireccion(uint32_t pid,uint32_t direccionLogica,uint16_t *nu
 void traerPaginaAMemoria(t_segmento *tabla,uint32_t pid,uint16_t seg,uint16_t pag) {
 
 	uint32_t numMarco;
-	char* data;
-	char* path = obtenerSwapPath(pid,seg,pag);
+	char *data;
+	char *pidPath,*segPath,*pagPath;
+	char *path = obtenerSwapPath(pid,seg,pag);
 
 	if((numMarco = marcoVacio()) == CantidadMarcosTotal)
 		numMarco = rutinaSustitucion(pid,seg,pag);
-	else
+	else {
+		++CantPaginasEnSwapDisponibles;
+		if(--CantPaginasEnMemoriaDisponibles == 0) {
+			pthread_mutex_lock(&LogMutex);
+			log_trace(Logger,"Memoria Principal lllena");
+			pthread_mutex_unlock(&LogMutex);
+		}
 		AgregarPaginaAEstructuraSustitucion(pid,seg,pag);
+	}
 
 	memcpy(MemoriaPrincipal[numMarco].marco,data = read_file(path,PAG_SIZE),PAG_SIZE);
 	remove(path);
 
+	pthread_mutex_lock(&LogMutex);
+	log_trace(Logger,"Intercambio de página %d del segmento %d del proceso % d desde disco",pag,seg,pid);
+	log_trace(Logger,"Marco %d asignado al proceso %d",numMarco,pid);
+	pthread_mutex_unlock(&LogMutex);
+
+	marcoDePagina(tabla,seg,pag) = numMarco;
 	paginaEnMemoria(tabla,seg,pag) = true;
 	MemoriaPrincipal[numMarco].ocupado = true;
 
 	free(data);
 	free(path);
+	free(pidPath);
+	free(segPath);
+	free(pagPath);
 
 }
 
@@ -262,28 +322,36 @@ uint32_t marcoVacio(void) {
 	return i;
 }
 
-uint32_t rutinaSustitucion(uint32_t inPid,uint16_t seg,uint16_t pag) {
+uint32_t rutinaSustitucion(uint32_t inPid,uint16_t inSeg,uint16_t inPag) {
 
-	char* path;
+	t_segmento* outTabla;
 	uint32_t outPid = inPid;
-	t_segmento* tabla;
-	uint16_t numPagina = pag;
+	uint16_t outSeg = inSeg;
+	uint16_t outPag = inPag;
 	uint32_t numMarcoLiberado;
-	uint16_t numSegmento = seg;
+	char *path,*pidPath,*segPath,*pagPath;
 
-	RutinaSeleccionPaginaVictima(&tabla,&outPid,&numSegmento,&numPagina);
+	RutinaSeleccionPaginaVictima(&outTabla,&outPid,&outSeg,&outPag);
 
-	numMarcoLiberado = tabla[numSegmento].tablaPaginas[numPagina].numMarco;
+	numMarcoLiberado = marcoDePagina(outTabla,outSeg,outPag);
 
-	path = obtenerSwapPath(outPid,numSegmento,numPagina);
+	path = obtenerSwapPath(outPid,outSeg,outPag);
 
-	write_file(path,direccionFisica(tabla,numSegmento,numPagina,0),PAG_SIZE);
+	write_file(path,direccionFisica(outTabla,outSeg,outPag,0),PAG_SIZE);
 
-	paginaEnMemoria(tabla,numSegmento,numPagina) = false;
+	paginaEnMemoria(outTabla,outSeg,outPag) = false;
 
 	MemoriaPrincipal[numMarcoLiberado].ocupado = false;
 
+	pthread_mutex_lock(&LogMutex);
+	log_trace(Logger,"Intercambio de página %d del segmento %d del proceso %d hacia disco",outPag,outSeg,outPid);
+	log_trace(Logger,"Marco %d desasignado al proceso %d",numMarcoLiberado,outPid);
+	pthread_mutex_unlock(&LogMutex);
+
 	free(path);
+	free(pidPath);
+	free(segPath);
+	free(pagPath);
 
 	return numMarcoLiberado;
 

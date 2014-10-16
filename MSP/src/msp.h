@@ -11,7 +11,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
-#include <panel/panel.h>
 #include <commons/log.h>
 #include <utiles/utiles.h>
 #include <commons/config.h>
@@ -50,6 +49,7 @@ uint32_t MaxMem;
 uint32_t MaxSwap;
 char *SwapPath;
 char *AlgoritmoSustitucion;
+pthread_mutex_t LogMutex,MemMutex;
 /* FIN Variables Globales */
 
 void inicializarMSP(char* swapPath);

@@ -28,7 +28,9 @@ int main (int argc, char** argv) {
 	while(true) {
 
 		nuevaConexion = accept_connection(listener);
+		pthread_mutex_lock(&LogMutex);
 		log_trace(Logger,"Nueva conexión");
+		pthread_mutex_unlock(&LogMutex);
 		pthread_create(&thread,NULL,atenderProceso,&nuevaConexion);
 
 	}

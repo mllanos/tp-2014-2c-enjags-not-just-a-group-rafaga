@@ -20,7 +20,7 @@ void seleccionVictimaLRU(t_segmento** tabla,uint32_t *pid,uint16_t *seg,uint16_t
 	*seg = pagMenosUsada->numSegmento;
 	*tabla = tablaDelProceso(pagMenosUsada->pid);
 
-	pagMenosUsada->pid = inPid;
+	pagMenosUsada->pid = inPid;			/* Aprovecho que el nodo está creado, le cargo los datos de la nueva página, y agrego el nodo al final */
 	pagMenosUsada->numPagina = inPag;
 	pagMenosUsada->numSegmento = inSeg;
 
@@ -64,6 +64,6 @@ bool match(void* LRU_node) {
 
 	t_LRU_node* node = (t_LRU_node*) LRU_node;
 
-	return node->pid == ListVarPid && node->numPagina == ListVarPag && node->numSegmento == ListVarSeg;
+	return node->pid == ListVarPid && node->numSegmento == ListVarSeg && node->numPagina == ListVarPag;
 
 }

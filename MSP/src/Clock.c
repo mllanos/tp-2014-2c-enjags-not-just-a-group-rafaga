@@ -13,7 +13,7 @@ void seleccionVictimaClock(t_segmento** tabla,uint32_t *pid,uint16_t *seg,uint16
 	uint16_t inSeg = *seg;
 	uint16_t inPag = *pag;
 
-	for(;ArrayClock[ClockIndex = ClockIndex % CantidadMarcosTotal].bitReferencia;++ClockIndex)
+	for(;ArrayClock[ClockIndex = ClockIndex % ClockEmptyIndex].bitReferencia;++ClockIndex)
 		ArrayClock[ClockIndex].bitReferencia = 0;
 
 	t_clock_node* pagMenosUsada = ArrayClock + ClockIndex;	/* Es equivalente a &ArrayClock[ClockIndex] */
@@ -23,7 +23,7 @@ void seleccionVictimaClock(t_segmento** tabla,uint32_t *pid,uint16_t *seg,uint16
 	*seg = pagMenosUsada->numSegmento;
 	*tabla = tablaDelProceso(pagMenosUsada->pid);
 
-	pagMenosUsada->pid = inPid;
+	pagMenosUsada->pid = inPid;			/* Aprovecho y le cargo los datos de la nueva página, en el lugar de la que swapeé */
 	pagMenosUsada->numPagina = inPag;
 	pagMenosUsada->numSegmento = inSeg;
 	pagMenosUsada->bitReferencia = 1;
@@ -55,7 +55,8 @@ void quitarPaginaDeArrayClock(uint32_t pid,uint16_t seg,uint16_t pag) {
 	for(i=0;ArrayClock[i].pid != pid || ArrayClock[i].numSegmento != seg || ArrayClock[i].numPagina != pag;++i)
 		;
 
-	for(++i;i < CantidadMarcosTotal;++i) {
+	/* Muevo todos los registros una posición, pisando el de la página que se fue de memoria */
+	for(++i;i < ClockEmptyIndex;++i) {
 
 		ArrayClock[i-1].pid = ArrayClock[i].pid;
 		ArrayClock[i-1].numPagina = ArrayClock[i].numPagina;

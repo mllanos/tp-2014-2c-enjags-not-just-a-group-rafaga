@@ -548,6 +548,8 @@ char *id_string(t_msg_id id)
 			return "INVALID_DIR";
 		case DESTROY_SEGMENT:
 			return "DESTROY_SEGMENT";
+		case OK_DESTROY:
+			return "OK_DESTROY";
 		case REQUEST_MEMORY:
 			return "REQUEST_MEMORY";
 		case OK_REQUEST:
