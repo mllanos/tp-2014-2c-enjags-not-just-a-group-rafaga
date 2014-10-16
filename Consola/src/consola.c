@@ -1,5 +1,7 @@
 #include "consola.h"
 
+//TESTEANDO Y DEBUGEANDO
+
 int main(int argc, char **argv)
 {
 
