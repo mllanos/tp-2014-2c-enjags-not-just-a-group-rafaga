@@ -417,6 +417,41 @@ void destruirSegmento(u_int32_t pid,u_int32_t direccion_logica) {
 
 }
 
+void leerMemoria(u_int32_t pid, u_int32_t direccion_logica, u_int32_t tamano) {
+	char* dato; //para guardar datos en caso de traslado
+	//Consigo el num de segmento
+	u_int32_t segmento = dameByte(direccion_logica, 1);
+	//Con el pid y el num de segmento busco el nodo correspondiente
+	t_segmento *seg = list_find(listaSegmentos, (void*) es_igual_pid_and_seg);
+	//Consigo el num de pagina
+	u_int32_t pagina = dameByte(direccion_logica, 2);
+	//Busco la pagina correspondiente
+	t_pagina *pag = list_find(seg->paginas, (void*) es_igual_pag);
+
+
+	if (pag != NULL) {
+		log_debug(logfile, "leerMemoria()==>Se encontro la posicion logica en la memoria");
+	} else {
+		log_error(logfile, "leerMemoria()==>No se encontro la posicion logica en la memoria");
+	}
+
+	u_int32_t offset = dameByte(direccion_logica, 3); //offset
+
+	if (pag->bit == 1) {
+
+		u_int32_t dezplazamiento = 256 * (pag->num_marco); //Calculo el dezplazamiento "virtual" dentro de la memoria
+		char *marco = point + dezplazamiento; // Calculo la direccion exacta a un marco, usando el point (del malloc al principio)
+		leerRAM(marco,offset,tamano,dato);
+		printf(dato);
+		log_debug(logfile, dato);
+	} else if (pag->bit == 2){
+		//Ahora debo leer de la SWAP, con la info de la direccion logica
+		leerSWAPfile(armarSWAPath(pid, segmento, pagina), dato, 256);
+		printf(dato);
+		log_debug(logfile, dato);
+	}
+}
+
 void escribirMemoria(u_int32_t pid, u_int32_t direccion_logica, char* bytes, u_int32_t tamano) {
 	char* dato; //para guardar datos en caso de traslado
 	t_nodo *outSwap;
@@ -436,7 +471,7 @@ void escribirMemoria(u_int32_t pid, u_int32_t direccion_logica, char* bytes, u_i
 			"escribirMemoria()==>Se encontro la posicion logica en la memoria");
 	} else {
 		log_error(logfile,
-			"escribirMemoria()==>No e encontro la posicion logica en la memoria");
+			"escribirMemoria()==>No se encontro la posicion logica en la memoria");
 	}
 
 	//Te pido el offset---
@@ -946,7 +981,6 @@ void consolaMSP () {
 	u_int32_t pid;
 	u_int32_t size;
 	u_int32_t direccion;
-	u_int32_t direccionVirtual;
 	while(1){
 		scanf("%s",command);
 		int i=0;
@@ -1015,7 +1049,7 @@ void consolaMSP () {
 				i++;
 				j++;
 			}
-				direccionVirtual=atoi(stream);
+				direccion=atoi(stream);
 				j++;
 				i=0;
 				stream[0]="\0";
@@ -1053,7 +1087,7 @@ void consolaMSP () {
 				i++;
 				j++;
 			}
-				direccionVirtual=atoi(stream);
+				direccion=atoi(stream);
 				j++;
 				i=0;
 				stream[0]="\0";
@@ -1063,15 +1097,19 @@ void consolaMSP () {
 				j++;
 			}
 				size=atoi(stream);
-				//falta leerMemoria
+				leerMemoria(pid,direccion,size);
 		}
 
 
 		else if (strcmp(action,"segmentsTable",i)==0) {
-			t_link_element *element = listaMemoriaPrincipal->head;
+			t_link_element *element = listaSegmentos->head;
+			printf("PID          N° Segmento              Tamano            Direccion Base");
 			while (element != NULL) {
-				printf(element->data);
-				// faltan los sizes
+				printf(element->data->pid);
+				printf(element->data->num_segmento);
+				printf(sizeof(element->data));
+				direccion = armarDireccion(element->data->num_segmento, element->data->paginas->num_pagina, 0);
+				printf(direccion);
 				element = element->next;
 			}
 		}
@@ -1084,15 +1122,32 @@ void consolaMSP () {
 				j++;
 			}
 				pid=atoi(stream);
-				//imprimir tabla de paginas
+				t_list *filter_list = list_filter(listaSegmentos, es_igual_pid(listaSegmentos->head->data));
+				t_link_element *element = filter_list->head;
+				while (element != NULL) {
+					printf(element->data->paginas->data->num_pagina);
+					if (element->data->paginas->data->bit == 1){
+						printf("Esta en memoria");
+					} else if (element->data->paginas->data->bit == 2) {
+						printf("Esta swappeada");
+					}
+					printf(element->data->num_segmento);
+					element = element->next;
+				}
 		}
 
 
 		else if (strcmp(action,"listFrames",i)==0) {
 			t_link_element *element = listaMemoriaPrincipal->head;
 			while (element != NULL) {
-				printf(element->data);
-				// falta sacar el pid
+				printf(element->data->num_marco);
+				if (element->data->bit == 0) {
+					printf("El marco esta libre");
+				} else if (element->data->bit == 1) {
+					printf("El marco esta ocupado");
+				}
+				t_list *filter_list = list_filter(listaSegmentos, listaSegmentos->head->data->paginas->num_marco==listaMemoriaPrincipal->head->data->num_marco);
+				printf(filter_list->head->data->id);
 				element = element->next;
 			}
 		}
