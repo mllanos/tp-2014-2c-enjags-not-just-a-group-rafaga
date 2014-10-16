@@ -113,7 +113,7 @@ typedef enum {
 
 	/****************** INTERFAZ MSP: SOLICITAR/ESCRIBIR MEMORIA. ******************/
 	INVALID_DIR,				/* Respuesta de dirección inválida. */
-	SEGMENTATION_FAULT,			/* Respuesta de error de segmento en lectura/escritura de memoria. */
+	SEGMENTATION_FAULT			/* Respuesta de error de segmento en lectura/escritura de memoria. */
 
 } t_msg_id;
 
