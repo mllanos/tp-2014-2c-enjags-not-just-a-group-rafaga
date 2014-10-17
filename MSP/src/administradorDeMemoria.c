@@ -7,7 +7,7 @@
 
 #include "administradorDeMemoria.h"
 
-void inicializarMSP(char* swapPath) {
+void inicializarMSP(char* swapPath) {	//por ahí podría borrar acá lo que hay en la carpeta swap ya que estoy
 
 	int i;
 
@@ -19,12 +19,13 @@ void inicializarMSP(char* swapPath) {
 	CantPaginasDisponibles = CantPaginasEnMemoriaDisponibles + CantPaginasEnSwapDisponibles;
 
 
-	MemoriaPrincipal = malloc(CantidadMarcosTotal);
+	if((MemoriaPrincipal = malloc(CantidadMarcosTotal * sizeof(t_marco))) == NULL)
+		perror("MALLOC");
 
 	for(i=0;i < CantidadMarcosTotal;++i)	/* Inicializo el bit ocupado con 0 (todos los marcos disponibles) */
 		MemoriaPrincipal[i].ocupado = 0;
 
-	dictionary_create(TablaSegmentosGlobal);
+	TablaSegmentosGlobal = dictionary_create();
 
 	if(strcmp(AlgoritmoSustitucion,"LRU")) {	/* Elige Clock por default */
 		ArrayClock = malloc(CantidadMarcosTotal * sizeof(t_clock_node));
@@ -87,7 +88,7 @@ uint32_t crearSegmento(uint32_t pid, size_t size, t_msg_id* id) {
 
 		/* Creo las páginas que va a ocupar el segmento en el espacio de SWAP */
 		for(pag = 0;pag < cantPaginas && CantPaginasEnSwapDisponibles;++pag,--CantPaginasEnSwapDisponibles) {
-			create_file(path = string_from_format("%s%s%s%s",SwapPath,stringPID,stringSEG,string_itoa(pag)),PAG_SIZE);
+			create_file(path = string_from_format("%s%s%s%s",SwapPath,stringPID,stringSEG,string_itoa(pag)),PAG_SIZE-1);
 			paginaEnMemoria(tablaLocal,numSegmento,pag) = false;
 
 		}
@@ -133,8 +134,8 @@ t_msg_id escribirMemoria(uint32_t pid,uint32_t direccionLogica,char* bytesAEscri
 	uint16_t numSegmento,numPagina;
 	t_segmento* tablaLocal;
 
-	/* Valido la dirección y me fijo que haya espacio suficiente en el segmento. */
-	if((tablaLocal = traducirDireccion(pid,direccionLogica,&numSegmento,&numPagina,&offset)) && bytesEscribiblesDesde(tablaLocal,numSegmento,numPagina,offset) >= size) {
+	/* Valido la dirección y me fijo que no se sobrepase el límite del segmento. */
+	if((tablaLocal = traducirDireccion(pid,direccionLogica,&numSegmento,&numPagina,&offset))&& bytesEscribiblesDesde(tablaLocal,numSegmento,numPagina,offset) >= size) {
 
 		int i = 0;
 		size_t bytesEscritos,bytesPorEscribir = size;
@@ -169,8 +170,8 @@ char* solicitarMemoria(uint32_t pid,uint32_t direccionLogica,uint32_t size,t_msg
 	t_segmento* tablaLocal;
 	uint16_t numSegmento,numPagina;
 
-	//Valido la dirección, y me fijo si quiere leer memoria no inicializada. En vez de devolverle basura le digo que se pasó de los límites. Por ahí esto no deberia ser asi
-	if((tablaLocal = traducirDireccion(pid,direccionLogica,&numSegmento,&numPagina,&offset)) && bytesOcupadosDesde(tablaLocal,numSegmento,numPagina,offset) >= size) {
+	/* Valido la dirección y me fijo que no se sobrepase el límite del segmento. */
+	if((tablaLocal = traducirDireccion(pid,direccionLogica,&numSegmento,&numPagina,&offset)) && bytesLeiblesDesde(tablaLocal,numSegmento,numPagina,offset) >= size) {
 
 		int i = 0;
 		size_t bytesLeidos,bytesPorLeer = size;
@@ -200,9 +201,10 @@ char* solicitarMemoria(uint32_t pid,uint32_t direccionLogica,uint32_t size,t_msg
 
 }
 
-t_msg_id destruirSegmento(uint32_t pid, uint16_t numeroSegmento){
+t_msg_id destruirSegmento(uint32_t pid, uint32_t baseSegmento){
 
 	t_segmento* tabla = tablaDelProceso(pid);
+	uint16_t numeroSegmento = segmento(baseSegmento);
 
 	if(tabla && segmentoValido(tabla,numeroSegmento)) {
 
@@ -210,7 +212,7 @@ t_msg_id destruirSegmento(uint32_t pid, uint16_t numeroSegmento){
 		char* stringPID;
 		char* stringSEG;
 		char* shellInstruction;
-		uint16_t cantPaginas = cantidadPaginasDelSegmento(tabla,numeroSegmento);
+		uint16_t cantPaginas = cantidadPaginasTotalDelSegmento(tabla,numeroSegmento);
 
 		for(cantPagEnMemoria = 0,pag = 0;pag < cantPaginas;++pag)
 			if(paginaEnMemoria(tabla,numeroSegmento,pag)) {
@@ -266,7 +268,7 @@ t_segmento* traducirDireccion(uint32_t pid,uint32_t direccionLogica,uint16_t *nu
 	decodeDirLogica(direccionLogica,numSegmento,numPagina,offset);
 
 	/* Si el segmento o la página son inválidas asigna NULL a tabla. Si la tabla no existiera la retorna directamente (ya que vale NULL por dictionary_get() */
-	if( ( tabla = (t_segmento*) dictionary_get(TablaSegmentosGlobal,string_itoa(pid)) ) && ( !segmentoValido(tabla,*numSegmento) || !paginaValida(tabla,*numSegmento,*numPagina,*offset) ) )
+	if( (tabla = (t_segmento*) dictionary_get(TablaSegmentosGlobal,string_itoa(pid))) && ( !segmentoValido(tabla,*numSegmento) || !paginaValida(tabla,*numSegmento,*numPagina,*offset) ) )
 		tabla = NULL;
 
 	return tabla;	/* Retorna o bien el puntero a la tabla de segmentos del proceso, o bien NULL si la dirección es inválida */
@@ -296,8 +298,8 @@ void traerPaginaAMemoria(t_segmento *tabla,uint32_t pid,uint16_t seg,uint16_t pa
 	remove(path);
 
 	pthread_mutex_lock(&LogMutex);
-	log_trace(Logger,"Intercambio de página %d del segmento %d del proceso % d desde disco",pag,seg,pid);
-	log_trace(Logger,"Marco %d asignado al proceso %d",numMarco,pid);
+	log_trace(Logger,"Intercambio de página %d del segmento %d del proceso %d desde disco.",pag,seg,pid);
+	log_trace(Logger,"Marco %d asignado al proceso %d.",numMarco,pid);
 	pthread_mutex_unlock(&LogMutex);
 
 	marcoDePagina(tabla,seg,pag) = numMarco;

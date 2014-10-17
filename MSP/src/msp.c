@@ -20,7 +20,7 @@ int main (int argc, char** argv) {
 	cargarConfiguracion(argv[1]);
 	inicializarMSP(argv[3]);
 
-	log_trace(Logger,"Inicio de MSP\nTamaño de página: %d\nTamaño de swap: %d",MaxMem,MaxSwap);
+	log_trace(Logger,"Inicio de MSP.\n	Tamaño de página: %d.\n	Tamaño de swap: %d.",MaxMem,MaxSwap);
 
 	listener = server_socket(Puerto);
 	pthread_create(&thread,NULL,atenderConsola,NULL);
@@ -28,9 +28,11 @@ int main (int argc, char** argv) {
 	while(true) {
 
 		nuevaConexion = accept_connection(listener);
+
 		pthread_mutex_lock(&LogMutex);
-		log_trace(Logger,"Nueva conexión");
+		log_trace(Logger,"Nueva conexión.");
 		pthread_mutex_unlock(&LogMutex);
+
 		pthread_create(&thread,NULL,atenderProceso,&nuevaConexion);
 
 	}

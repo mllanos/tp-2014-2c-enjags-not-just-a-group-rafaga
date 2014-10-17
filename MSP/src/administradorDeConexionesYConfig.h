@@ -11,6 +11,8 @@
 #include "msp.h"
 #include "administradorDeMemoria.h"
 
+typedef enum { CREAR_SEGMENTO,DESTRUIR_SEGMENTO,ESCRIBIR_MEMORIA,LEER_MEMORIA,TABLA_SEGMENTOS,TABLA_PAGINAS,LISTAR_MARCOS, COMANDO_INVALIDO } t_comando_consola;
+
 /* el archivo configuracion será del tipo:
  * PUERTO=[1024-65535]
  * CANTIDAD_MEMORIA=[KB]
@@ -20,5 +22,6 @@
 void cargarConfiguracion(char* path);
 void *atenderProceso(void* parametro);
 void *atenderConsola(void* parametro);
+t_comando_consola esperarComando(void);
 
 #endif /* ADMINISTRADORDECONEXIONESYCONFIG_H_ */
