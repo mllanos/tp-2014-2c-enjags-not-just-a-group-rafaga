@@ -55,14 +55,14 @@
 /****************** IDS DE MENSAJES. ******************/
 
 typedef enum {
-	NO_NEW_ID,				/* Valor centinela para evitar la modificación de id en modify_message(). */
+	NO_NEW_ID,					/* Valor centinela para evitar la modificación de id en modify_message(). */
 
 	INIT_CONSOLE,				/* Pedido de creación de hilo principal de Consola a Kernel. */
 	KILL_CONSOLE,				/* Respuesta de finalización por error de Kernel a Consola. */
 
 	CPU_CONNECT,				/* Pedido de conexión de CPU a Kernel. */
 
-	CPU_TCB,				/* Pedido de TCB de CPU a Kernel. */
+	CPU_TCB,					/* Pedido de TCB de CPU a Kernel. */
 	NEXT_THREAD,				/* Envío de TCB de Kernel a CPU. */
 
 	RETURN_TCB,					/* Retorno de TCB de CPU a Kernel. */
@@ -80,36 +80,36 @@ typedef enum {
 	STRING_OUTPUT,				/* Pedido de salida estándar de CPU. */
 
 	/****************** SERVICIOS EXPUESTOS A CPU: CREAR HILO. ******************/
-	CPU_THREAD,				/* Pedido de nuevo hilo de proceso de CPU a Kernel. */
+	CPU_THREAD,					/* Pedido de nuevo hilo de proceso de CPU a Kernel. */
 
 	/****************** SERVICIOS EXPUESTOS A CPU: JOIN. ******************/
-	CPU_JOIN,				/* Pedido de unión a hilo de proceso de CPU a Kernel. */
+	CPU_JOIN,					/* Pedido de unión a hilo de proceso de CPU a Kernel. */
 
 	/****************** SERVICIOS EXPUESTOS A CPU: BLOQUEAR. ******************/
-	CPU_BLOCK,				/* Pedido de bloqueo de hilo de proceso por recurso de CPU a Kernel. */
+	CPU_BLOCK,					/* Pedido de bloqueo de hilo de proceso por recurso de CPU a Kernel. */
 
 	/****************** SERVICIOS EXPUESTOS A CPU: DESPERTAR. ******************/
-	CPU_WAKE,				/* Pedido de desbloqueo hilo de proceso bloqueado por recurso de CPU a Kernel. */
+	CPU_WAKE,					/* Pedido de desbloqueo hilo de proceso bloqueado por recurso de CPU a Kernel. */
 
 
 	/****************** INTERFAZ MSP: RESERVAR SEGMENTO. ******************/
 	CREATE_SEGMENT,				/* Pedido de creación de segmento a MSP. */
-	OK_CREATE,				/* Respuesta de segmento creado de MSP. */
+	OK_CREATE,					/* Respuesta de segmento creado de MSP. */
 	FULL_MEMORY,				/* Respuesta de memoria llena. */
 	INVALID_SEG_SIZE,			/* Respuesta de tamaño de segmento inválido. */
-	MAX_SEG_NUM_REACHED,			/* Respuesta de máxima cantidad de segmentos del proceso alcanzada. */
+	MAX_SEG_NUM_REACHED,		/* Respuesta de máxima cantidad de segmentos del proceso alcanzada. */
 
 	/****************** INTERFAZ MSP: DESTRUIR SEGMENTO. ******************/
 	DESTROY_SEGMENT,			/* Pedido de destrucción de segmento a MSP. */
-	OK_DESTROY,				/* Respuesta de eliminado correcto de MSP. */
+	OK_DESTROY,					/* Respuesta de eliminado correcto de MSP. */
 
 	/****************** INTERFAZ MSP: SOLICITAR MEMORIA. ******************/
 	REQUEST_MEMORY,				/* Pedido de datos a la MSP. */
-	OK_REQUEST,				/* Respuesta de lectura correcta de MSP. */
+	OK_REQUEST,					/* Respuesta de lectura correcta de MSP. */
 
 	/****************** INTERFAZ MSP: ESCRIBIR MEMORIA. ******************/
 	WRITE_MEMORY,				/* Pedido de escritura en memoria a MSP. */
-	OK_WRITE,				/* Respuesta de escritura correcta de MSP. */
+	OK_WRITE,					/* Respuesta de escritura correcta de MSP. */
 
 	/****************** INTERFAZ MSP: SOLICITAR/ESCRIBIR MEMORIA. ******************/
 	INVALID_DIR,				/* Respuesta de dirección inválida. */

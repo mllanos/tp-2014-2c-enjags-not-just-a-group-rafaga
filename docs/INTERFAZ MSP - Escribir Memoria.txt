@@ -1,0 +1,15 @@
+title INTERFAZ MSP - Escribir Memoria
+
+Proceso->MSP: [WRITE_MEMORY, pid, dir, buffer, size]
+
+MSP->MSP: res = escribir_memoria(pid, dir, buffer, size)
+
+alt res < 0
+
+    MSP->Proceso: [SEGFAULT_WRITE]
+	
+else else
+
+    MSP->Proceso: [OK_WRITE]
+	
+end

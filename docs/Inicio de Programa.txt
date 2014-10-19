@@ -1,0 +1,47 @@
+title Inicio de Programa
+
+Consola->Kernel: [INIT_CONSOLE, beso_string, size]
+
+Kernel->Kernel: tcb = crear_tcb()
+
+Kernel->MSP: [CREATE_SEGMENT, tcb->pid, size]
+
+MSP->MSP:  dir_code = crear_segmento(tcb->pid, size)
+
+alt dir_code < 0
+
+	MSP->Kernel: [ENOMEM_CREATE]
+
+	Kernel->Consola: [KILL_CONSOLE]
+
+	Consola->Consola: finalizar()
+
+else else
+
+	MSP->Kernel: [OK_CREATE, dir_code]
+
+	Kernel->MSP: [CREATE_SEGMENT, tcb->pid, size_stack]
+
+	MSP->MSP: dir_stack = crear_segmento(tcb->pid, size_stack)
+
+	alt dir_stack < 0
+
+		MSP->Kernel: [ENOMEM_CREATE]
+
+		Kernel->Consola: [KILL_CONSOLE]
+
+		Consola->Consola: finalizar()
+
+	else else
+
+		MSP->Kernel: [OK_CREATE, dir_stack]
+
+		Kernel->MSP: [WRITE_MEMORY, pid, dir_seg, beso_string]
+
+		MSP->MSP: escribir_memoria(pid, dir_sed, beso, size)
+
+		MSP->Kernel: [OK_WRITE, mensaje]
+
+		MSP->MSP: cargar_tcb(tcb, dir_code, dir_stack)
+
+end

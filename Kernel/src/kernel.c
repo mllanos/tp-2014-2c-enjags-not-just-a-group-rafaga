@@ -17,6 +17,7 @@ void initialize(char *config_path)
 	console_list = list_create();
 	cpu_list = list_create();
 	resource_list = list_create();
+	join_list = list_create();
 	loader_queue = queue_create();
 	planificador_queue = queue_create();
 	syscall_queue = queue_create();
@@ -207,6 +208,7 @@ void finalize(void)
 	list_destroy_and_destroy_elements(console_list, (void *) free);
 	list_destroy_and_destroy_elements(cpu_list, (void *) free);
 	list_destroy_and_destroy_elements(resource_list, (void *) _resource_destroyer);
+	list_destroy_and_destroy_elements(join_list, (void *) free);
 	queue_destroy_and_destroy_elements(loader_queue, (void *) destroy_message);
 	queue_destroy_and_destroy_elements(planificador_queue, (void *) destroy_message);
 	queue_destroy_and_destroy_elements(syscall_queue, (void *) free);
@@ -221,8 +223,6 @@ void finalize(void)
 
 void interpret_message(int sock_fd, t_msg *recibido)
 {
-	hilos(process_list);
-
 	switch (recibido->header.id) {
 		/* Mensaje de Consola. */
 		case INIT_CONSOLE: 										/* <BESO_STRING> */
@@ -275,11 +275,11 @@ void interpret_message(int sock_fd, t_msg *recibido)
 t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 {
 	int i = 0, cont = 1;
-	t_msg *message[6];											/* 0-2 mensajes, 3-5 status. */
+	t_msg *message[6];
 	t_msg **status = message + 3;
 
-	message[0] = string_message(RESERVE_SEGMENT, "Reserva de segmento de codigo.", 2, tcb->pid, msg->header.length);
-	message[1] = string_message(RESERVE_SEGMENT, "Reserva de segmento de stack.", 2, tcb->pid, get_stack_size());
+	message[0] = string_message(CREATE_SEGMENT, "Reserva de segmento de codigo.", 2, tcb->pid, msg->header.length);
+	message[1] = string_message(CREATE_SEGMENT, "Reserva de segmento de stack.", 2, tcb->pid, get_stack_size());
 	message[2] = remake_message(WRITE_MEMORY, msg, 1, tcb->pid);
 
 	for (i = 0; i < 3 && cont; i++) {
@@ -289,29 +289,31 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 		status[i] = recibir_mensaje(msp_fd);
 		putmsg(status[i]);
 		
-		if (i < 2) {												/* Status de reserva de memoria. */
-			if (status[i]->header.id == ENOMEM_RESERVE) {
+		if (i < 2) {
+			if (MSP_RESERVE_FAILURE(status[i]->header.id)) {
 				cont = 0;
 				free(tcb);
 				tcb = NULL;
-			} else if (status[i]->header.id != OK_RESERVE) {
+			} else if (!MSP_RESERVE_SUCCESS(status[i]->header.id)) {
 				errno = EBADMSG;
 				perror("reservar_memoria");
 				exit(EXIT_FAILURE);
 			}
-		} else {												/* Status de escritura de codigo. */
-			if (status[i]->header.id == SEGFAULT_WRITE) {
+		} else {
+			if (MSP_WRITE_FAILURE(status[i]->header.id)) {
 				cont = 0;
 				free(tcb);
 				tcb = NULL;
-			} else if (status[i]->header.id != OK_WRITE) {
+			} else if (!MSP_WRITE_SUCCESS(status[i]->header.id)) {
 				errno = EBADMSG;
 				perror("reservar_memoria");
 				exit(EXIT_FAILURE);
 			}
 		}
 
-	} 
+	}
+
+	
 
 	if (cont) {
 		tcb->segmento_codigo = status[0]->argv[0];
@@ -362,7 +364,7 @@ int remove_from_lists(uint32_t sock_fd)
 
 			if (out_cpu->kernel_mode == false) { /* La CPU saliente tiene un hilo comun ejecutando. */
 
-				/* Borrar los procesos del CPU y avisar a consola. */
+				/* Finalizar el proceso del CPU y avisar a consola. */
 
 				void _notify_from_pid(t_hilo *a_tcb) {
 					if (a_tcb->pid == out_cpu->pid && a_tcb->pid == a_tcb->tid) { /* Hilo principal. */

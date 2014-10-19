@@ -1,0 +1,15 @@
+title INTERFAZ MSP - Crear Segmento
+
+Proceso->MSP: [CREATE_SEGMENT, pid, size]
+
+MSP->MSP: dir = crear_segmento(pid, size)
+
+alt dir < 0
+
+    MSP->Proceso: [ENOMEM_CREATE]
+	
+else else
+
+    MSP->Proceso: [OK_CREATE, dir]
+	
+end

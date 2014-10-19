@@ -1,0 +1,7 @@
+title Output Consola
+
+CPU->Kernel: [STRING_OUTPUT, string]
+
+Kernel->Consola: [STRING_OUTPUT, string]
+
+Consola->Consola: mostrar_output(string

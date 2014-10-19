@@ -1,0 +1,15 @@
+title INTERFAZ MSP - Solicitar Memoria
+
+Proceso->MSP: [REQUEST_MEMORY, pid, dir, size]
+
+MSP->MSP: buffer = leer_memoria(pid, dir, size)
+
+alt buffer == NULL
+
+    MSP->Proceso: [SEGFAULT_REQUEST]
+	
+else else
+
+    MSP->Proceso: [OK_REQUEST, buffer, size]
+	
+end

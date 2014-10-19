@@ -1,0 +1,13 @@
+title Input Consola
+
+CPU->Kernel: [NUMERIC_INPUT | STRING_INPUT]
+
+Kernel->Kernel: cpu_sock_fd = obtener_sock_cpu()
+
+Kernel->Consola: [NUMERIC_INPUT | STRING_INPUT, cpu_sock_fd]
+
+Consola->Consola: buffer = input_por_tipo(NUMERIC_INPUT | STRING_INPUT)
+
+Consola->Kernel: [REPLY_INPUT, buffer, cpu_sock_fd]
+
+Kernel->CPU: [REPLY_INPUT, buffer]

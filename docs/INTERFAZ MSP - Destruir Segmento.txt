@@ -1,0 +1,5 @@
+title INTERFAZ MSP - Destruir Segmento
+
+Proceso->MSP: [DESTROY_SEGMENT, pid, base]
+
+MSP->MSP: destruir_segmento(pid, base)
