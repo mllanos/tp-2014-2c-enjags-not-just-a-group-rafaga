@@ -351,9 +351,6 @@ t_hilo *retrieve_tcb(t_msg *msg)
 }
 
 
-
-
-
 void create_file(char *path,size_t size) {
 
 	FILE *f = fopen(path, "wb");
@@ -395,6 +392,19 @@ char* read_file(char *path, size_t size) {
 	buffer[size] = '\0';
 
 	return buffer;
+}
+
+
+void memcpy_from_file(char *dest,char *path,size_t size) {
+	FILE *f = fopen(path, "rb");
+	if(f == NULL) {
+		perror("fopen");
+		exit(EXIT_FAILURE);
+	}
+
+	fread(dest, size, 1, f);
+
+	fclose(f);
 }
 
 

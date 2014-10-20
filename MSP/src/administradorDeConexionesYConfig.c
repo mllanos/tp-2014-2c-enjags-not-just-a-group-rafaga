@@ -22,7 +22,9 @@ void cargarConfiguracion(char* path) {
 void *atenderConsola(void* parametro) {
 
 	t_msg_id msg_id;
-	char *error,*bytesAEscribir;//buffer
+	int i,seg,pag,cantPag;
+	t_segmento *tabla;
+	char *error,*buffer,*stringPID;//buffer
 	uint32_t pid,size,direccionLogica,baseSegmento;
 
 	puts("Inicio de Consola MSP. A la espera de comandos...\n");
@@ -32,16 +34,16 @@ void *atenderConsola(void* parametro) {
 		switch(esperarComando()) {
 		case ESCRIBIR_MEMORIA:
 			scanf("%u%u%u",&pid,&direccionLogica,&size);
-			scanf("%*[ \t]%m[^\n]",&bytesAEscribir);
+			scanf("%*[ \t]%m[^\n]",&buffer);
 
 			pthread_mutex_lock(&MemMutex);
-			msg_id = escribirMemoria(pid,direccionLogica,bytesAEscribir+1,size);
+			msg_id = escribirMemoria(pid,direccionLogica,buffer,size);
 			pthread_mutex_unlock(&MemMutex);
 
 			if( msg_id == SEGMENTATION_FAULT)
 				puts("ERROR: SEGMENTATION FAULT.");
 
-			free(bytesAEscribir);
+			free(buffer);
 			break;
 		case CREAR_SEGMENTO:
 			scanf("%u%u",&pid,&size);
@@ -52,7 +54,6 @@ void *atenderConsola(void* parametro) {
 
 			pthread_mutex_lock(&LogMutex);
 			if(msg_id == OK_CREATE) {
-				//pthread_mutex_lock(&LogMutex);
 				log_trace(Logger,"Segmento %d del proceso %d creado correctamente.",segmento(direccionLogica),pid);
 				pthread_mutex_unlock(&LogMutex);
 
@@ -60,7 +61,6 @@ void *atenderConsola(void* parametro) {
 			}
 			else {
 				error = id_string(msg_id);
-				//pthread_mutex_lock(&LogMutex);
 				log_error(Logger,"No se pudo crear el segmento %d del proceso %u: %s.",segmento(direccionLogica),pid,error);
 				pthread_mutex_unlock(&LogMutex);
 
@@ -78,27 +78,85 @@ void *atenderConsola(void* parametro) {
 
 			pthread_mutex_lock(&LogMutex);
 			if(msg_id == OK_DESTROY) {
-				//pthread_mutex_lock(&LogMutex);
 				log_trace(Logger,"Segmento %u del proceso %u destruido correctamente.",segmento(baseSegmento),pid);
 				pthread_mutex_unlock(&LogMutex);
+
+				printf("Segmento %u del proceso %u destruido correctamente.",segmento(baseSegmento),pid);
 			}
 			else {
-				//pthread_mutex_lock(&LogMutex);
 				log_error(Logger,"No se pudo destruir el segmento %u del proceso %u.",segmento(baseSegmento),pid);
 				pthread_mutex_unlock(&LogMutex);
+
+				printf("No se pudo destruir el segmento %u del proceso %u.",segmento(baseSegmento),pid);
 			}
 			break;
 		case LEER_MEMORIA:
 			scanf("%u%u%u",&pid,&direccionLogica,&size);
 
 			pthread_mutex_lock(&MemMutex);
-			bytesAEscribir = solicitarMemoria(pid,direccionLogica,size,&msg_id);
+			buffer = solicitarMemoria(pid,direccionLogica,size,&msg_id);
 			pthread_mutex_unlock(&MemMutex);
 
 			if(msg_id == SEGMENTATION_FAULT)
 				puts("ERROR: SEGMENTATION FAULT.");
 			else
-				printf("%.*s\n",size,bytesAEscribir);
+				printf("%.*s\n",size,buffer);
+			break;
+		case TABLA_SEGMENTOS:
+			printf("PID\tNº Segmento\tTamaño\t\tDirección Base\n");
+
+			pthread_mutex_lock(&LogMutex);
+			log_trace(Logger,"PID\tNº Segmento\tTamaño\t\tDirección Base");
+			pthread_mutex_unlock(&LogMutex);
+
+			dictionary_iterator(TablaSegmentosGlobal,imprimirSegmento);
+			break;
+		case TABLA_PAGINAS:
+			scanf("%u",&pid);
+
+			if((tabla = dictionary_get(TablaSegmentosGlobal,stringPID = string_itoa(pid))) == NULL) {
+				free(stringPID);
+				puts("PID INVÁLIDO");
+				break;
+			}
+
+			free(stringPID);
+
+			printf("Nº Segmento\tNº Página\tEn Memoria\n");
+
+			pthread_mutex_lock(&LogMutex);
+			log_trace(Logger,"Nº Segmento\tNº Página\tEn Memoria");
+			pthread_mutex_unlock(&LogMutex);
+
+			for(seg=0;seg < NUM_SEG_MAX;++seg)
+				if(segmentoValido(tabla,seg)) {
+					cantPag = cantidadPaginasTotalDelSegmento(tabla,seg);
+
+					for(pag=0;pag < cantPag;++pag) {
+						pthread_mutex_lock(&LogMutex);
+						log_trace(Logger,"%u\t\t%u\t\t%u",seg,pag,tabla[seg].tablaPaginas[pag].bitPresencia);
+						pthread_mutex_unlock(&LogMutex);
+
+						printf("%u\t\t%u\t\t%u\n",seg,pag,tabla[seg].tablaPaginas[pag].bitPresencia);
+					}
+				}
+			break;
+		case LISTAR_MARCOS:
+			printf("Nº Marco\tOcupado\t\tPID\n");
+
+			pthread_mutex_lock(&LogMutex);
+			log_trace(Logger,"Nº Marco\tOcupado\t\tPID");
+			pthread_mutex_unlock(&LogMutex);
+
+			for(i=0;i < CantidadMarcosTotal;++i) {
+				pthread_mutex_lock(&LogMutex);
+				log_trace(Logger,"%u\t\t%u\t\t%u",i,MemoriaPrincipal[i].ocupado,MemoriaPrincipal[i].pid);
+				pthread_mutex_unlock(&LogMutex);
+
+				printf("%u\t\t%u\t\t%u\n",i,MemoriaPrincipal[i].ocupado,MemoriaPrincipal[i].pid);
+			}
+			//falta info de los algoritmos de sustitucion
+
 			break;
 		default:
 			puts("COMANDO INVÁLIDO.");
@@ -158,14 +216,12 @@ void *atenderProceso(void* parametro) {
 
 				pthread_mutex_lock(&LogMutex);
 				if(msg->header.id == OK_CREATE) {
-					//pthread_mutex_lock(&LogMutex);
 					log_trace(Logger,"Segmento %d del proceso %d creado correctamente",pid,segmento(direccionLogica));
 					pthread_mutex_unlock(&LogMutex);
 				}
 				else {
 					error = id_string(msg->header.id);
 
-					//pthread_mutex_lock(&LogMutex);
 					log_error(Logger,"No se pudo crear el segmento %d del proceso %d: %s",pid,segmento(direccionLogica),error);
 					pthread_mutex_unlock(&LogMutex);
 
@@ -188,12 +244,10 @@ void *atenderProceso(void* parametro) {
 
 				pthread_mutex_lock(&LogMutex);
 				if(msg->header.id == OK_DESTROY) {
-					//pthread_mutex_lock(&LogMutex);
 					log_trace(Logger,"Segmento %d del proceso %d destruido correctamente",pid,segmento(baseSegmento));
 					pthread_mutex_unlock(&LogMutex);
 				}
 				else {
-					//pthread_mutex_lock(&LogMutex);
 					log_error(Logger,"No se pudo destruir el segmento %d del proceso %d",pid,segmento(baseSegmento));
 					pthread_mutex_unlock(&LogMutex);
 				}
@@ -270,4 +324,19 @@ t_comando_consola esperarComando(void) {
 
 	return idCommand;
 
+}
+
+void imprimirSegmento(char *pid,void *data) {
+
+	int seg;
+	t_segmento *tabla = (t_segmento*) data;
+
+	for(seg=0;seg < NUM_SEG_MAX;++seg)
+		if(segmentoValido(tabla,seg)) {
+			pthread_mutex_lock(&LogMutex);
+			log_trace(Logger,"%s\t\t%u\t%u\t\t%u",pid,seg,tabla[seg].limite,generarDireccionLogica(seg,0,0));
+			pthread_mutex_unlock(&LogMutex);
+
+			printf("%s\t\t%u\t%u\t\t%u\n",pid,seg,tabla[seg].limite,generarDireccionLogica(seg,0,0));
+		}
 }

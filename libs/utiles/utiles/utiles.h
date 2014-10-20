@@ -206,7 +206,7 @@ void destroy_message(t_msg *mgs);
 void create_file(char *path,size_t size);
 
 /*
- * Vacía el archivo indicado por path.
+ * Vacía el archivo indicado por path. Si no existe lo crea.
  */
 void clean_file(char *path);
 
@@ -214,6 +214,11 @@ void clean_file(char *path);
  * Lee un archivo y retorna los primeros size bytes de su contenido.
  */
 char* read_file(char *path, size_t size);
+
+/*
+ * Copia el contenido del archivo path (debe existir) en dest.
+ */
+void memcpy_from_file(char *dest,char *path,size_t size);
 
 /*
  * Elimina los primeros size bytes del archivo path, y los retorna.

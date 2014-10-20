@@ -15,6 +15,8 @@
 #include <utiles/utiles.h>
 #include <commons/config.h>
 
+//#include "aux.h"
+
 #define K 1024
 #define M 1048576
 #define PAG_SIZE 256
@@ -27,6 +29,7 @@ typedef uint8_t bit;
 /* Estructuras */
 typedef struct {
 	bit ocupado;	/* 1: ocupado - 0: disponible */
+	uint32_t pid;
 	char marco[PAG_SIZE];
 } __attribute__ ((__packed__)) t_marco;
 

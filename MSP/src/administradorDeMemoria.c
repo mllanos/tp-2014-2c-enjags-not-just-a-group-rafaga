@@ -60,9 +60,6 @@ uint32_t crearSegmento(uint32_t pid, size_t size, t_msg_id* id) {
 	if(CantPaginasDisponibles >= cantPaginas) {
 
 		int pag;
-		char* path;
-		char* stringPID;
-		char* stringSEG;
 		t_segmento *tablaLocal;
 
 		if( ( tablaLocal = tablaDelProceso(pid) ) == NULL )	{				//intentar evitar la conversion a char con itoa; el NULL está por el warning
@@ -83,41 +80,44 @@ uint32_t crearSegmento(uint32_t pid, size_t size, t_msg_id* id) {
 		tablaLocal[numSegmento].bytesOcupados = 0;
 		tablaLocal[numSegmento].tablaPaginas = malloc(cantPaginas * sizeof(t_pagina));
 
-		stringPID = string_itoa(pid);
-		stringSEG = string_itoa(numSegmento);
+
 
 		/* Creo las páginas que va a ocupar el segmento en el espacio de SWAP */
 		for(pag = 0;pag < cantPaginas && CantPaginasEnSwapDisponibles;++pag,--CantPaginasEnSwapDisponibles) {
-			create_file(path = string_from_format("%s%s%s%s",SwapPath,stringPID,stringSEG,string_itoa(pag)),PAG_SIZE-1);
+
+			char* path = string_from_format("%s%u-%u-%u",SwapPath,pid,numSegmento,pag);
+
+			create_file(path,PAG_SIZE-1);
 			paginaEnMemoria(tablaLocal,numSegmento,pag) = false;
 
+			free(path);
 		}
 
 		if(CantPaginasEnSwapDisponibles == 0) {
 			pthread_mutex_lock(&LogMutex);
-			log_trace(Logger,"Espacio de intercambio llleno");
+			log_trace(Logger,"Espacio de intercambio llleno.");
 			pthread_mutex_unlock(&LogMutex);
 		}
 
 		/* Si la SWAP se llena reservo marcos de Memoria Principal para el resto de las páginas */
 		for(;pag < cantPaginas;++pag,--CantPaginasEnMemoriaDisponibles) {
+
 			MemoriaPrincipal[ marcoDePagina(tablaLocal,numSegmento,pag) = marcoVacio() ].ocupado = true;
+			MemoriaPrincipal[ marcoDePagina(tablaLocal,numSegmento,pag) ].pid = pid;
 			paginaEnMemoria(tablaLocal,numSegmento,pag) = true;
 			AgregarPaginaAEstructuraSustitucion(pid,numSegmento,pag);
+
 			pthread_mutex_lock(&LogMutex);
-			log_trace(Logger,"Marco %d asignado al proceso %d",marcoDePagina(tablaLocal,numSegmento,pag),pid);
+			log_trace(Logger,"Marco %u asignado al proceso %u.",marcoDePagina(tablaLocal,numSegmento,pag),pid);
 			pthread_mutex_unlock(&LogMutex);
 		}
 
 		if(CantPaginasEnMemoriaDisponibles == 0) {
 			pthread_mutex_lock(&LogMutex);
-			log_trace(Logger,"Memoria Principal lllena");
+			log_trace(Logger,"Memoria Principal lllena.");
 			pthread_mutex_unlock(&LogMutex);
 		}
 
-		free(path);
-		free(stringPID);
-		free(stringSEG);
 	}
 	else {
 		*id = FULL_MEMORY;
@@ -208,10 +208,8 @@ t_msg_id destruirSegmento(uint32_t pid, uint32_t baseSegmento){
 
 	if(tabla && segmentoValido(tabla,numeroSegmento)) {
 
+		char *shellInstruction;
 		int pag,cantPagEnMemoria;
-		char* stringPID;
-		char* stringSEG;
-		char* shellInstruction;
 		uint16_t cantPaginas = cantidadPaginasTotalDelSegmento(tabla,numeroSegmento);
 
 		for(cantPagEnMemoria = 0,pag = 0;pag < cantPaginas;++pag)
@@ -221,15 +219,12 @@ t_msg_id destruirSegmento(uint32_t pid, uint32_t baseSegmento){
 				liberarMarco(tabla,numeroSegmento,pag);
 				QuitarDeEstructuraDeSeleccion(pid,numeroSegmento,pag);
 				pthread_mutex_lock(&LogMutex);
-				log_trace(Logger,"Marco %d desasignado al proceso %d",marcoDePagina(tabla,numeroSegmento,pag),pid);
+				log_trace(Logger,"Marco %u desasignado al proceso %u.",marcoDePagina(tabla,numeroSegmento,pag),pid);
 				pthread_mutex_unlock(&LogMutex);
 			}
 
 		/* Borra todas las páginas swappeadas del segmento */
-
-		stringPID = string_itoa(pid);
-		stringSEG = string_itoa(numeroSegmento);
-		shellInstruction = string_from_format("%s%s%s%s%s%s%s","cd ",SwapPath,"\n","rm ",stringPID,stringSEG,"*");
+		shellInstruction = string_from_format("cd %s\nrm %u-%u-*",SwapPath,pid,numeroSegmento);
 
 		system(shellInstruction);
 
@@ -239,8 +234,6 @@ t_msg_id destruirSegmento(uint32_t pid, uint32_t baseSegmento){
 		tabla[numeroSegmento].limite = 0;
 
 		free(shellInstruction);
-		free(stringPID);
-		free(stringSEG);
 		//validar si es el único segmento del proceso, en ese caso probablemente habría que eliminar la entrada del diccionario
 		//Por ahi el kernel me puede avisar, total los últimos segmentos en borrarse son stack y código, y coinciden con la finalización del programa
 	}
@@ -278,8 +271,6 @@ t_segmento* traducirDireccion(uint32_t pid,uint32_t direccionLogica,uint16_t *nu
 void traerPaginaAMemoria(t_segmento *tabla,uint32_t pid,uint16_t seg,uint16_t pag) {
 
 	uint32_t numMarco;
-	char *data;
-	char *pidPath,*segPath,*pagPath;
 	char *path = obtenerSwapPath(pid,seg,pag);
 
 	if((numMarco = marcoVacio()) == CantidadMarcosTotal)
@@ -288,29 +279,25 @@ void traerPaginaAMemoria(t_segmento *tabla,uint32_t pid,uint16_t seg,uint16_t pa
 		++CantPaginasEnSwapDisponibles;
 		if(--CantPaginasEnMemoriaDisponibles == 0) {
 			pthread_mutex_lock(&LogMutex);
-			log_trace(Logger,"Memoria Principal lllena");
+			log_trace(Logger,"Memoria Principal lllena.");
 			pthread_mutex_unlock(&LogMutex);
 		}
 		AgregarPaginaAEstructuraSustitucion(pid,seg,pag);
 	}
 
-	memcpy(MemoriaPrincipal[numMarco].marco,data = read_file(path,PAG_SIZE),PAG_SIZE);
+	memcpy_from_file(MemoriaPrincipal[numMarco].marco,path,PAG_SIZE);
 	remove(path);
+	free(path);
 
 	pthread_mutex_lock(&LogMutex);
-	log_trace(Logger,"Intercambio de página %d del segmento %d del proceso %d desde disco.",pag,seg,pid);
-	log_trace(Logger,"Marco %d asignado al proceso %d.",numMarco,pid);
+	log_trace(Logger,"Intercambio de página %u del segmento %u del proceso %u desde disco.",pag,seg,pid);
+	log_trace(Logger,"Marco %u asignado al proceso %u.",numMarco,pid);
 	pthread_mutex_unlock(&LogMutex);
 
 	marcoDePagina(tabla,seg,pag) = numMarco;
 	paginaEnMemoria(tabla,seg,pag) = true;
+	MemoriaPrincipal[numMarco].pid = pid;
 	MemoriaPrincipal[numMarco].ocupado = true;
-
-	free(data);
-	free(path);
-	free(pidPath);
-	free(segPath);
-	free(pagPath);
 
 }
 
@@ -326,12 +313,12 @@ uint32_t marcoVacio(void) {
 
 uint32_t rutinaSustitucion(uint32_t inPid,uint16_t inSeg,uint16_t inPag) {
 
+	char *path;
 	t_segmento* outTabla;
 	uint32_t outPid = inPid;
 	uint16_t outSeg = inSeg;
 	uint16_t outPag = inPag;
 	uint32_t numMarcoLiberado;
-	char *path,*pidPath,*segPath,*pagPath;
 
 	RutinaSeleccionPaginaVictima(&outTabla,&outPid,&outSeg,&outPag);
 
@@ -346,14 +333,11 @@ uint32_t rutinaSustitucion(uint32_t inPid,uint16_t inSeg,uint16_t inPag) {
 	MemoriaPrincipal[numMarcoLiberado].ocupado = false;
 
 	pthread_mutex_lock(&LogMutex);
-	log_trace(Logger,"Intercambio de página %d del segmento %d del proceso %d hacia disco",outPag,outSeg,outPid);
-	log_trace(Logger,"Marco %d desasignado al proceso %d",numMarcoLiberado,outPid);
+	log_trace(Logger,"Intercambio de página %u del segmento %u del proceso %u hacia disco.",outPag,outSeg,outPid);
+	log_trace(Logger,"Marco %u desasignado al proceso %u.",numMarcoLiberado,outPid);
 	pthread_mutex_unlock(&LogMutex);
 
 	free(path);
-	free(pidPath);
-	free(segPath);
-	free(pagPath);
 
 	return numMarcoLiberado;
 

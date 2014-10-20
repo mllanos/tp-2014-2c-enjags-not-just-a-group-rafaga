@@ -23,5 +23,6 @@ void cargarConfiguracion(char* path);
 void *atenderProceso(void* parametro);
 void *atenderConsola(void* parametro);
 t_comando_consola esperarComando(void);
+void imprimirSegmento(char *pid,void *data);
 
 #endif /* ADMINISTRADORDECONEXIONESYCONFIG_H_ */

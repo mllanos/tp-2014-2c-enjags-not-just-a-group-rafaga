@@ -14,6 +14,7 @@
 #include <commons/string.h>
 #include <commons/collections/dictionary.h>
 
+
 /* Funciones Macro */
 
 /* Direcciones */
@@ -27,10 +28,10 @@
 	*OFFSET = (DIRLOG << 24) >> 24; //creo que no hace falta, asignándolo a un int de menor tamaño elimina los bits de más
 
 #define generarDireccionLogica(SEG,PAG,OFFSET) ((SEG << 20) + (PAG << 8) + OFFSET)
+#define obtenerSwapPath(PID,SEG,PAG) string_from_format("%s%u-%u-%u",SwapPath,PID,SEG,PAG)
 #define tablaDelProceso(PID) (t_segmento*) dictionary_get(TablaSegmentosGlobal,string_itoa(PID))
 #define liberarMarco(TABLA,SEG,PAG) MemoriaPrincipal[TABLA[SEG].tablaPaginas[PAG].numMarco].ocupado = 0
 #define direccionFisica(TABLA,SEG,PAG,OFFSET) (MemoriaPrincipal[TABLA[SEG].tablaPaginas[PAG].numMarco].marco + OFFSET)
-#define obtenerSwapPath(PID,SEG,PAG) string_from_format("%s%s%s%s",SwapPath,pidPath = string_itoa(PID),segPath = string_itoa(SEG),pagPath = string_itoa(PAG))
 
 /* Segmentos */
 #define segmento(DIRLOG) (DIRLOG >> 20)
