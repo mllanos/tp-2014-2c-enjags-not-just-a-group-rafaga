@@ -20,6 +20,12 @@ typedef struct {
 } t_resource;
 
 
+typedef struct {
+	uint32_t tid_waiter;
+	uint32_t tid_joined;
+} t_join;
+
+
 /* Funciones planificador. */
 
 /*

@@ -28,9 +28,15 @@
 #define PANEL_PATH "../panel"
 #define MAXEVENTS 64
 
+/* Macros de respuesta MSP. */
+#define MSP_RESERVE_FAILURE(s) (s == FULL_MEMORY || s == INVALID_SEG_SIZE || s == MAX_SEG_NUM_REACHED)
+#define MSP_RESERVE_SUCCESS(s) (s == OK_CREATE)
+#define MSP_WRITE_FAILURE(s) (s == INVALID_DIR || s == SEGMENTATION_FAULT)
+#define MSP_WRITE_SUCCESS(s) (s == WRITE_OK)
+
+
 
 typedef enum { THREAD_ID, CONSOLE_ID, CPU_ID } t_unique_id;
-
 
 /* Funciones Kernel. */
 
@@ -96,6 +102,7 @@ t_list *process_list;
 t_list *console_list;
 t_list *cpu_list;
 t_list *resource_list;
+t_list *join_list;
 
 
 /* Colas. */

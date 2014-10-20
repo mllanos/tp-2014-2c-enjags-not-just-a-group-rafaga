@@ -68,10 +68,31 @@ void bprr_algorithm(void)
 	bool _ordenar_por_prioridades(t_hilo *a_tcb, t_hilo *b_tcb) {
 		if (a_tcb->cola == READY && b_tcb->cola == READY)
 			return a_tcb->kernel_mode <= b_tcb->kernel_mode;
-	return true;
+		return true;
 	}
 
 	list_sort(process_list, (void *) _ordenar_por_prioridades);
+
+	/* Desbloquear los hilos que se hayan unido a un hilo saliente. */
+
+	void _desbloquear_join(t_hilo *a_tcb) {
+		if(a_tcb->cola == EXIT) {
+			bool _join_by_tid(t_join *a_join) {
+				return a_join->tid_joined == a_tcb->tid;
+			}
+
+			t_join *joined = list_remove_by_condition(join_list, (void *) _join_by_tid);
+
+			if(joined != NULL) {
+				bool _process_by_tid(t_hilo *b_tcb) {
+					return b_tcb->tid == joined->tid_waiter;
+				}
+
+				t_hilo *desbloqueado = list_find(process_list, (void *) _process_by_tid);
+				desbloqueado->cola = READY;
+			}
+		}
+	}
 
 	/* Liberar los recursos de los procesos EXIT. */
 
@@ -228,19 +249,19 @@ void create_thread(t_hilo *padre)
 	new_tcb->pid = padre->pid;
 	new_tcb->tid = get_unique_id(THREAD_ID);
 
-	t_msg *r_stack = string_message(RESERVE_SEGMENT, "Reservando segmento de stack para hilo nuevo.", 0, new_tcb->pid, get_stack_size());
+	t_msg *r_stack = string_message(CREATE_SEGMENT, "Reservando segmento de stack para hilo nuevo.", 0, new_tcb->pid, get_stack_size());
 
 	enviar_mensaje(msp_fd, r_stack);
 
 	t_msg *status = recibir_mensaje(msp_fd);
 
-	if (status->header.id == OK_RESERVE) { /* Memoria reservada. */
+	if (MSP_RESERVE_SUCCESS(status->header.id)) { /* Memoria reservada. */
 		/* Encolar el hilo a READY. */
 		new_tcb->base_stack = status->argv[0];
 		new_tcb->cursor_stack = new_tcb->base_stack;
 		new_tcb->cola = READY;
 		list_add(process_list, new_tcb);
-	} else if (status->header.id == ENOMEM_RESERVE) { /* No hay suficiente memoria. */
+	} else if (MSP_RESERVE_FAILURE(status->header.id)) { /* No hay suficiente memoria. */
 		/* Finalizar todos los hilos del proceso y avisar a consola. */
 
 		void _finalize_by_pid(t_hilo *a_tcb) {
@@ -272,21 +293,27 @@ void create_thread(t_hilo *padre)
 }
 
 
-void join_thread(uint32_t tid_caller, uint32_t tid_towait) /* TODO implementacion. */
+void join_thread(uint32_t tid_waiter, uint32_t tid_joined)
 {
-	bool _find_by_tid_c(t_hilo *a_tcb) {
-		return a_tcb->tid == tid_caller;
-	}
-
-	t_hilo *caller = list_find(process_list, (void *) _find_by_tid_c);
-
 	bool _find_by_tid_w(t_hilo *a_tcb) {
-		return a_tcb->tid == tid_towait;
+		return a_tcb->tid == tid_waiter;
 	}
 
-	t_hilo *towait = list_find(process_list, (void *) _find_by_tid_w);
+	t_hilo *tcb_waiter = list_find(process_list, (void *) _find_by_tid_w);
 
-	caller->cola = BLOCK;
+	bool _find_by_tid_j(t_hilo *a_tcb) {
+		return a_tcb->tid == tid_joined;
+	}
+
+	t_hilo *tcb_joined = list_find(process_list, (void *) _find_by_tid_j);
+
+	tcb_waiter->cola = BLOCK;
+
+	t_join *new_join = malloc(sizeof *new_join);
+	new_join->tid_waiter = tid_waiter;
+	new_join->tid_joined = tid_joined;
+
+	list_add(join_list, new_join);
 }
 
 
