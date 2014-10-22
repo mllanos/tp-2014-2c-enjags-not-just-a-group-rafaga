@@ -478,12 +478,9 @@ void escribirMemoria(u_int32_t pid, u_int32_t direccion_logica, char* bytes, u_i
 	if (pag != NULL ) {
 		log_debug(logfile,"escribirMemoria()==>Se encontro la posicion logica en la memoria");
 	} else {
-<<<<<<< HEAD
+
 		log_error(logfile,"escribirMemoria()==>No se encontro la posicion logica en la memoria");
-=======
-		log_error(logfile,
-			"escribirMemoria()==>No se encontro la posicion logica en la memoria");
->>>>>>> d5bbd5ecf6897299a8888f9d77fd657f26f84e8d
+		
 	}
 
 	prepararAlgoritmoReemplazo(pag); // Aplico el algoritmo a la pagina
@@ -743,6 +740,7 @@ t_nodo *buscarPaginasCLOCK(t_list *lista, t_nodo *elim_swap) {
 		}
 		s=0;
 		i++;
+		if (i == list_size(lista)) ? i=0;
 	}
 	return elim_swap;
 }
@@ -1003,29 +1001,9 @@ int crearSocket(){
 	return unSocket;
 }
 
-<<<<<<< HEAD
+
 void bindearSocket(int unSocket,char *dirIP,int puerto){
 	struct sockaddr_in dirServidor;
-=======
-void consolaMSP () {
-	char command[35];
-	char action[15];
-	char stream[10];
-	char *texto;
-	u_int32_t pid;
-	u_int32_t size;
-	u_int32_t direccion;
-	while(1){
-		scanf("%s",command);
-		int i=0;
-		while(command[i]!="" || command[i]!="\0"){
-			action[i]=command[i];
-			i++;
-		}
-		int j=i+1;
-		i=0;
->>>>>>> d5bbd5ecf6897299a8888f9d77fd657f26f84e8d
-
 	dirServidor.sin_addr.s_addr=inet_addr(dirIP);
 	dirServidor.sin_port=htons(puerto);
 	dirServidor.sin_family=AF_INET;
@@ -1057,14 +1035,12 @@ void pantallaComandos(){
 		"CREAR SEGMENTO:       CREA_SEG  {id-Proceso} {tamanio}\n"
 		"DESTRUIR SEGMENTO:    ELIM_SEG  {id-Proceso} {tamanio}\n"
 		"ESCRIBIR SEGMENTO:    WRITE_MEM {id-Proceso} {direccion} {tamanio} {data}\n"
-		"LEER SEGMENTO:		   LEE_MEM   {id-Proceso} {direccion} {tamanio}\n  "
+		"LEER SEGMENTO:	       LEE_MEM   {id-Proceso} {direccion} {tamanio}\n  "
 		"TABLA DE PAGINAS:     PAGS      {id-Proceso}\n"
 		"TABLA DE SEGMENTOS:   SEGS		 \n"
 		"MARCOS OCUPADOS:      MARCS\n"
 		"-----------------------------------------------------------------------------\n");
 
-
-<<<<<<< HEAD
 }
 
 void atenderConsola(){
@@ -1106,82 +1082,14 @@ void atenderConsola(){
 
 				printf("Id:%5zu  Num:%5zu  Paginas:%5zu  Direccion:%30zu \n",seg->id,seg->num_segmento,s ,armarDireccion(seg->num_segmento, 0, 0));
 
+				i++;
+			}
 
-=======
-		else if (strcmp(action,"memoryWrite",i)==0) { //ESCRIBIR_MEMORIA
-			while(command[j]!=",") {
-				stream[i]=command[j];
-				i++;
-				j++;
-			}
-				j++;
-				i=0;
-				pid=atoi(stream); // capturo pid
-				stream[0]="\0";
-			while(command[j]!=",") {
-				stream[i]=command[j];
-				i++;
-				j++;
-			}
-				direccion=atoi(stream);
-				j++;
-				i=0;
-				stream[0]="\0";
-			while(command[j]!=",") {
-				stream[i]=command[j];
-				i++;
-				j++;
-			}
-				size=atoi(stream);
-				j++;
-				i=0;
-				stream[0]="\0";
-			while(command[j]!="\0") {
-				stream[i]=command[j];
-				i++;
-				j++;
-			}
-				texto=stream;
-				escribirMemoria(pid,direccion,texto,size);
-		}
-
-
-		else if (strcmp(action,"memoryRead",i)==0) {
-			while(command[j]!=",") {
-				stream[i]=command[j];
-				i++;
-				j++;
-			}
-				j++;
-				i=0;
-				pid=atoi(stream); // capturo pid
-				stream[0]="\0";
-			while(command[j]!=",") {
-				stream[i]=command[j];
-				i++;
-				j++;
-			}
-				direccion=atoi(stream);
-				j++;
-				i=0;
-				stream[0]="\0";
-			while(command[j]!="\0") {
-				stream[i]=command[j];
->>>>>>> d5bbd5ecf6897299a8888f9d77fd657f26f84e8d
-				i++;
-			}
-<<<<<<< HEAD
 	}
-=======
-				size=atoi(stream);
-				leerMemoria(pid,direccion,size);
-		}
->>>>>>> d5bbd5ecf6897299a8888f9d77fd657f26f84e8d
 
 	if(string_equals_ignore_case(primera,"PAGS")){
 		pid=strtok(NULL," ");
 
-<<<<<<< HEAD
 		int i = 0;
 			while (i < list_size(listaSegmentos)) {
 
@@ -1190,21 +1098,6 @@ void atenderConsola(){
 					if (seg->id == atoi(pid)){
 						int s= 0;
 						while (s < list_size(seg->paginas)) {
-=======
-		else if (strcmp(action,"segmentsTable",i)==0) {
-			t_link_element *element = listaSegmentos->head;
-			printf("PID          N° Segmento              Tamano            Direccion Base");
-			while (element != NULL) {
-				printf(element->data->pid);
-				printf(element->data->num_segmento);
-				printf(sizeof(element->data));
-				direccion = armarDireccion(element->data->num_segmento, element->data->paginas->num_pagina, 0);
-				printf(direccion);
-				element = element->next;
-			}
-		}
->>>>>>> d5bbd5ecf6897299a8888f9d77fd657f26f84e8d
-
 							t_pagina *pag = list_get(seg->paginas, s);
 							printf("Num:%5zu  Estado:%5zu \n",seg->num_segmento,pag->bit);
 							s++;
@@ -1214,7 +1107,7 @@ void atenderConsola(){
 
 				i++;
 			}
-<<<<<<< HEAD
+
 
 	}
 	if(string_equals_ignore_case(primera,"LEE_MEM")){
@@ -1231,22 +1124,8 @@ void atenderConsola(){
 		retorno[atoi(tamanio)-1] = '\n';
 		printf("Contenido: %s \n", retorno);
 		free(retorno);
-=======
-				pid=atoi(stream);
-				t_list *filter_list = list_filter(listaSegmentos, es_igual_pid(listaSegmentos->head->data));
-				t_link_element *element = filter_list->head;
-				while (element != NULL) {
-					printf(element->data->paginas->data->num_pagina);
-					if (element->data->paginas->data->bit == 1){
-						printf("Esta en memoria");
-					} else if (element->data->paginas->data->bit == 2) {
-						printf("Esta swappeada");
-					}
-					printf(element->data->num_segmento);
-					element = element->next;
-				}
->>>>>>> d5bbd5ecf6897299a8888f9d77fd657f26f84e8d
-		}
+
+	}
 
 	if(string_equals_ignore_case(primera,"MARCS")){
 		int m = 0;
@@ -1254,7 +1133,6 @@ void atenderConsola(){
 			t_memoria *mem = list_get(listaMemoriaPrincipal, m);
 			if (mem->bit == 1){
 
-<<<<<<< HEAD
 				int i = 0;
 				while (i < list_size(listaSegmentos)) {
 
@@ -1278,26 +1156,7 @@ void atenderConsola(){
 				printf("Num:%5zu  Ocu:%5zu  PID:%5zu  Algoritmo:%5zu \n",mem->num_marco ,mem->bit,0,0);
 			}
 		m++;
-=======
-		else if (strcmp(action,"listFrames",i)==0) {
-			t_link_element *element = listaMemoriaPrincipal->head;
-			while (element != NULL) {
-				printf(element->data->num_marco);
-				if (element->data->bit == 0) {
-					printf("El marco esta libre");
-				} else if (element->data->bit == 1) {
-					printf("El marco esta ocupado");
-				}
-				t_list *filter_list = list_filter(listaSegmentos, listaSegmentos->head->data->paginas->num_marco==listaMemoriaPrincipal->head->data->num_marco);
-				printf(filter_list->head->data->id);
-				element = element->next;
-			}
-		}
 
-		else {
-			printf("Error de comando");
-			log_trace(logfile,"Error de comando");
->>>>>>> d5bbd5ecf6897299a8888f9d77fd657f26f84e8d
 		}
 
 	}
