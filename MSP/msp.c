@@ -1,56 +1,59 @@
-#include "msp.h"
 #include <stdlib.h>
 #include <utiles/utiles.h>
-#include <commons/string.h>
-#include <commons/collections/node.h>
-#include <commons/collections/list.h>
-#include <commons/collections/dictionary.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+
 #include <string.h>
 #include <ctype.h>
 #include <pthread.h>
 #include <commons/log.h>
 #include <commons/config.h>
+#include <commons/string.h>
+#include <commons/collections/node.h>
+#include <commons/collections/list.h>
+#include <commons/collections/dictionary.h>
 
 #define STDIN 0
 #define SEG_MAX 1048576
 #define PAG_MAX 256
-#define LOG_DIR log/MSP.log
 
-typedef struct tipo_segmento{	//Esto representa a un segmento (una fila de la tabla)
+
+typedef struct tipo_segmento {//Esto representa a un segmento (una fila de la tabla)
 	u_int32_t id;
 	u_int32_t num_segmento;
 	t_list *paginas;
 } t_segmento;
 
-typedef struct tipo_pagina{		//Esto representa a una pagina
+typedef struct tipo_pagina {		//Esto representa a una pagina
 	u_int32_t num_pagina;
 	u_int32_t bit;	//0 , 1 , 2
 	u_int32_t bonus;
 	u_int32_t num_marco;
 } t_pagina;
 
-typedef struct tipo_memoria{		//Esto representa a un marco de memoria principal
+typedef struct tipo_memoria {//Esto representa a un marco de memoria principal
 	u_int32_t num_marco;
 	u_int32_t bit; //0 o 1
 } t_memoria;
 
-typedef struct tipo_nodo{
+typedef struct tipo_nodo { //SE utiliza para retornar el nodo de pags y segs encontrados para ser reemplazados
 	struct tipo_pagina *pagina;
 	struct tipo_segmento *segmento;
 } t_nodo;
 
 int puerto, socket_msp, socketKernel; //los que retorna el accept dentro de AtenderConexion
 char *point; //Puntero inicial a memoria estatica o principal
-char ip[16], cat[5], aux[17], commandAdress[23];
+char ip[16],algoritmo[6], cat[5], aux[17], commandAdress[23];
+char *ipconfig, *algo;
 char swap[6] = ".swap";
-char *algoritmo;
+
 u_int32_t cmemoria, cswap;
 t_log *logfile;
 t_list *listaMemoriaPrincipal;
 t_list *listaSegmentos; //O lista de segmentos
 fd_set descriptoresLectura;
 
-u_int32_t pid;             //Tengo presente el pid y el num segmento del proceso
+u_int32_t pp_id;             //Tengo presente el pid y el num segmento del proceso
 u_int32_t num_segmento;	// entrante y lo uso por ej para eliminar segmentos...
 u_int32_t pagina;
 
@@ -59,7 +62,10 @@ u_int32_t pag_mem_total = 0;
 u_int32_t pag_tot_mem;
 u_int32_t pag_tot_swap;
 
-t_nodo *ultimo;
+t_nodo *nodo; //Por el momento es global,la pag y seg que se encontro
+
+int pclock = 0;
+int sclock = 0; // Para guardar el valor del puntero del clock
 
 void borrarSWAPfile(char *adress);
 t_log *crearLog(char *archivo);
@@ -69,13 +75,13 @@ void atenderConexion(int sock_msp);
 u_int32_t reservarMemoria(u_int32_t pid, u_int32_t tamano);
 t_pagina *crearPagina(u_int32_t pagina);
 t_memoria *crearMarco(u_int32_t marco);
-t_segmento *crearSegmento(u_int32_t id, u_int32_t segmento, t_list *pagina) ;
+t_segmento *crearSegmento(u_int32_t id, u_int32_t segmento, t_list *pagina);
 u_int32_t armarDireccion(u_int32_t segmento, u_int32_t pagina, u_int32_t offset);
-void iniciarBasesegmento(u_int32_t *segmento, u_int32_t *pagina, u_int32_t *offset);
 
 bool es_igual_pid(t_segmento *p);
-void destruirSegmento(u_int32_t pid,u_int32_t direccion_logica);
-void escribirMemoria(u_int32_t pid, u_int32_t direccion_logica, char* bytes,u_int32_t tamano);
+void destruirSegmento(u_int32_t pid, u_int32_t direccion_logica);
+void escribirMemoria(u_int32_t pid, u_int32_t direccion_logica, char* bytes,
+		u_int32_t tamano);
 u_int32_t calcularRAMocupada();
 u_int32_t calcularSWAPocupada(t_list *lista);
 u_int32_t espacioTotalOcupado(t_list *lista);
@@ -85,31 +91,45 @@ char *crearArchivoSWAP(u_int32_t pid, u_int32_t segmento, u_int32_t pagina);
 char *armarSWAPath(u_int32_t pid, u_int32_t segmento, u_int32_t pagina);
 void prepararAlgoritmoReemplazo(t_pagina *pagina);
 t_memoria *buscarMarcoDisponible(t_list *li);
-t_nodo *buscarPaginasCLOCK(t_list *lista, t_nodo *ultimo, t_nodo *elim_swap);
+t_nodo *buscarPaginasCLOCK(t_list *lista, t_nodo *elim_swap);
 t_nodo *buscarPaginasLRU(t_list *lista, t_nodo *retorno);
-t_nodo *buscarReemplazo(t_list *lista, char *string, t_nodo *ultimo);
+t_nodo *buscarReemplazo(t_list *lista, char *string, t_nodo *retorno);
 int escribirSWAPfile(char *adress, char *bytes, u_int32_t tamano);
-int  leerSWAPfile(char *adress, char *bytes, int tamano);
+int leerSWAPfile(char *adress, char *bytes, int tamano);
 void borrarSWAPfile(char *adress);
+void *atencionCPK(void *sock_fd);
+void pantallaComandos();
+
+int crearSocket();
+void bindearSocket(int unSocket,char *dirIP,int puerto);
+void escucharSocket(int unSocket);
+int aceptarConexion(int unSocketEscuchando);
+void pantallaComandos();
+void atenderConsola();
+void trasladarASWAP(t_nodo *nodo);
+void trasladarDesdeSWAP(u_int32_t pid, t_pagina *pag, t_nodo *nodo);
 
 int main(int argc, char** argv) {
-
 
 	int select_return, socket_msp;
 
 	//Nos loguemos (utilizando la libreria commons)
 
-	logfile = crearLog(LOG_DIR);
+	logfile = crearLog(argv[0]);
 
 	//Cargamos el archivo de configuracion
 	cargarConficuracion(argv[1]);
 
 	crearEstructuras();
 
+	pantallaComandos();
+
 	//Creamos el socket de la UMV y esperamos a que el kernel establesca conexion
 	socket_msp = crearSocket();
-	bindearSocket(socket_msp, ip, puerto);
+	bindearSocket(socket_msp, ipconfig, puerto);
 	escucharSocket(socket_msp);
+
+
 
 	while (1) {
 		//ESTRUCTURAS PARA SELECT()
@@ -129,7 +149,8 @@ int main(int argc, char** argv) {
 		}
 		if (FD_ISSET(0,&descriptoresLectura)) {
 			//SE INGRESO UN COMANDO EN LA CONSOLA
-
+			log_debug(logfile,"atenderConexionConsola()==>Se detecto un tipeo en la consola msp...");
+			atenderConsola();
 		}
 		if (FD_ISSET(socket_msp,&descriptoresLectura)) {
 			//UNA NUEVA CPU/KERNEL INTENTA CONECTARSE
@@ -162,16 +183,17 @@ void cargarConficuracion(char* path) {
 	 * CANTIDAD_SWAP=MB
 	 * SUST_PAGS=LRU/CLOCK
 	 */
-	char *ipconfig;
 	t_config *configMSP;
 
-	configMSP = config_create(path);//retorna un config con el diccionario de key y datos, mas el path
+	configMSP = config_create(path); //retorna un config con el diccionario de key y datos, mas el path
 	ipconfig = config_get_string_value(configMSP, "IP");
-	memcpy(ip, ipconfig, strlen(ip) + 1);
+	memcpy(ip, ipconfig, sizeof(ip) + 1);
 	puerto = config_get_int_value(configMSP, "PUERTO");
 	cmemoria = 1024 * config_get_int_value(configMSP, "CANTIDAD_MEMORIA");
-	cswap = 1048576 * ((u_int32_t)config_get_int_value(configMSP, "CANTIDAD_SWAP"));
-	algoritmo = config_get_string_value(configMSP, "SUST_PAGS");
+	cswap = 1048576 * ((u_int32_t) config_get_int_value(configMSP, "CANTIDAD_SWAP"));
+	algo = config_get_string_value(configMSP, "SUST_PAGS");
+
+	memcpy(algoritmo, algo, sizeof(algoritmo) + 1);
 	config_destroy(configMSP);
 
 	//Calculos de espacios
@@ -183,8 +205,8 @@ void cargarConficuracion(char* path) {
 	pag_mem_total = pag_tot_swap + pag_tot_mem; //actualizo la memoria total
 
 	//printf("archivo de configuracion levantado: ip:%s ...);
-	log_debug(logfile,
-			"cargarConficuracion(char* path)-Proceso exitoso, con ip:%s puerto:%i tamanio de memoria:%i swap:%i algoritmo:%i ...",
+	log_info(logfile,
+			"cargarConficuracion(char* path)-Proceso exitoso, con ip:%s puerto:%i tamanio de memoria:%i swap:%i algoritmo:%s ...",
 			ip, puerto, cmemoria, cswap, algoritmo);
 }
 
@@ -196,15 +218,13 @@ void crearEstructuras() {
 	listaMemoriaPrincipal = list_create();
 
 	//Creo la lista de marcos de la memoria princippal
-	int i ;
+	int i;
 	for (i = 0; i < pag_tot_mem; i++) {
 		t_memoria *marc = crearMarco(i);
 		list_add(listaMemoriaPrincipal, marc);
 	}
-
-	log_debug(logfile,
-			"crearEstructuras()-Se creo la memoria principal del tp con la direccion fisica %i...",
-			(int) (cmemoria));
+	nodo = malloc(sizeof(t_nodo)); //Por el momento es global,la pag y seg que se encontro
+	log_debug(logfile,"crearEstructuras()-Se creo la memoria principal del tp con la direccion fisica %i...", (int) (cmemoria));
 
 }
 
@@ -215,156 +235,150 @@ void atenderConexion(int sock_msp) {
 
 	sockt = aceptarConexion(sock_msp);
 
-	log_debug(logfile, "atenderConexion()==>Se detecto una nueva conexion CPU, se lanzara un hilo para que la atienda...");
+	log_debug(logfile,
+			"atenderConexion()==>Se detecto una nueva conexion CPU, se lanzara un hilo para que la atienda...");
 	pthread_create(&hilo, NULL, &atencionCPK, &sockt);
 
 }
 
-u_int32_t reservarMemoria(u_int32_t pid, u_int32_t tamano) { //Saco id y utilizo el pid que es como variable global
-	//acordar usar lista de segmentos para calcular el espacio libre de memoria, vercuales estan en (0)y (1) para saber le de la swap, porque tienen un limite.
-	//usar esto al momento de pasar las paginas a memoria y tambien luego al reemplazarlas. para eso me sirve el -1, osea saber en la lista que paginas todavia no se escribieron.
-	//el algoritmo de reemplazo influye al reemplazar no ahora, asi que el bonus lo inicio en 0.
+u_int32_t reservarMemoria(u_int32_t pid, u_int32_t tamano) {
 	div_t c;
 	int c_paginas, i;
 	t_list *listaPaginas;
 
-	if (espacioTotalOcupado(listaSegmentos) > pag_mem_total) {
+	if (espacioTotalOcupado(listaSegmentos) >= pag_mem_total) {
 
-			//error
-			log_error(logfile, "crearSegmento()-No se puede crear el segmendo, debido a exceder el valor maximo de memoria disponible, pedido por el proceso: %i ..",pid);
-			return -1;
+		//error
+		log_error(logfile,"crearSegmento()-No se puede crear el segmendo, debido a exceder el valor maximo de memoria disponible, pedido por el proceso: %i ..",pid);
+		return -1;
 	}
 
-		if (tamano > SEG_MAX) {
+	if (tamano > SEG_MAX) {
 
-			//error
-			log_error(logfile,"crearSegmento()-No se puede crear el segmendo, debido a exceder el valor maximo de segmento, pedido por el proceso: %i ..",pid);
-			return -1;
-			}
+		//error
+		log_error(logfile,"crearSegmento()-No se puede crear el segmendo, debido a exceder el valor maximo de segmento, pedido por el proceso: %i ..",pid);
+		return -1;
+	}
 
-		c = div(tamano, PAG_MAX); //Calculo cuantas paginas voy a usar y se lo asigno a c_paginas
+	c = div(tamano, PAG_MAX); //Calculo cuantas paginas voy a usar y se lo asigno a c_paginas
 
-			if (c.rem == 0) {
-				c_paginas = c.quot;
-			}
-			else {
-				c_paginas = c.quot + 1;
-			} //Si la ultima pagina va a estar media vacia. Fragmentacion externa?
+	if (c.rem == 0) {
+		c_paginas = c.quot;
+	} else {
+		c_paginas = c.quot + 1;
+	} //Si la ultima pagina va a estar media vacia. Fragmentacion externa?
 
-		listaPaginas = list_create();
+	listaPaginas = list_create();
 
-		//Creo las paginas correspondientes
+	//Creo las paginas correspondientes
 
-		for(i=0; i < c_paginas; i++){
-				t_pagina *pagina;
-				pagina = crearPagina(i);
-				list_add(listaPaginas, pagina);
-			}
-		//Anexo la listaPaginas a un segmento que vamos a crear
+	for (i = 0; i < c_paginas; i++) {
+		t_pagina *paginap;
+		paginap = crearPagina(i);
+		list_add(listaPaginas, paginap);
+	}
+	//Anexo la listaPaginas a un segmento que vamos a crear
+	pp_id = pid;
+	t_list *filter_list = list_filter(listaSegmentos, (void*) es_igual_pid); // filtro y me quedo con una lista de pid iguales
+	u_int32_t num_segmento = list_size(filter_list);
 
-		t_list *filter_list = list_filter(listaSegmentos, (void*) es_igual_pid);// filtro y me quedo con una lista de pid iguales
-		u_int32_t segmentos = list_size(filter_list);
+	t_segmento *seg = crearSegmento(pp_id, num_segmento, listaPaginas);
 
-		t_segmento *seg = crearSegmento(pid, segmentos, listaPaginas);
+	list_add(listaSegmentos, seg);
+	//Elimino la lista temporal
+	list_clean(filter_list);
 
-		list_add(listaSegmentos, seg);
-
-		//Elimino la lista temporal
-		list_clean(filter_list);
-		//Armo la direccion base segmento de todo proceso...
-		u_int32_t pagina;
-		u_int32_t segmento;
-		u_int32_t offset;
-		iniciarBasesegmento(&segmento, &pagina, &offset);
-		u_int32_t direccion = armarDireccion(pagina, segmento, offset);
-		log_debug(logfile,"reservarSegmento()==>Se creo un segmento exitosamente...");
-
+	//Armo la direccion base segmento de todo proceso...
+	pagina = 0;
+	u_int32_t offset = 0;
+	u_int32_t direccion = armarDireccion(pagina, num_segmento, offset);
+	log_debug(logfile,"reservarSegmento()==>Se creo un segmento exitosamente...");
 
 	return direccion;
 }
 
 bool es_igual_pid(t_segmento *p) {
-return (p->id == pid);
+	return (p->id == pp_id);
 }
 
 bool es_igual_pid_and_seg(t_segmento *p) {
-return ((p->id == pid) && (p->num_segmento == num_segmento));
+	return ((p->id == pp_id) && (p->num_segmento == num_segmento));
 }
 
 bool es_igual_pag(t_pagina *p) {
-return ((p->num_pagina) == pagina);
+	return ((p->num_pagina) == pagina);
 }
 /*
  bool pagina_uno(t_segmento *p) { ///Mal pero sirve de ejemplo ->
  return (p->paginas->num_pagina == 1);
  }
  */bool pagina_uno(t_pagina *p) {
-return (p->num_pagina == 1);
+	return (p->num_pagina == 1);
 }
 
 bool pagina_dos(t_pagina *p) {
-return (p->num_pagina == 2);
+	return (p->num_pagina == 2);
 }
 
 bool memoria_ocupada(t_memoria *p) {
-return (p->bit == 1);
+	return (p->bit == 1);
 }
 
 bool memoria_vacia(t_memoria *p) {
-return (p->bit == 0);
+	return (p->bit == 0);
 }
 
 t_segmento *crearSegmento(u_int32_t id, u_int32_t segmento, t_list *pagina) {
-t_segmento *new = malloc(sizeof(t_segmento));
-new->id = id;
-new->num_segmento = segmento;
-new->paginas = pagina;
+	t_segmento *new = malloc(sizeof(t_segmento));
+	new->id = id;
+	new->num_segmento = segmento;
+	new->paginas = pagina;
 
-return new;
+	return new;
 }
 
 t_pagina *crearPagina(u_int32_t pagina) { //0= reservado 1= memoria 2= swap
-t_pagina *new = malloc(sizeof(t_pagina));
-new->num_pagina = pagina;
-new->bit = 0;
-new->bonus = 0;
-new->num_marco = 0;
+	t_pagina *new = malloc(sizeof(t_pagina));
+	new->num_pagina = pagina;
+	new->bit = 0;
+	new->bonus = 0;
+	new->num_marco = 0;
 
-return new;
+	return new;
 }
 
 t_memoria *crearMarco(u_int32_t marco) {
 
-t_memoria *new = malloc(sizeof(t_memoria));
-new->num_marco = marco;
-new->bit = 0; //0 o 1
-return new;
+	t_memoria *new = malloc(sizeof(t_memoria));
+	new->num_marco = marco;
+	new->bit = 0; //0 o 1
+	return new;
 }
 
 // Te devuelve un num_byte de un value...
 // Byte1 = segmento (12) Byte2 = pagina (12) Byte3 = offset (8)
 u_int32_t dameByte(u_int32_t value, int num_byte) {
 
-u_int32_t byte1;
-u_int32_t byte2;
-u_int32_t byte3;
+	u_int32_t byte1;
+	u_int32_t byte2;
+	u_int32_t byte3;
 
-switch (num_byte) {
+	switch (num_byte) {
 
-case 1:
-	byte1 = (value >> 20);
-	return byte1;
+	case 1:
+		byte1 = (value >> 20);
+		return byte1;
 
-case 2:
-	byte2 = (value >> 8) & 0xfff;
-	return byte2;
+	case 2:
+		byte2 = (value >> 8) & 0xfff;
+		return byte2;
 
-case 3:
-	byte3 = value & 0xff;
-	return byte3;
+	case 3:
+		byte3 = value & 0xff;
+		return byte3;
 
 	}
-return -1;
+	return -1;
 }
 /* Example value: 0x01020304
  case 1:
@@ -383,36 +397,33 @@ return -1;
 
 u_int32_t armarDireccion(u_int32_t segmento, u_int32_t pagina, u_int32_t offset) {
 //Movemos los bits necesarios
-u_int32_t seg = (segmento << 20);
-u_int32_t pag = (pagina << 8);
+	u_int32_t seg = (segmento << 20);
+	u_int32_t pag = (pagina << 8);
 
 //Procedemos a mezclar
-u_int32_t aux = (seg | pag);
-u_int32_t direccion = (aux | offset);
+	u_int32_t aux = (seg | pag);
+	u_int32_t direccion = (aux | offset);
 
-return direccion;
+	return direccion;
 }
 
-void iniciarBasesegmento(u_int32_t *segmento, u_int32_t *pagina,u_int32_t *offset) {
-
-segmento = 0;
-pagina = 0;
-offset = 0;
-}
-
-void destruirSegmento(u_int32_t pid,u_int32_t direccion_logica) {
+void destruirSegmento(u_int32_t pid, u_int32_t direccion_logica) {
 
 	num_segmento = dameByte(direccion_logica, 1);
-	t_segmento *delete = list_remove_by_condition(listaSegmentos, (void*) es_igual_pid_and_seg);
+	t_segmento *delete = list_remove_by_condition(listaSegmentos,
+			(void*) es_igual_pid_and_seg);
 
 	if (delete != NULL ) {
 
 		free(delete);
-		log_debug(logfile, "destruirSegmento()==>Se destruyo un segmento exitosamente...");
+		log_debug(logfile,
+				"destruirSegmento()==>Se destruyo un segmento exitosamente...");
 
 	} else {
 		//error no se encontro segmento, segmentation fault??
-		log_error(logfile,"destruirSegmento()-No se puede eliminar el segmendo pedido por el proceso: %i ..",pid);
+		log_error(logfile,
+				"destruirSegmento()-No se puede eliminar el segmendo pedido por el proceso: %i ..",
+				pid);
 	}
 
 }
@@ -453,26 +464,29 @@ void leerMemoria(u_int32_t pid, u_int32_t direccion_logica, u_int32_t tamano) {
 }
 
 void escribirMemoria(u_int32_t pid, u_int32_t direccion_logica, char* bytes, u_int32_t tamano) {
-	char* dato; //para guardar datos en caso de traslado
-	t_nodo *outSwap;
+
+	pp_id = pid;
 	//Consigo el num de segmento
-	u_int32_t segmento = dameByte(direccion_logica, 1);
+	num_segmento = dameByte(direccion_logica, 1);
 	//Con el pid y el num de segmento busco el nodo correspondiente
 	t_segmento *seg = list_find(listaSegmentos, (void*) es_igual_pid_and_seg);
 	//Consigo el num de pagina
-	u_int32_t pagina = dameByte(direccion_logica, 2);
+	pagina = dameByte(direccion_logica, 2);
 	//Busco la pagina correspondiente
 	t_pagina *pag = list_find(seg->paginas, (void*) es_igual_pag);
 
-	prepararAlgoritmoReemplazo(pag); // Aplico el algoritmo a la pagina
-
 	if (pag != NULL ) {
-		log_debug(logfile,
-			"escribirMemoria()==>Se encontro la posicion logica en la memoria");
+		log_debug(logfile,"escribirMemoria()==>Se encontro la posicion logica en la memoria");
 	} else {
+<<<<<<< HEAD
+		log_error(logfile,"escribirMemoria()==>No se encontro la posicion logica en la memoria");
+=======
 		log_error(logfile,
 			"escribirMemoria()==>No se encontro la posicion logica en la memoria");
+>>>>>>> d5bbd5ecf6897299a8888f9d77fd657f26f84e8d
 	}
+
+	prepararAlgoritmoReemplazo(pag); // Aplico el algoritmo a la pagina
 
 	//Te pido el offset---
 	u_int32_t offset = dameByte(direccion_logica, 3);
@@ -481,116 +495,84 @@ void escribirMemoria(u_int32_t pid, u_int32_t direccion_logica, char* bytes, u_i
 
 		t_memoria *memoria = buscarMarcoDisponible(listaMemoriaPrincipal);
 
-	if (memoria != NULL ) {
-		//Calculo la direccion exacta para grabar (MARCO GATTI me obligo :( )
-		u_int32_t dezplazamiento = 256 * (memoria->num_marco); //Calculo el dezplazamiento "virtual" dentro de la memoria
-		char *marco = point + dezplazamiento; // Calculo la direccion exacta a un marco, usando el point (del malloc al principio)
-		grabarRAM(marco, offset, tamano, bytes);
+		if (memoria != NULL ) {
+			//Calculo la direccion exacta para grabar (MARCO GATTI me obligo :( )
+			u_int32_t dezplazamiento = 256 * (memoria->num_marco); //Calculo el dezplazamiento "virtual" dentro de la memoria
+			char *marco = point + dezplazamiento; // Calculo la direccion exacta a un marco, usando el point (del malloc al principio)
+			grabarRAM(marco, offset, tamano, bytes);
 
-		//Actualizo el registro de la estructura principal
-		pag->num_marco = memoria->num_marco;
-		memoria->bit = 1; //Lamemoria esta ahora ocupada
-	} else {
-		//Tengo que manejar la swap, implementar algoritmo y desarrollar la busqueda y creacion de archivos swap
-		outSwap = buscarReemplazo(listaSegmentos, algoritmo, ultimo);
+			//Actualizo el registro de la estructura principal
+			pag->num_marco = memoria->num_marco;
+			memoria->bit = 1; //Lamemoria esta ahora ocupada
+		} else {
+			//Tengo que manejar la swap, implementar algoritmo y desarrollar la busqueda y creacion de archivos swap
+			buscarReemplazo(listaSegmentos, algoritmo, nodo);
+			log_debug(logfile,"escribirMemoria(0)==>Se encontro un nodo para sacar");
 
-		outSwap->pagina->bit = 2; //Actualizo el bit a 2, osea en esta en SWAP
+			trasladarASWAP(nodo);
 
-		char *adress = crearArchivoSWAP(outSwap->segmento->id, outSwap->segmento->num_segmento, outSwap->pagina->num_pagina);
-		//Creo archivo SWAP con los datos encontrados
+			//Ahora utilizo los datos bytes y tamano, osea para grabar lo q queremos grabar en principio
 
-		//Salvo la informacion en el SWAP file, de la pagina nueva a reemplazar
-		leerRAM(point, (outSwap->pagina->num_pagina * 256), 256, dato);
-		escribirSWAPfile(adress, dato, 256);
+			u_int32_t dezplazamiento = 256 * (nodo->pagina->num_marco); //Calculo el dezplazamiento "virtual" dentro de la memoria
+			 // Calculo la direccion exacta a un marco, usando el point (del malloc al principio)
+			grabarRAM(point + dezplazamiento, offset, tamano, bytes);
+			pag->num_marco = nodo->pagina->num_marco; //Actualizo el marco viejo al nuevo segmento
 
-		//Ahora utilizo los datos bytes y tamano, osea para grabar lo q queremos grabar en principio
+			log_debug(logfile,"escribirMemoria(0)==>Se realizo el traslado de memoria a la SWAP");
+		}
 
-		u_int32_t dezplazamiento = 256 * (outSwap->pagina->num_marco); //Calculo el dezplazamiento "virtual" dentro de la memoria
-		char *marco = point + dezplazamiento; // Calculo la direccion exacta a un marco, usando el point (del malloc al principio)
-		grabarRAM(marco, offset, tamano, bytes);
+		pag->bit = 1; // todo salio ok, se grabo el marco
+		log_debug(logfile, "escribirMemoria(0)==>Se grabo en la memoria");
 
-		log_debug(logfile,
-				"escribirMemoria(0)==>Se realizo el traslado de memoria a la SWAP");
 	}
-
-	pag->bit = 1; // todo salio ok, se grabo el marco
-	log_debug(logfile, "escribirMemoria(0)==>Se grabo en la memoria");
-
-} else {
 
 	if (pag->bit == 1) {
 
-		u_int32_t dezplazamiento = 256 * (pag->num_marco); //Calculo el dezplazamiento "virtual" dentro de la memoria
-		char *marco = point + dezplazamiento; // Calculo la direccion exacta a un marco, usando el point (del malloc al principio)
-		grabarRAM(marco, offset, tamano, bytes);
-		log_debug(logfile, "escribirMemoria(1)==>Se grabo en la memoria");
-	} else {
-		//>>>>>----------Tengo que manejar la swap, es parecido al caso, en u principio, en donde el segmento todavia no se escribio
-		outSwap = buscarReemplazo(listaSegmentos, algoritmo,ultimo);
+			u_int32_t dezplazamiento = 256 * (pag->num_marco); //Calculo el dezplazamiento "virtual" dentro de la memoria
+			char *marco = point + dezplazamiento; // Calculo la direccion exacta a un marco, usando el point (del malloc al principio)
+			grabarRAM(marco, offset, tamano, bytes);
+			log_debug(logfile, "escribirMemoria(1)==>Se grabo en la memoria");
+		}
+	if (pag->bit == 2){
 
-		outSwap->pagina->bit = 2; //Actualizo el bit a 2, osea en esta en SWAP
+		t_memoria *memoria = buscarMarcoDisponible(listaMemoriaPrincipal);
 
-		char *adress = crearArchivoSWAP(outSwap->segmento->id,
-				outSwap->segmento->num_segmento, outSwap->pagina->num_pagina);
-		//Creo archivo SWAP con los datos encontrados
+			if (memoria != NULL ) {
+				u_int32_t dezplazamiento = 256 * (pag->num_marco); //Calculo el dezplazamiento "virtual" dentro de la memoria
+				char *marco = point + dezplazamiento; // Calculo la direccion exacta a un marco, usando el point (del malloc al principio)
+				grabarRAM(marco, offset, tamano, bytes);
 
-		//Salvo la informacion en el SWAP file, de la pagina nueva a reemplazar
-		leerRAM(point, (outSwap->pagina->num_pagina * 256), 256, dato);
-		escribirSWAPfile(adress, dato, 256);
-		//Hasta aca--------------------------------------<<<<<<<<<
+				log_debug(logfile, "escribirMemoria(2)==>Se grabo en la memoria, habia espacio libre");
+				}else {
 
-		//Ahora debo leer de la SWAP, con la info de la direccion logica
-		leerSWAPfile(armarSWAPath(pid, segmento, pagina), dato, 256);
-		grabarRAM(point, (outSwap->pagina->num_pagina * 256), 256, dato);
-		//Ahora solo queda eliminar esta SWAP vieja
-		borrarSWAPfile(armarSWAPath(pid, segmento, pagina));
+					buscarReemplazo(listaSegmentos, algoritmo, nodo);
+					log_debug(logfile, "escribirMemoria(2)==>Se encontro marco a reemplazar");
 
-		//Ahora escribo en la seccion q me indicaron al principio
-		grabarRAM(point + (outSwap->pagina->num_pagina * 256), offset, tamano,
-				bytes);
+					trasladarASWAP(nodo);
 
-	}
+					trasladarDesdeSWAP(pid, pag, nodo);
+					//Ahora escribo en la seccion q me indicaron al principio
+					grabarRAM(point + (nodo->pagina->num_marco * 256), offset, tamano, bytes);
 
-}
+				}
+				pag->bit = 1;
+				log_debug(logfile, "escribirMemoria(2)==>Se grabo en la memoria");
+
+		}
 
 }
 
 u_int32_t calcularRAMocupada() { //Utilizo la lista secundaria de la RAM || En terminos de numero de paginas
 
-	t_list *ram_list = list_filter(listaMemoriaPrincipal, (void*) memoria_ocupada);
+	t_list *ram_list = list_filter(listaMemoriaPrincipal,
+			(void*) memoria_ocupada);
 	u_int32_t size = list_size(ram_list);
 	list_clean(ram_list);
-return size;
+	return size;
 }
 
 u_int32_t calcularSWAPocupada(t_list *lista) { //Utilizo la lista principal, utilizando el bit == 2
 
-u_int32_t size = 0;
-int i = 0;
-while (i <= list_size(lista)) {
-
-	t_segmento *seg = list_get(lista, i);
-
-	int s = 0;
-	while (s <= list_size(seg->paginas)) {
-
-		t_pagina *pag = list_get(seg->paginas, s);
-
-		if (pag->bit == 2) {
-
-			size++;
-
-		}
-		s++;
-	}
-	i++;
-}
-return size;
-}
-
-u_int32_t espacioTotalOcupado(t_list *lista) { //|| En terminos de numero de paginas
-/*En este caso utilizo la estructura principal, solo cuento todas las paginas que tiene
- ya que no puedo ceder mas paginas de mi limite (swap + ram)*/
 	u_int32_t size = 0;
 	int i = 0;
 	while (i <= list_size(lista)) {
@@ -600,14 +582,39 @@ u_int32_t espacioTotalOcupado(t_list *lista) { //|| En terminos de numero de pag
 		int s = 0;
 		while (s <= list_size(seg->paginas)) {
 
-			size++;
+			t_pagina *pag = list_get(seg->paginas, s);
 
+			if (pag->bit == 2) {
+
+				size++;
+
+			}
 			s++;
 		}
 		i++;
 	}
 	return size;
-	}
+}
+
+u_int32_t espacioTotalOcupado(t_list *lista) { //|| En terminos de numero de paginas
+/*En este caso utilizo la estructura principal, solo cuento todas las paginas que tiene
+ ya que no puedo ceder mas paginas de mi limite (swap + ram)*/
+	u_int32_t size = 0;
+	int i = 0;
+	while (i < list_size(lista)) {
+
+		t_segmento *seg = list_get(lista, i);
+
+		int s = 0;
+		s = list_size(seg->paginas);
+
+		size = size + s;
+
+		i++;
+		}
+	return size;
+}
+
 
 void grabarRAM(char* point, u_int32_t mem_pos, u_int32_t size, char* dato) {
 
@@ -621,12 +628,48 @@ void leerRAM(char* point, u_int32_t mem_pos, u_int32_t size, char* dato) {
 	char* pointer = point + mem_pos;
 
 	memcpy(dato, pointer, size);
+
 }
 
 t_memoria *buscarMarcoDisponible(t_list *li) {
 
-	t_memoria *data = list_find(li , (void*) memoria_vacia);
+	t_memoria *data = list_find(li, (void*) memoria_vacia);
 	return data;
+}
+
+void trasladarASWAP(t_nodo *nodo){
+
+	nodo->pagina->bit = 2; //Actualizo el bit a 2, osea en esta en SWAP
+
+	char *adress = crearArchivoSWAP(nodo->segmento->id,nodo->segmento->num_segmento,nodo->pagina->num_pagina);
+				//Creo archivo SWAP con los datos encontrados
+
+	char* dato = malloc(256); //para guardar datos en caso de traslado
+				//Salvo la informacion en el SWAP file, de la pagina nueva a reemplazar
+	leerRAM(point, (nodo->pagina->num_marco * 256), 256, dato);
+	escribirSWAPfile(adress, dato, 256);
+
+	memset(&aux[0],0,sizeof(aux));
+	memset(&commandAdress[0],0,sizeof(commandAdress));
+	free(dato);
+}
+
+void trasladarDesdeSWAP(u_int32_t pid, t_pagina *pag, t_nodo *nodo){
+
+	nodo->pagina->bit = 2; //Actualizo el bit a 2, osea en esta en SWAP
+
+	//Ahora debo leer de la SWAP, con la info de la direccion logica
+	char *dato = malloc(256);
+	char*dir_aux=armarSWAPath(pid, num_segmento, pagina);
+	leerSWAPfile(dir_aux, dato, 256);
+	grabarRAM(point, (nodo->pagina->num_marco * 256), 256, dato);
+	//Ahora solo queda eliminar esta SWAP vieja
+	borrarSWAPfile(dir_aux);
+
+	pag->num_marco = nodo->pagina->num_marco;
+	memset(&aux[0],0,sizeof(aux));
+	memset(&commandAdress[0],0,sizeof(commandAdress));
+	free(dato);
 }
 
 char *crearArchivoSWAP(u_int32_t pid, u_int32_t segmento, u_int32_t pagina) {
@@ -638,7 +681,7 @@ char *crearArchivoSWAP(u_int32_t pid, u_int32_t segmento, u_int32_t pagina) {
 
 	system(commandAdress);
 
-	return commandAdress;
+	return aux;
 }
 
 char *armarSWAPath(u_int32_t pid, u_int32_t segmento, u_int32_t pagina) {
@@ -659,147 +702,116 @@ char *armarSWAPath(u_int32_t pid, u_int32_t segmento, u_int32_t pagina) {
 
 void prepararAlgoritmoReemplazo(t_pagina *pagina) {
 
-if (strcmp(algoritmo, "LRU") == 0) {
+	if (strcmp(algoritmo, "LRU") == 0) {
 
-	pagina->bonus = pagina->bonus + 1;
+		pagina->bonus = pagina->bonus + 1;
+
+	}
 
 }
 
+t_nodo *buscarPaginasCLOCK(t_list *lista, t_nodo *elim_swap) {
+
+	int i = sclock;
+	int s = pclock;
+	while (i < list_size(lista)) {
+
+		t_segmento *seg = list_get(lista, i);
+
+		while (s < list_size(seg->paginas)) {
+
+			t_pagina *pag = list_get(seg->paginas, s);
+
+			if (pag->bit == 1) {
+
+				if (pag->bonus == 1) {
+
+					pclock = s;
+					sclock = i;
+					// tengo que guardar el puntero a la posicion siguiente, para la proxima busqueda
+					elim_swap->segmento = seg;
+					elim_swap->pagina = pag;
+					return elim_swap;
+
+				} else {
+
+					pag->bonus = 1;
+
+				}
+			}
+			s++;
+		}
+		s=0;
+		i++;
+	}
+	return elim_swap;
 }
-// Esta mal, bueno eso es lo que presiento, asi que lo guardo de todas maneras
-/*
- t_pagina buscarPaginasEnRAM(t_list lista){
 
- t_link_element lista_actual = lista->head;
- t_pagina reemplazo;
- t_link_element aux;
+t_nodo *buscarPaginasLRU(t_list *lista, t_nodo *victima) {
 
- // recorro cada segmento
- while (lista_actual != NULL){
+	u_int32_t maximo = 0;
+	int i = 0;
+	int s;
+	while (i < list_size(lista)) {
+		s=0;
+		t_segmento *seg = list_get(lista, i);
 
- while (lista_actual->data->paginas != NULL){
- if (lista_actual->data->bit == 1){
+		while (s < list_size(seg->paginas)) {
 
- if (lista_actual>data->bonus == 1){
+			t_pagina *pag = list_get(seg->paginas, s);
 
- reemplazo = lista_actual->data;
+			if (pag->bit == 1) {
 
- // tengo que guardar el puntero a la posicion siguiente, para la proxima busqueda
+				if (maximo == 0){
+					maximo = pag->bonus;
+					victima->pagina = pag;
+					victima->segmento = seg;
+				}
+				if (pag->bonus < maximo) {
 
- goto encontre;
- }else{
- lista_actual->data->bonus = 1;
-
- }
- }
-
- lista_aux = lista_aux->next;
- encontre:
- }
-
- uint32_t size = list_size(swap_total);
- list_clean(swap_total);
- return size;
- }*/
-
-t_nodo *buscarPaginasCLOCK(t_list *lista, t_nodo *ultimo, t_nodo *elim_swap) {
-
-int i = 0;
-while (i <= list_size(lista)) {
-
-	t_segmento *seg = list_get(lista, i);
-
-	int s = 0;
-	while (s <= list_size(seg->paginas)) {
-
-		t_pagina *pag = list_get(seg->paginas, s);
-
-		if (pag->bit == 1) {
-
-			if (pag->bonus == 1) {
-
-				ultimo->segmento = seg;
-				ultimo->pagina = pag;
-				// tengo que guardar el puntero a la posicion siguiente, para la proxima busqueda
-				elim_swap->segmento = seg;
-				elim_swap->pagina = pag;
-				return elim_swap;
-
-			} else {
-
-				pag->bonus = 1;
+					//Me guardo el valor mas chico, ya que es el menos usado, lo saco-
+					maximo = pag->bonus;
+					victima->pagina = pag;
+					victima->segmento = seg;
+					//Y luego guardo la pagina para retornar-
+				}
 
 			}
+			s++;
 		}
-		s++;
+		i++;
 	}
-	i++;
-}
-return elim_swap;
-}
-
-t_nodo *buscarPaginasLRU(t_list *lista, t_nodo *retorno) {
-
-u_int32_t maximo = 0;
-int i = 0;
-
-while (i <= list_size(lista)) {
-
-	t_segmento *seg = list_get(lista, i);
-	int s = 0;
-	while (s <= list_size(seg->paginas)) {
-
-		t_pagina *pag = list_get(seg->paginas, s);
-
-		if (pag->bit == 1) {
-
-			if (maximo == 0)
-				maximo = pag->bonus;
-
-			if (pag->bonus < maximo) {
-
-				//Me guardo el valor mas chico, ya que es el menos usado, lo saco-
-				maximo = pag->bonus;
-				retorno->pagina = pag;
-				retorno->segmento = seg;
-				//Y luego guardo la pagina para retornar-
-			}
-
-		}
-		s++;
-	}
-	i++;
-}
-return retorno;
+	log_debug(logfile,"escribirMemoria(0)==>Se aplico el alg LRU");
+	return victima;
 
 }
 
-t_nodo *buscarReemplazo(t_list *lista, char *string, t_nodo *ultimo) {
-	t_nodo *retorno;
-	if (strcmp(string,"LRU") == 0) {
-		 buscarPaginasLRU(lista, retorno);
-		 return retorno;
+t_nodo *buscarReemplazo(t_list *lista, char *string, t_nodo *retorno) {
+
+	if (strcmp(string, "LRU") == 0) {
+
+		return buscarPaginasLRU(lista, retorno);
+
 	}
 
-	buscarPaginasCLOCK(lista, ultimo, retorno);
-	return retorno;
+	return buscarPaginasCLOCK(lista, retorno);
 
 }
 
 int escribirSWAPfile(char *adress, char *bytes, u_int32_t tamano) {
 
-FILE *ptr;
+	FILE *ptr;
 
-ptr = fopen(adress, "w");
-if (!ptr) {
-	printf("Unable to open file!");
-	return -1;
-}
+	ptr = fopen(adress, "w");
+	if (!ptr) {
+		printf("Unable to open file!");
+		return -1;
+	}
 
-fwrite(bytes, tamano, 1, ptr);
+	fwrite(bytes, tamano, 1, ptr);
 
-fclose(ptr);
-return 0;
+	fclose(ptr);
+	return 0;
 }
 
 int leerSWAPfile(char *adress, char *bytes, int tamano) {
@@ -810,11 +822,12 @@ int leerSWAPfile(char *adress, char *bytes, int tamano) {
 	if (!ptr) {
 		printf("Unable to open file!");
 		return -1;
-		}
+	}
 
 	fread(bytes, tamano, 1, ptr);
 
 	fclose(ptr);
+
 	return 0;
 }
 
@@ -826,24 +839,33 @@ void borrarSWAPfile(char *adress) {
 
 int solicitarMemoria(u_int32_t pid, u_int32_t direccion_logica, char* bytes, u_int32_t tamano) {
 
+	pp_id = pid;
 	//Consigo el num de segmento
-	u_int32_t segmento = dameByte(direccion_logica, 1);
+	num_segmento = dameByte(direccion_logica, 1);
 	//Con el pid y el num de segmento busco el nodo correspondiente
 	t_segmento *seg = list_find(listaSegmentos, (void*) es_igual_pid_and_seg);
+
+	if (seg != NULL ) {
+			log_debug(logfile,"solicitarMemoria()==>Se encontro la posicion logica en la memoria");
+		} else {
+			log_error(logfile,"solicitarMemoria()==>No se encontro la posicion logica en la memoria");
+			printf("Segmentation fault - Violacion de propiedad");
+			return -1;
+		}
 	//Consigo el num de pagina
-	u_int32_t pagina = dameByte(direccion_logica, 2);
+	pagina = dameByte(direccion_logica, 2);
 	//Busco la pagina correspondiente
 	t_pagina *pag = list_find(seg->paginas, (void*) es_igual_pag);
 
 	prepararAlgoritmoReemplazo(pag); // Aplico el algoritmo a la pagina
 
 	if (pag != NULL ) {
-		log_debug(logfile,
-			"escribirMemoria()==>Se encontro la posicion logica en la memoria");
-		} else {
-		log_error(logfile,
-			"escribirMemoria()==>No e encontro la posicion logica en la memoria");
-		}
+		log_debug(logfile,"solicitarMemoria()==>Se encontro la pagina en la memoria");
+	} else {
+		log_error(logfile,"solicitarMemoria()==>No se encontro la posicion logica en la memoria");
+		printf("Segmentation fault - Direccion invalida");
+		return -1;
+	}
 
 	//Te pido el offset---
 	u_int32_t offset = dameByte(direccion_logica, 3);
@@ -852,127 +874,139 @@ int solicitarMemoria(u_int32_t pid, u_int32_t direccion_logica, char* bytes, u_i
 
 		log_error(logfile,"solicitarMemoria(0)==>La memoria solamente se reservo, segmentation fault?");
 		return -1;
-		}
+	}
 
 	if (pag->bit == 1) {
 
 		u_int32_t dezplazamiento = 256 * (pag->num_marco); //Calculo el dezplazamiento "virtual" dentro de la memoria
 		char *marco = point + dezplazamiento; // Calculo la direccion exacta a un marco, usando el point (del malloc al principio)
 		leerRAM(marco, offset, tamano, bytes);
-		log_debug(logfile, "escribirMemoria(1)==>Se grabo en la memoria");
+		log_debug(logfile, "solicitarMemoria(1)==>Se pudo leer la direccion de memoria");
 
 	}
 	if (pag->bit == 2) {
-		//>>>>>----------Tengo que manejar la swap, es parecido al caso, en u principio, en donde el segmento todavia no se escribio
-		t_nodo *outSwap = buscarReemplazo(listaSegmentos, algoritmo,ultimo);
 
-		outSwap->pagina->bit = 2; //Actualizo el bit a 2, osea en esta en SWAP
+			t_memoria *memoria = buscarMarcoDisponible(listaMemoriaPrincipal);
 
-		char *adress = crearArchivoSWAP(outSwap->segmento->id, outSwap->segmento->num_segmento, outSwap->pagina->num_pagina);
-		//Creo archivo SWAP con los datos encontrados
+			if (memoria != NULL ) {
+				u_int32_t dezplazamiento = 256 * (pag->num_marco); //Calculo el dezplazamiento "virtual" dentro de la memoria
+				char *marco = point + dezplazamiento; // Calculo la direccion exacta a un marco, usando el point (del malloc al principio)
+				leerRAM(marco, offset, tamano, bytes);
 
-		//Salvo la informacion en el SWAP file, de la pagina nueva a reemplazar
-		char* dato;
-		leerRAM(point, (outSwap->pagina->num_pagina * 256), 256, dato);
-		escribirSWAPfile(adress, dato, 256);
-		//Hasta aca--------------------------------------<<<<<<<<<
+				log_debug(logfile, "solicitarMemoria(2)==>Se grabo en la memoria, habia espacio libre");
+				}else {
 
-		//Ahora debo leer de la SWAP, con la info de la direccion logica
-		leerSWAPfile(armarSWAPath(pid, segmento, pagina), dato, 256);
-		grabarRAM(point, (outSwap->pagina->num_pagina * 256), 256, dato);
-		//Ahora solo queda eliminar esta SWAP vieja
-		borrarSWAPfile(armarSWAPath(pid, segmento, pagina));
+					buscarReemplazo(listaSegmentos, algoritmo, nodo);
 
-		//Ahora escribo en la seccion q me indicaron al principio
-		leerRAM((point + (outSwap->pagina->num_pagina * 256)), offset, tamano, bytes);
+					trasladarASWAP(nodo);
 
-		}
+					trasladarDesdeSWAP(pid, pag, nodo);
 
+					//Ahora escribo en la seccion q me indicaron al principio
+					leerRAM((point + (nodo->pagina->num_marco * 256)), offset, tamano, bytes);
 
+				}
+	}
 	return 0;
 }
 
-void atencionCPK(void *sock_fd){ //Notar que en la creacion de mensaje, el id es el pid, creo que lo debo corregir luego, dependiendo lo que ustedes deseen recibir...
+void *atencionCPK(void *sock_fd) { //Notar que en la creacion de mensaje, el id es el pid, creo que lo debo corregir luego, dependiendo lo que ustedes deseen recibir...
+	int sock;
+	sock = *((int*)sock_fd);
+	while (1) {
 
-while(1){
+		t_msg *msg = recibir_mensaje(sock);
 
-	t_msg *msg = recibir_mensaje(sock_fd);
+		u_int32_t id;
+		u_int32_t size;
+		u_int32_t direccion;
+		char *datos;
 
-	u_int32_t id;
-	u_int32_t size;
-	u_int32_t direccion;
-	char *datos;
-
-	log_debug(logfile,"atencionCPK()==>Se recibio el msg");
-
-	switch(msg->header){
+		log_debug(logfile, "atencionCPK()==>Se recibio el msg");
+		t_msg_id msid = msg->header.id;
+		switch (msid) {
 
 		case RESERVE_SEGMENT:
 
-				memcpy(&id,msg->stream,REG_SIZE);
-				memcpy(&size, msg->stream + REG_SIZE,REG_SIZE);
+			memcpy(&id, msg->stream, REG_SIZE);
+			memcpy(&size, msg->stream + REG_SIZE, REG_SIZE);
 
-				direccion = reservarMemoria(id, size);
+			direccion = reservarMemoria(id, size);
 
-				int stream_size = 2*REG_SIZE ;
-				char *stream = malloc(stream_size);
-				memcpy(stream,&pid,REG_SIZE);
-				memcpy(stream + REG_SIZE,&direccion,REG_SIZE);
+			int stream_size = 2 * REG_SIZE;
+			char *stream = malloc(stream_size);
+			memcpy(stream, &id, REG_SIZE);
+			memcpy(stream + REG_SIZE, &direccion, REG_SIZE);
 
-						t_msg *new_msg = crear_mensaje(id,stream,stream_size);
+			t_msg *new_msg = crear_mensaje(id, stream, stream_size);
 
-						enviar_mensaje(sock_fd,new_msg);
-						destroy_message(new_msg);
+			enviar_mensaje(sock, new_msg);
+			destroy_message(new_msg);
 
-				break;
+			break;
 
 		case DESTROY_SEGMENT:
 
-			    memcpy(&id,msg->stream,REG_SIZE);
-				memcpy(&direccion,msg->stream + REG_SIZE,REG_SIZE);
+			memcpy(&id, msg->stream, REG_SIZE);
+			memcpy(&direccion, msg->stream + REG_SIZE, REG_SIZE);
 
-				destruirSegmento(id, direccion);
+			destruirSegmento(id, direccion);
 
-				break;
+			break;
 		case MEM_REQUEST:
 
-				memcpy(&id,msg->stream,REG_SIZE);
-				memcpy(&direccion,msg->stream + REG_SIZE,REG_SIZE);
-				memcpy(&size,msg->stream + 2*REG_SIZE,sizeof size);
+			memcpy(&id, msg->stream, REG_SIZE);
+			memcpy(&direccion, msg->stream + REG_SIZE, REG_SIZE);
+			memcpy(&size, msg->stream + 2 * REG_SIZE, sizeof size);
 
-				if (solicitarMemoria(id, direccion, datos, size) < 0) {
-					//error
-				}else{
-						int stream_size = REG_SIZE + sizeof size;
-						char *stream = malloc(stream_size);
-						memcpy(stream,&pid,REG_SIZE);
-						memcpy(stream + REG_SIZE,datos,sizeof size);
+			if (solicitarMemoria(id, direccion, datos, size) < 0) {
+				//error
+			} else {
+				int stream_size = REG_SIZE + sizeof size;
+				char *stream = malloc(stream_size);
+				memcpy(stream, &id, REG_SIZE);
+				memcpy(stream + REG_SIZE, datos, sizeof size);
 
-						t_msg *new_msg = crear_mensaje(id,stream,stream_size);
+				t_msg *new_msg = crear_mensaje(id, stream, stream_size);
 
-						enviar_mensaje(sock_fd,new_msg);
-						destroy_message(new_msg);
+				enviar_mensaje(sock, new_msg);
+				destroy_message(new_msg);
 
-				}
+			}
 
-				break;
+			break;
 
 		case WRITE_MEMORY:
 
-				memcpy(&id,msg->stream,REG_SIZE);
-				memcpy(&direccion,msg->stream + REG_SIZE,REG_SIZE);
-				memcpy(&size,msg->stream + 2*REG_SIZE,sizeof size);
-				memcpy(&datos,msg->stream + 2*REG_SIZE + sizeof size,size);
+			memcpy(&id, msg->stream, REG_SIZE);
+			memcpy(&direccion, msg->stream + REG_SIZE, REG_SIZE);
+			memcpy(&size, msg->stream + 2 * REG_SIZE, sizeof size);
+			memcpy(&datos, msg->stream + 2 * REG_SIZE + sizeof size, size);
 
-				escribirMemoria(id, direccion, datos, size);
+			escribirMemoria(id, direccion, datos, size);
 
-				//error
-				break;
+			//error
+			break;
+		}
+		destroy_message(msg);
 	}
-	destroy_message(msg);
-	}
+	return NULL;
 }
 
+int crearSocket(){
+	int unSocket, optval=1;
+	if((unSocket=socket(AF_INET,SOCK_STREAM,0))<0){
+		//ERROR
+		printf("error al ejecutar la funcion socket()\n");
+	}
+	setsockopt(unSocket,SOL_SOCKET,SO_REUSEADDR,&optval,sizeof(optval));
+	return unSocket;
+}
+
+<<<<<<< HEAD
+void bindearSocket(int unSocket,char *dirIP,int puerto){
+	struct sockaddr_in dirServidor;
+=======
 void consolaMSP () {
 	char command[35];
 	char action[15];
@@ -990,50 +1024,90 @@ void consolaMSP () {
 		}
 		int j=i+1;
 		i=0;
+>>>>>>> d5bbd5ecf6897299a8888f9d77fd657f26f84e8d
+
+	dirServidor.sin_addr.s_addr=inet_addr(dirIP);
+	dirServidor.sin_port=htons(puerto);
+	dirServidor.sin_family=AF_INET;
+	memset(&(dirServidor.sin_zero),'\0',8);
+
+	if(bind(unSocket,(struct sockaddr*)&dirServidor,sizeof(struct sockaddr))<0){
+		//ERROR
+		printf("error en la funcion bind()\n");
+	}
+}
+void escucharSocket(int unSocket){
+	if(listen(unSocket,10)<0){
+		//ERROR
+		printf("error en la funcion listen()\n");
+	}
+}
+int aceptarConexion(int unSocketEscuchando){
+	struct sockaddr_in dirClienteEntrante;
+	int socketConexionNueva;
+	int tam=sizeof(struct sockaddr_in);
+	socketConexionNueva=accept(unSocketEscuchando,(struct sockaddr *)&dirClienteEntrante,(void*)&tam);
+	return socketConexionNueva;
+}
+
+void pantallaComandos(){
+
+	printf("COMANDOS PARA INGRESAR:\n"
+		"-------------------------------------MENU------------------------------------\n"
+		"CREAR SEGMENTO:       CREA_SEG  {id-Proceso} {tamanio}\n"
+		"DESTRUIR SEGMENTO:    ELIM_SEG  {id-Proceso} {tamanio}\n"
+		"ESCRIBIR SEGMENTO:    WRITE_MEM {id-Proceso} {direccion} {tamanio} {data}\n"
+		"LEER SEGMENTO:		   LEE_MEM   {id-Proceso} {direccion} {tamanio}\n  "
+		"TABLA DE PAGINAS:     PAGS      {id-Proceso}\n"
+		"TABLA DE SEGMENTOS:   SEGS		 \n"
+		"MARCOS OCUPADOS:      MARCS\n"
+		"-----------------------------------------------------------------------------\n");
 
 
-		if (strcmp(action,"createSegment",i)==0) { //CREAR_SEGMENTO
-			while(command[j]!=",") {
-				stream[i]=command[j];
-				i++;
-				j++;
-			}
-			j++;
-			i=0;
-			pid=atoi(stream); //capturo el pid
-			stream[0]="\0";
-			while(command[j]!="\0") {
-				stream[i]=command[j];
-				i++;
-				j++;
-			}
-			size=atoi(stream);
-			direccion = reservarMemoria(pid, size); // capturo direcionBase
-			printf(direccion); //imprimo por pantalla y en el log
-			log_trace(logfile,"Direccion Base:%n",direccion);
-		}
+<<<<<<< HEAD
+}
+
+void atenderConsola(){
+
+    char           comando[50];
+	char          *primera;
+	char          *data;
+	char          *pid;
+	char          *direccion;
+	char          *tamanio;
+
+	gets(comando);
+	primera=strtok(comando," ");
+
+	if(string_equals_ignore_case(primera,"CREA_SEG")){
+		pid=strtok(NULL," ");
+		tamanio=strtok(NULL," ");
+		log_debug(logfile,"CREA_SEG()==>Ingreso exitosamente...");
+		u_int32_t retorno = reservarMemoria((u_int32_t) (atoi(pid)), (u_int32_t) (atoi(tamanio)));
+		log_debug(logfile,"CREA_SEG()==>Se creo un segmento exitosamente...");
+		printf("Tu direccion: %zu \n", retorno);
+	}
+	if(string_equals_ignore_case(primera,"WRITE_MEM")){
+		pid=strtok(NULL," ");
+		direccion=strtok(NULL," ");
+		tamanio=strtok(NULL," ");
+		data=strtok(NULL," ");
+		escribirMemoria((u_int32_t) atoi(pid), (u_int32_t) atoi(direccion), data, (u_int32_t) atoi(tamanio));
+		log_debug(logfile,"WRITE_MEM()==>Se creo un segmento exitosamente...");
+	}
+	if(string_equals_ignore_case(primera,"SEGS")){
+			int i = 0;
+			while (i < list_size(listaSegmentos)) {
+
+				t_segmento *seg = list_get(listaSegmentos, i);
+
+				int s = 0;
+				s = list_size(seg->paginas);
+
+				printf("Id:%5zu  Num:%5zu  Paginas:%5zu  Direccion:%30zu \n",seg->id,seg->num_segmento,s ,armarDireccion(seg->num_segmento, 0, 0));
 
 
-		else if (strcmp(action,"destroySegment",i)==0) { //DESTRUIR_SEGMENTO
-			while(command[j]!=",") {
-				stream[i]=command[j];
-				i++;
-				j++;
-			}
-			j++;
-			i=0;
-			pid=atoi(stream); // capturo pid
-			stream[0]="\0";
-			while(command[j]!="\0") {
-				stream[i]=command[j];
-				i++;
-				j++;
-			}
-			direccion=atoi(stream); // capturo direccion
-			destruirSegmento(pid,direccion); // destruccion de segmento
-		}
-
-
+=======
 		else if (strcmp(action,"memoryWrite",i)==0) { //ESCRIBIR_MEMORIA
 			while(command[j]!=",") {
 				stream[i]=command[j];
@@ -1093,14 +1167,30 @@ void consolaMSP () {
 				stream[0]="\0";
 			while(command[j]!="\0") {
 				stream[i]=command[j];
+>>>>>>> d5bbd5ecf6897299a8888f9d77fd657f26f84e8d
 				i++;
-				j++;
 			}
+<<<<<<< HEAD
+	}
+=======
 				size=atoi(stream);
 				leerMemoria(pid,direccion,size);
 		}
+>>>>>>> d5bbd5ecf6897299a8888f9d77fd657f26f84e8d
 
+	if(string_equals_ignore_case(primera,"PAGS")){
+		pid=strtok(NULL," ");
 
+<<<<<<< HEAD
+		int i = 0;
+			while (i < list_size(listaSegmentos)) {
+
+				t_segmento *seg = list_get(listaSegmentos, i);
+
+					if (seg->id == atoi(pid)){
+						int s= 0;
+						while (s < list_size(seg->paginas)) {
+=======
 		else if (strcmp(action,"segmentsTable",i)==0) {
 			t_link_element *element = listaSegmentos->head;
 			printf("PID          N° Segmento              Tamano            Direccion Base");
@@ -1113,14 +1203,35 @@ void consolaMSP () {
 				element = element->next;
 			}
 		}
+>>>>>>> d5bbd5ecf6897299a8888f9d77fd657f26f84e8d
 
+							t_pagina *pag = list_get(seg->paginas, s);
+							printf("Num:%5zu  Estado:%5zu \n",seg->num_segmento,pag->bit);
+							s++;
+						}
 
-		else if (strcmp(action,"pagesTable",i)==0) {
-			while(command[j]!=",") {
-				stream[i]=command[j];
+					}
+
 				i++;
-				j++;
 			}
+<<<<<<< HEAD
+
+	}
+	if(string_equals_ignore_case(primera,"LEE_MEM")){
+		pid=strtok(NULL," ");
+		direccion=strtok(NULL," ");
+		tamanio=strtok(NULL," ");
+		log_debug(logfile,"LEE_MEM()==>Ingreso exitosamente...");
+
+		//Reservo memoria para para poder leer la informacion que nos piden
+		char *retorno = malloc(atoi(tamanio));
+
+		solicitarMemoria((u_int32_t) (atoi(pid)),(u_int32_t) (atoi(direccion)), retorno,(u_int32_t) (atoi(tamanio)));
+		log_debug(logfile,"LEE_MEM()==>Se solicito la memoria exitosamente...");
+		retorno[atoi(tamanio)-1] = '\n';
+		printf("Contenido: %s \n", retorno);
+		free(retorno);
+=======
 				pid=atoi(stream);
 				t_list *filter_list = list_filter(listaSegmentos, es_igual_pid(listaSegmentos->head->data));
 				t_link_element *element = filter_list->head;
@@ -1134,9 +1245,40 @@ void consolaMSP () {
 					printf(element->data->num_segmento);
 					element = element->next;
 				}
+>>>>>>> d5bbd5ecf6897299a8888f9d77fd657f26f84e8d
 		}
 
+	if(string_equals_ignore_case(primera,"MARCS")){
+		int m = 0;
+		while (m < list_size(listaMemoriaPrincipal)) {
+			t_memoria *mem = list_get(listaMemoriaPrincipal, m);
+			if (mem->bit == 1){
 
+<<<<<<< HEAD
+				int i = 0;
+				while (i < list_size(listaSegmentos)) {
+
+					t_segmento *seg = list_get(listaSegmentos, i);
+					int s = 0;
+					while (s < list_size(seg->paginas)) {
+
+								t_pagina *pag = list_get(seg->paginas, s);
+
+								if ((pag->bit == 1) && (pag->num_marco == m)) {
+
+									printf("Num:%5zu  Ocu:%5zu  PID:%5zu  Algoritmo:%5zu \n",mem->num_marco ,mem->bit,seg->id,pag->bonus);
+								}
+					s++;
+					}
+				i++;
+				}
+			}else
+			{
+
+				printf("Num:%5zu  Ocu:%5zu  PID:%5zu  Algoritmo:%5zu \n",mem->num_marco ,mem->bit,0,0);
+			}
+		m++;
+=======
 		else if (strcmp(action,"listFrames",i)==0) {
 			t_link_element *element = listaMemoriaPrincipal->head;
 			while (element != NULL) {
@@ -1155,9 +1297,11 @@ void consolaMSP () {
 		else {
 			printf("Error de comando");
 			log_trace(logfile,"Error de comando");
+>>>>>>> d5bbd5ecf6897299a8888f9d77fd657f26f84e8d
 		}
 
 	}
+	pantallaComandos();
+
+
 }
-
-
