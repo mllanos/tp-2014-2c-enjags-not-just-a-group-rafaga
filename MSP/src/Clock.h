@@ -24,9 +24,10 @@ t_clock_node *ArrayClock;			/* Estructura de control para el algoritmo Clock */
 /* FIN Variables Globales */
 
 /* Funciones */
+void imprimirArrayClock(void);
 void actualizarEnArrayClock(uint32_t pid,uint16_t seg,uint16_t pag);
-void agregarPaginaEnArrayClock(uint32_t pid,uint16_t seg,uint16_t pag);
 void quitarPaginaDeArrayClock(uint32_t pid,uint16_t seg,uint16_t pag);
+void agregarPaginaEnArrayClock(uint32_t pid,uint16_t seg,uint16_t pag);
 void seleccionVictimaClock(t_segmento** tabla,uint32_t *pid,uint16_t *seg,uint16_t *pag);
 /* FIN Funciones */
 

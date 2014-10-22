@@ -29,7 +29,7 @@
 
 #define generarDireccionLogica(SEG,PAG,OFFSET) ((SEG << 20) + (PAG << 8) + OFFSET)
 #define obtenerSwapPath(PID,SEG,PAG) string_from_format("%s%u-%u-%u",SwapPath,PID,SEG,PAG)
-#define tablaDelProceso(PID) (t_segmento*) dictionary_get(TablaSegmentosGlobal,string_itoa(PID))
+#define tablaDelProceso(PID) (t_segmento*) dictionary_get(TablaSegmentosGlobal,PID)
 #define liberarMarco(TABLA,SEG,PAG) MemoriaPrincipal[TABLA[SEG].tablaPaginas[PAG].numMarco].ocupado = 0
 #define direccionFisica(TABLA,SEG,PAG,OFFSET) (MemoriaPrincipal[TABLA[SEG].tablaPaginas[PAG].numMarco].marco + OFFSET)
 
@@ -68,10 +68,12 @@ uint32_t CantPaginasEnSwapDisponibles;
 uint32_t CantPaginasEnMemoriaDisponibles;
 t_dictionary *TablaSegmentosGlobal;			/* Contiene el puntero a la tabla local de cada proceso. Usa el PID como key. */
 
-void (*RutinaSeleccionPaginaVictima) (t_segmento** tabla,uint32_t *pid,uint16_t *seg,uint16_t *pag);
-void (*AgregarPaginaAEstructuraSustitucion) (uint32_t pid,uint16_t seg,uint16_t pag);
+void (*ImprimirInfoAlgoritmosSustitucion)(void);
 void (*QuitarDeEstructuraDeSeleccion) (uint32_t pid,uint16_t seg,uint16_t pag);
+void (*AgregarPaginaAEstructuraSustitucion) (uint32_t pid,uint16_t seg,uint16_t pag);
 void (*ActualizarEnEstructuraDeSustitucion) (uint32_t pid,uint16_t seg,uint16_t pag);
+void (*RutinaSeleccionPaginaVictima) (t_segmento** tabla,uint32_t *pid,uint16_t *seg,uint16_t *pag);
+
 /* FIN Variables Globales */
 
 /* Interfaz MSP */
@@ -87,6 +89,7 @@ t_segmento* traducirDireccion(uint32_t pid,uint32_t direccionLogica,uint16_t *nu
 void traerPaginaAMemoria(t_segmento *tabla,uint32_t pid,uint16_t seg,uint16_t pag);
 uint32_t marcoVacio(void);
 uint32_t rutinaSustitucion(uint32_t inPid,uint16_t seg,uint16_t pag);
+char* string_uitoa(int number);
 /* FIN Funciones Privadas */
 
 #endif /* ADMINISTRADORDEMEMORIA_H_ */

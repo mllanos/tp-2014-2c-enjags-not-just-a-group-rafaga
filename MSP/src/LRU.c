@@ -9,6 +9,7 @@
 
 void seleccionVictimaLRU(t_segmento** tabla,uint32_t *pid,uint16_t *seg,uint16_t *pag) {
 
+	char *stringPID;
 	uint32_t inPid = *pid;
 	uint16_t inSeg = *seg;
 	uint16_t inPag = *pag;
@@ -18,7 +19,9 @@ void seleccionVictimaLRU(t_segmento** tabla,uint32_t *pid,uint16_t *seg,uint16_t
 	*pid = pagMenosUsada->pid;
 	*pag = pagMenosUsada->numPagina;
 	*seg = pagMenosUsada->numSegmento;
-	*tabla = tablaDelProceso(pagMenosUsada->pid);
+	*tabla = tablaDelProceso(stringPID = string_uitoa(*pid));
+
+	free(stringPID);
 
 	pagMenosUsada->pid = inPid;			/* Aprovecho que el nodo está creado, le cargo los datos de la nueva página, y agrego el nodo al final */
 	pagMenosUsada->numPagina = inPag;
@@ -66,4 +69,23 @@ bool match(void* LRU_node) {
 
 	return node->pid == ListVarPid && node->numSegmento == ListVarSeg && node->numPagina == ListVarPag;
 
+}
+
+void imprimirListaLRU(void) {
+
+	printf("Algortimo de Sustitución: LRU\nLista de Páginas en Memoria:\n%-12s%-12s%-12s","PID","Nº Segmento","Nº Página");
+
+	list_iterate(ListaLRU,imprimirLRU_node);
+
+}
+
+void imprimirLRU_node(void *data) {
+
+	t_LRU_node *nodo = (t_LRU_node*) data;
+
+	pthread_mutex_lock(&LogMutex);
+	log_trace(Logger,"%-12u%-12%-u",nodo->pid,nodo->numPagina,nodo->numSegmento);
+	pthread_mutex_unlock(&LogMutex);
+
+	printf("%-12u%-12u%-u",nodo->pid,nodo->numPagina,nodo->numSegmento);
 }

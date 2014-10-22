@@ -15,8 +15,6 @@
 #include <utiles/utiles.h>
 #include <commons/config.h>
 
-//#include "aux.h"
-
 #define K 1024
 #define M 1048576
 #define PAG_SIZE 256

@@ -20,7 +20,7 @@ int main (int argc, char** argv) {
 	cargarConfiguracion(argv[1]);
 	inicializarMSP(argv[3]);
 
-	log_trace(Logger,"Inicio de MSP.\n	Tamaño de página: %d.\n	Tamaño de swap: %d.",MaxMem,MaxSwap);
+	log_trace(Logger,"Inicio de MSP.\n	Tamaño de Memoria Principal: %u.\n	Tamaño de SWAP: %u.",MaxMem,MaxSwap);
 
 	listener = server_socket(Puerto);
 	pthread_create(&thread,NULL,atenderConsola,NULL);

@@ -9,6 +9,7 @@
 
 void seleccionVictimaClock(t_segmento** tabla,uint32_t *pid,uint16_t *seg,uint16_t *pag) {
 
+	char *stringPID;
 	uint32_t inPid = *pid;
 	uint16_t inSeg = *seg;
 	uint16_t inPag = *pag;
@@ -21,7 +22,9 @@ void seleccionVictimaClock(t_segmento** tabla,uint32_t *pid,uint16_t *seg,uint16
 	*pid = pagMenosUsada->pid;
 	*pag = pagMenosUsada->numPagina;
 	*seg = pagMenosUsada->numSegmento;
-	*tabla = tablaDelProceso(pagMenosUsada->pid);
+	*tabla = tablaDelProceso(stringPID = string_uitoa(*pid));
+
+	free(stringPID);
 
 	pagMenosUsada->pid = inPid;			/* Aprovecho y le cargo los datos de la nueva página, en el lugar de la que swapeé */
 	pagMenosUsada->numPagina = inPag;
@@ -66,5 +69,21 @@ void quitarPaginaDeArrayClock(uint32_t pid,uint16_t seg,uint16_t pag) {
 	}
 
 	--ClockEmptyIndex;
+
+}
+
+void imprimirArrayClock(void) {
+
+	int i;
+
+	printf("Algortimo de Sustitución: Clock\nPosición del puntero: %u\nLista de Páginas en Memoria:\n%-12s%-12s%-12s%-s",ClockIndex,"PID","Nº Segmento","Nº Página","Bit de Referencia");
+
+	for(i=0;i < ClockEmptyIndex;++i) {
+		pthread_mutex_lock(&LogMutex);
+		log_trace(Logger,"%-12u%-12%-12u%-1u",ArrayClock[i].pid,ArrayClock[i].numPagina,ArrayClock[i].numSegmento,ArrayClock[i].bitReferencia);
+		pthread_mutex_unlock(&LogMutex);
+
+		printf("%-12u%-12u%-12u%-1u",ArrayClock[i].pid,ArrayClock[i].numPagina,ArrayClock[i].numSegmento,ArrayClock[i].bitReferencia);
+	}
 
 }

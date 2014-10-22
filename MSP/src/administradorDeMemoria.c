@@ -29,17 +29,21 @@ void inicializarMSP(char* swapPath) {	//por ahí podría borrar acá lo que hay 
 
 	if(strcmp(AlgoritmoSustitucion,"LRU")) {	/* Elige Clock por default */
 		ArrayClock = malloc(CantidadMarcosTotal * sizeof(t_clock_node));
+
 		RutinaSeleccionPaginaVictima = seleccionVictimaClock;
-		AgregarPaginaAEstructuraSustitucion = agregarPaginaEnArrayClock;
+		ImprimirInfoAlgoritmosSustitucion = imprimirArrayClock;
 		QuitarDeEstructuraDeSeleccion = quitarPaginaDeArrayClock;
 		ActualizarEnEstructuraDeSustitucion = actualizarEnArrayClock;
+		AgregarPaginaAEstructuraSustitucion = agregarPaginaEnArrayClock;
 	}
 	else {
 		ListaLRU = list_create();
+
 		RutinaSeleccionPaginaVictima = seleccionVictimaLRU;
-		AgregarPaginaAEstructuraSustitucion = agregarPaginaAListaLRU;
+		ImprimirInfoAlgoritmosSustitucion = imprimirListaLRU;
 		QuitarDeEstructuraDeSeleccion = quitarPaginaDeListaLRU;
 		ActualizarEnEstructuraDeSustitucion = actualizarEnListaLRU;
+		AgregarPaginaAEstructuraSustitucion = agregarPaginaAListaLRU;
 	}
 
 	pthread_mutex_init(&LogMutex,NULL);
@@ -61,13 +65,13 @@ uint32_t crearSegmento(uint32_t pid, size_t size, t_msg_id* id) {
 
 		int pag;
 		t_segmento *tablaLocal;
+		char *stringPID = string_uitoa(pid);
 
-		if( ( tablaLocal = tablaDelProceso(pid) ) == NULL )	{				//intentar evitar la conversion a char con itoa; el NULL está por el warning
-			dictionary_put(TablaSegmentosGlobal,string_itoa(pid),tablaLocal = malloc(NUM_SEG_MAX * sizeof(t_segmento)));	/* Creo la tabla local del proceso PID */
+		if( ( tablaLocal = tablaDelProceso(stringPID) ) == NULL )	{				//intentar evitar la conversion a char con itoa; el NULL está por el warning
+			dictionary_put(TablaSegmentosGlobal,stringPID,tablaLocal = malloc(NUM_SEG_MAX * sizeof(t_segmento)));	/* Creo la tabla local del proceso PID */
 
 			for(numSegmento=0;numSegmento < NUM_SEG_MAX;++numSegmento)													/* Inicializo la Tabla Local de Segmentos */
 				tablaLocal[numSegmento].limite = 0;
-
 		}
 
 		if( (numSegmento = primerEntradaLibre(tablaLocal)) == NUM_SEG_MAX ) {
@@ -80,12 +84,10 @@ uint32_t crearSegmento(uint32_t pid, size_t size, t_msg_id* id) {
 		tablaLocal[numSegmento].bytesOcupados = 0;
 		tablaLocal[numSegmento].tablaPaginas = malloc(cantPaginas * sizeof(t_pagina));
 
-
-
 		/* Creo las páginas que va a ocupar el segmento en el espacio de SWAP */
 		for(pag = 0;pag < cantPaginas && CantPaginasEnSwapDisponibles;++pag,--CantPaginasEnSwapDisponibles) {
 
-			char* path = string_from_format("%s%u-%u-%u",SwapPath,pid,numSegmento,pag);
+			char* path = string_from_format("%s%s-%u-%u",SwapPath,stringPID,numSegmento,pag);
 
 			create_file(path,PAG_SIZE-1);
 			paginaEnMemoria(tablaLocal,numSegmento,pag) = false;
@@ -108,9 +110,11 @@ uint32_t crearSegmento(uint32_t pid, size_t size, t_msg_id* id) {
 			AgregarPaginaAEstructuraSustitucion(pid,numSegmento,pag);
 
 			pthread_mutex_lock(&LogMutex);
-			log_trace(Logger,"Marco %u asignado al proceso %u.",marcoDePagina(tablaLocal,numSegmento,pag),pid);
+			log_trace(Logger,"Marco %u asignado al proceso %s.",marcoDePagina(tablaLocal,numSegmento,pag),stringPID);
 			pthread_mutex_unlock(&LogMutex);
 		}
+
+		free(stringPID);
 
 		if(CantPaginasEnMemoriaDisponibles == 0) {
 			pthread_mutex_lock(&LogMutex);
@@ -203,7 +207,8 @@ char* solicitarMemoria(uint32_t pid,uint32_t direccionLogica,uint32_t size,t_msg
 
 t_msg_id destruirSegmento(uint32_t pid, uint32_t baseSegmento){
 
-	t_segmento* tabla = tablaDelProceso(pid);
+	char *stringPID = string_uitoa(pid);
+	t_segmento* tabla = tablaDelProceso(stringPID);
 	uint16_t numeroSegmento = segmento(baseSegmento);
 
 	if(tabla && segmentoValido(tabla,numeroSegmento)) {
@@ -224,7 +229,7 @@ t_msg_id destruirSegmento(uint32_t pid, uint32_t baseSegmento){
 			}
 
 		/* Borra todas las páginas swappeadas del segmento */
-		shellInstruction = string_from_format("cd %s\nrm %u-%u-*",SwapPath,pid,numeroSegmento);
+		shellInstruction = string_from_format("cd %s\nrm %s-%u-*",SwapPath,stringPID,numeroSegmento);
 
 		system(shellInstruction);
 
@@ -233,6 +238,7 @@ t_msg_id destruirSegmento(uint32_t pid, uint32_t baseSegmento){
 		free(tabla[numeroSegmento].tablaPaginas);
 		tabla[numeroSegmento].limite = 0;
 
+		free(stringPID);
 		free(shellInstruction);
 		//validar si es el único segmento del proceso, en ese caso probablemente habría que eliminar la entrada del diccionario
 		//Por ahi el kernel me puede avisar, total los últimos segmentos en borrarse son stack y código, y coinciden con la finalización del programa
@@ -256,13 +262,16 @@ uint16_t primerEntradaLibre(t_segmento *tabla) {
 
 t_segmento* traducirDireccion(uint32_t pid,uint32_t direccionLogica,uint16_t *numSegmento,uint16_t *numPagina,uint8_t *offset) {
 
+	char *stringPID;
 	t_segmento* tabla;
 
 	decodeDirLogica(direccionLogica,numSegmento,numPagina,offset);
 
 	/* Si el segmento o la página son inválidas asigna NULL a tabla. Si la tabla no existiera la retorna directamente (ya que vale NULL por dictionary_get() */
-	if( (tabla = (t_segmento*) dictionary_get(TablaSegmentosGlobal,string_itoa(pid))) && ( !segmentoValido(tabla,*numSegmento) || !paginaValida(tabla,*numSegmento,*numPagina,*offset) ) )
+	if( (tabla = (t_segmento*) dictionary_get(TablaSegmentosGlobal,stringPID = string_uitoa(pid))) && ( !segmentoValido(tabla,*numSegmento) || !paginaValida(tabla,*numSegmento,*numPagina,*offset) ) )
 		tabla = NULL;
+
+	free(stringPID);
 
 	return tabla;	/* Retorna o bien el puntero a la tabla de segmentos del proceso, o bien NULL si la dirección es inválida */
 
@@ -341,4 +350,8 @@ uint32_t rutinaSustitucion(uint32_t inPid,uint16_t inSeg,uint16_t inPag) {
 
 	return numMarcoLiberado;
 
+}
+
+char* string_uitoa(int number) {
+    return string_from_format("%u", number);
 }

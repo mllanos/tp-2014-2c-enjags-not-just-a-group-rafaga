@@ -21,11 +21,12 @@ void cargarConfiguracion(char* path) {
 
 void *atenderConsola(void* parametro) {
 
+	uint32_t i;
 	t_msg_id msg_id;
-	int i,seg,pag,cantPag;
 	t_segmento *tabla;
-	char *error,*buffer,*stringPID;//buffer
+	uint16_t seg,pag,cantPag;
 	uint32_t pid,size,direccionLogica,baseSegmento;
+	char *error,*buffer,*stringPID,*parameters,aux[1];
 
 	puts("Inicio de Consola MSP. A la espera de comandos...\n");
 
@@ -33,8 +34,13 @@ void *atenderConsola(void* parametro) {
 
 		switch(esperarComando()) {
 		case ESCRIBIR_MEMORIA:
-			scanf("%u%u%u",&pid,&direccionLogica,&size);
-			scanf("%*[ \t]%m[^\n]",&buffer);
+			if(scanf("%m[^\n]",&parameters) == 0 || sscanf(parameters,"%u%u%u%*[ \t]%m[^\n]",&pid,&direccionLogica,&size,&buffer) != 4) {
+				puts("Argumentos inválidos");
+				free(parameters);
+				break;
+			}
+
+			free(parameters);
 
 			pthread_mutex_lock(&MemMutex);
 			msg_id = escribirMemoria(pid,direccionLogica,buffer,size);
@@ -46,7 +52,13 @@ void *atenderConsola(void* parametro) {
 			free(buffer);
 			break;
 		case CREAR_SEGMENTO:
-			scanf("%u%u",&pid,&size);
+			if(scanf("%m[^\n]",&parameters) == 0 || sscanf(parameters,"%u%u%1s",&pid,&size,aux) != 2) {
+				puts("Argumentos inválidos");
+				free(parameters);
+				break;
+			}
+
+			free(parameters);
 
 			pthread_mutex_lock(&MemMutex);
 			direccionLogica = crearSegmento(pid,size,&msg_id);
@@ -54,14 +66,14 @@ void *atenderConsola(void* parametro) {
 
 			pthread_mutex_lock(&LogMutex);
 			if(msg_id == OK_CREATE) {
-				log_trace(Logger,"Segmento %d del proceso %d creado correctamente.",segmento(direccionLogica),pid);
+				log_trace(Logger,"Segmento %u del proceso %u creado correctamente.",segmento(direccionLogica),pid);
 				pthread_mutex_unlock(&LogMutex);
 
 				printf("Dirección base del segmento %u del proceso %u: %u.\n",segmento(direccionLogica),pid,direccionLogica);
 			}
 			else {
 				error = id_string(msg_id);
-				log_error(Logger,"No se pudo crear el segmento %d del proceso %u: %s.",segmento(direccionLogica),pid,error);
+				log_error(Logger,"No se pudo crear el segmento %u del proceso %u: %s.",segmento(direccionLogica),pid,error);
 				pthread_mutex_unlock(&LogMutex);
 
 				printf("ERROR: %s.\n",error);
@@ -70,7 +82,13 @@ void *atenderConsola(void* parametro) {
 			}
 			break;
 		case DESTRUIR_SEGMENTO:
-			scanf("%u%u",&pid,&baseSegmento);
+			if(scanf("%m[^\n]",&parameters) == 0 || sscanf(parameters,"%u%u%1s",&pid,&baseSegmento,aux) != 2) {
+				puts("Argumentos inválidos");
+				free(parameters);
+				break;
+			}
+
+			free(parameters);
 
 			pthread_mutex_lock(&MemMutex);
 			msg_id = destruirSegmento(pid,baseSegmento);
@@ -81,17 +99,23 @@ void *atenderConsola(void* parametro) {
 				log_trace(Logger,"Segmento %u del proceso %u destruido correctamente.",segmento(baseSegmento),pid);
 				pthread_mutex_unlock(&LogMutex);
 
-				printf("Segmento %u del proceso %u destruido correctamente.",segmento(baseSegmento),pid);
+				printf("Segmento %u del proceso %u destruido correctamente.\n",segmento(baseSegmento),pid);
 			}
 			else {
 				log_error(Logger,"No se pudo destruir el segmento %u del proceso %u.",segmento(baseSegmento),pid);
 				pthread_mutex_unlock(&LogMutex);
 
-				printf("No se pudo destruir el segmento %u del proceso %u.",segmento(baseSegmento),pid);
+				printf("No se pudo destruir el segmento %u del proceso %u.\n",segmento(baseSegmento),pid);
 			}
 			break;
 		case LEER_MEMORIA:
-			scanf("%u%u%u",&pid,&direccionLogica,&size);
+			if(scanf("%m[^\n]",&parameters) == 0 || sscanf(parameters,"%u%u%u%1s",&pid,&direccionLogica,&size,aux) != 3) {
+				puts("Argumentos inválidos");
+				free(parameters);
+				break;
+			}
+
+			free(parameters);
 
 			pthread_mutex_lock(&MemMutex);
 			buffer = solicitarMemoria(pid,direccionLogica,size,&msg_id);
@@ -103,18 +127,24 @@ void *atenderConsola(void* parametro) {
 				printf("%.*s\n",size,buffer);
 			break;
 		case TABLA_SEGMENTOS:
-			printf("PID\tNº Segmento\tTamaño\t\tDirección Base\n");
+			printf("%-14s%-14s %-14s %-s\n","PID","Nº Segmento","Tamaño","Dirección Base");
 
 			pthread_mutex_lock(&LogMutex);
-			log_trace(Logger,"PID\tNº Segmento\tTamaño\t\tDirección Base");
+			log_trace(Logger,"%-14s%-14s %-14s %-s","PID","Nº Segmento","Tamaño","Dirección Base");
 			pthread_mutex_unlock(&LogMutex);
 
 			dictionary_iterator(TablaSegmentosGlobal,imprimirSegmento);
 			break;
 		case TABLA_PAGINAS:
-			scanf("%u",&pid);
+			if(scanf("%m[^\n]",&parameters) == 0 || sscanf(parameters,"%u%1s",&pid,aux) != 1) {
+				puts("Argumentos inválidos");
+				free(parameters);
+				break;
+			}
 
-			if((tabla = dictionary_get(TablaSegmentosGlobal,stringPID = string_itoa(pid))) == NULL) {
+			free(parameters);
+
+			if((tabla = dictionary_get(TablaSegmentosGlobal,stringPID = string_uitoa(pid))) == NULL) {
 				free(stringPID);
 				puts("PID INVÁLIDO");
 				break;
@@ -122,10 +152,10 @@ void *atenderConsola(void* parametro) {
 
 			free(stringPID);
 
-			printf("Nº Segmento\tNº Página\tEn Memoria\n");
+			printf("%-14s%-14s%-s\n","Nº Segmento","Nº Página","En Memoria");
 
 			pthread_mutex_lock(&LogMutex);
-			log_trace(Logger,"Nº Segmento\tNº Página\tEn Memoria");
+			log_trace(Logger,"%-14s%-14s%-s","Nº Segmento","Nº Página","En Memoria");
 			pthread_mutex_unlock(&LogMutex);
 
 			for(seg=0;seg < NUM_SEG_MAX;++seg)
@@ -134,28 +164,29 @@ void *atenderConsola(void* parametro) {
 
 					for(pag=0;pag < cantPag;++pag) {
 						pthread_mutex_lock(&LogMutex);
-						log_trace(Logger,"%u\t\t%u\t\t%u",seg,pag,tabla[seg].tablaPaginas[pag].bitPresencia);
+						log_trace(Logger,"%-13u%-12u%-u",seg,pag,tabla[seg].tablaPaginas[pag].bitPresencia);
 						pthread_mutex_unlock(&LogMutex);
 
-						printf("%u\t\t%u\t\t%u\n",seg,pag,tabla[seg].tablaPaginas[pag].bitPresencia);
+						printf("%-13u%-12u%-u\n",seg,pag,tabla[seg].tablaPaginas[pag].bitPresencia);
 					}
 				}
 			break;
 		case LISTAR_MARCOS:
-			printf("Nº Marco\tOcupado\t\tPID\n");
+			printf("%-14s%-14s%-s\n","Nº Marco","Ocupado","PID");
 
 			pthread_mutex_lock(&LogMutex);
-			log_trace(Logger,"Nº Marco\tOcupado\t\tPID");
+			log_trace(Logger,"%-14s%-14s%-s","Nº Marco","Ocupado","PID");
 			pthread_mutex_unlock(&LogMutex);
 
 			for(i=0;i < CantidadMarcosTotal;++i) {
 				pthread_mutex_lock(&LogMutex);
-				log_trace(Logger,"%u\t\t%u\t\t%u",i,MemoriaPrincipal[i].ocupado,MemoriaPrincipal[i].pid);
+				log_trace(Logger,"%-13u%-14u%-u",i,MemoriaPrincipal[i].ocupado,MemoriaPrincipal[i].pid);
 				pthread_mutex_unlock(&LogMutex);
 
-				printf("%u\t\t%u\t\t%u\n",i,MemoriaPrincipal[i].ocupado,MemoriaPrincipal[i].pid);
+				printf("%-13u%-14u%-u\n",i,MemoriaPrincipal[i].ocupado,MemoriaPrincipal[i].pid);
 			}
-			//falta info de los algoritmos de sustitucion
+
+			ImprimirInfoAlgoritmosSustitucion();
 
 			break;
 		default:
@@ -165,7 +196,6 @@ void *atenderConsola(void* parametro) {
 	}
 
 	return NULL;
-
 }
 
 void *atenderProceso(void* parametro) {
@@ -187,7 +217,7 @@ void *atenderProceso(void* parametro) {
 				size = msg->argv[2];
 
 				pthread_mutex_lock(&LogMutex);
-				log_trace(Logger,"Recepción de solicitud Escribir Memoria\nPID: %d\nDirección Lógica: %d\nBytes a Escribir: %s\nTamaño: %d",pid,direccionLogica,bytesAEscribir,size);
+				log_trace(Logger,"Recepción de solicitud Escribir Memoria\nPID: %u\nDirección Lógica: %u\nBytes a Escribir: %s\nTamaño: %u",pid,direccionLogica,bytesAEscribir,size);
 				pthread_mutex_unlock(&LogMutex);
 
 				pthread_mutex_lock(&MemMutex);
@@ -206,7 +236,7 @@ void *atenderProceso(void* parametro) {
 				size = msg->argv[1];
 
 				pthread_mutex_lock(&LogMutex);
-				log_trace(Logger,"Recepción de solicitud Crear Segmento\nPID: %d\nTamaño: %d",pid,size);
+				log_trace(Logger,"Recepción de solicitud Crear Segmento\nPID: %u\nTamaño: %u",pid,size);
 				pthread_mutex_unlock(&LogMutex);
 
 				pthread_mutex_lock(&MemMutex);
@@ -216,13 +246,13 @@ void *atenderProceso(void* parametro) {
 
 				pthread_mutex_lock(&LogMutex);
 				if(msg->header.id == OK_CREATE) {
-					log_trace(Logger,"Segmento %d del proceso %d creado correctamente",pid,segmento(direccionLogica));
+					log_trace(Logger,"Segmento %u del proceso %u creado correctamente",pid,segmento(direccionLogica));
 					pthread_mutex_unlock(&LogMutex);
 				}
 				else {
 					error = id_string(msg->header.id);
 
-					log_error(Logger,"No se pudo crear el segmento %d del proceso %d: %s",pid,segmento(direccionLogica),error);
+					log_error(Logger,"No se pudo crear el segmento %u del proceso %u: %s",pid,segmento(direccionLogica),error);
 					pthread_mutex_unlock(&LogMutex);
 
 					//free(error); por alguna razon no puedo liberar este espacio de memoria. Pasa lo mismo con el string Algoritmo de config.
@@ -235,7 +265,7 @@ void *atenderProceso(void* parametro) {
 				baseSegmento = msg->argv[1];
 
 				pthread_mutex_lock(&LogMutex);
-				log_trace(Logger,"Recepción de solicitud Destruir Segmento\nPID: %d\nNúmero de Segmento: %d",pid,segmento(baseSegmento));
+				log_trace(Logger,"Recepción de solicitud Destruir Segmento\nPID: %u\nNúmero de Segmento: %u",pid,segmento(baseSegmento));
 				pthread_mutex_unlock(&LogMutex);
 
 				pthread_mutex_lock(&MemMutex);
@@ -244,11 +274,11 @@ void *atenderProceso(void* parametro) {
 
 				pthread_mutex_lock(&LogMutex);
 				if(msg->header.id == OK_DESTROY) {
-					log_trace(Logger,"Segmento %d del proceso %d destruido correctamente",pid,segmento(baseSegmento));
+					log_trace(Logger,"Segmento %u del proceso %u destruido correctamente",pid,segmento(baseSegmento));
 					pthread_mutex_unlock(&LogMutex);
 				}
 				else {
-					log_error(Logger,"No se pudo destruir el segmento %d del proceso %d",pid,segmento(baseSegmento));
+					log_error(Logger,"No se pudo destruir el segmento %u del proceso %u",pid,segmento(baseSegmento));
 					pthread_mutex_unlock(&LogMutex);
 				}
 
@@ -259,7 +289,7 @@ void *atenderProceso(void* parametro) {
 				break;
 			case REQUEST_MEMORY:
 				pthread_mutex_lock(&LogMutex);
-				log_trace(Logger,"Recepción de solicitud Escribir Memoria\nPID: %d\nDirección Lógica: %d\nTamaño: %d",pid,direccionLogica,size);
+				log_trace(Logger,"Recepción de solicitud Escribir Memoria\nPID: %u\nDirección Lógica: %u\nTamaño: %u",pid,direccionLogica,size);
 				pthread_mutex_unlock(&LogMutex);
 
 				pid = msg->argv[0];
@@ -316,8 +346,7 @@ t_comando_consola esperarComando(void) {
 		idCommand = LISTAR_MARCOS;
 	else {
 		idCommand = COMANDO_INVALIDO;
-		while(getchar() != EOF)
-			;
+		scanf("%*[^\n]");
 	}
 
 	free(command);
@@ -334,9 +363,9 @@ void imprimirSegmento(char *pid,void *data) {
 	for(seg=0;seg < NUM_SEG_MAX;++seg)
 		if(segmentoValido(tabla,seg)) {
 			pthread_mutex_lock(&LogMutex);
-			log_trace(Logger,"%s\t\t%u\t%u\t\t%u",pid,seg,tabla[seg].limite,generarDireccionLogica(seg,0,0));
+			log_trace(Logger,"%-14s%-14u%-14u%-u",pid,seg,tabla[seg].limite,generarDireccionLogica(seg,0,0));
 			pthread_mutex_unlock(&LogMutex);
 
-			printf("%s\t\t%u\t%u\t\t%u\n",pid,seg,tabla[seg].limite,generarDireccionLogica(seg,0,0));
+			printf("%-14s%-14u%-14u%-u\n",pid,seg,tabla[seg].limite,generarDireccionLogica(seg,0,0));
 		}
 }

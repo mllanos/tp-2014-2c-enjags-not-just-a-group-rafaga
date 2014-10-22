@@ -26,6 +26,8 @@ uint16_t ListVarPag;
 
 /* Funciones */
 bool match(void* LRU_node);
+void imprimirListaLRU(void);
+void imprimirLRU_node(void *data);
 void actualizarEnListaLRU(uint32_t pid,uint16_t seg,uint16_t pag);
 void agregarPaginaAListaLRU(uint32_t pid,uint16_t seg,uint16_t pag);
 void quitarPaginaDeListaLRU(uint32_t pid,uint16_t seg,uint16_t pag);
