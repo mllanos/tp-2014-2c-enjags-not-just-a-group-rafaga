@@ -62,7 +62,7 @@ void eu_actualizar_registros(void) {
 void eu_fetch_instruccion(void) {
 
 	instruccion_size = OPERATION_CODE_SIZE;
-	t_msg *new_msg = msp_solicitar_memoria(registros.I, registros.M + registros.P,OPERATION_CODE_SIZE, MEM_REQUEST);
+	t_msg *new_msg = msp_solicitar_memoria(registros.I, registros.M + registros.P,OPERATION_CODE_SIZE, REQUEST_MEMORY);
 	//if(new_msg->header.id != NEXT_ARG)
 		//abortar la ejecucion?
 
@@ -110,7 +110,7 @@ int fetch_operand(t_operandos tipo_operando){
 	else
 		size = sizeof(int32_t);
 
-	t_msg *new_msg = msp_solicitar_memoria(registros.I,registros.M + registros.P, size, ARG_REQUEST);
+	t_msg *new_msg = msp_solicitar_memoria(registros.I,registros.M + registros.P, size, REQUEST_MEMORY);
 	//if(new_msg->header.id != NEXT_OC)
 			;//abortar la ejecucion?
 	//memcpy(&arg,new_msg->stream,size);

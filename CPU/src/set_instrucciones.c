@@ -22,7 +22,7 @@ void getm (void) {
 	uint32_t i = fetch_operand(REGISTRO) - 'A';
 	uint32_t j = fetch_operand(REGISTRO) - 'A';
 
-	t_msg *new_msg = msp_solicitar_memoria(registros.I, registros.M + registros.registros_programacion[j], REG_SIZE, MEM_REQUEST);
+	t_msg *new_msg = msp_solicitar_memoria(registros.I, registros.M + registros.registros_programacion[j], REG_SIZE, REQUEST_MEMORY);
 	//if(new_msg->header.id != ???) //falta elegir un msg_id
 			;//abortar la ejecucion?
 	registros.registros_programacion[i] = new_msg->argv[i]; //4bytes? preguntar qué es "memoria apuntada"
@@ -199,7 +199,7 @@ void take (void) {
 	uint32_t cantidad_bytes = fetch_operand(NUMERO);
 	uint32_t i = fetch_operand(REGISTRO) - 'A';
 
-	t_msg *new_msg = msp_solicitar_memoria(registros.I, registros.X + registros.S, cantidad_bytes, MEM_REQUEST); //por ahi conviene poner otro id
+	t_msg *new_msg = msp_solicitar_memoria(registros.I, registros.X + registros.S, cantidad_bytes, REQUEST_MEMORY); //por ahi conviene poner otro id
 	registros.S -= cantidad_bytes;
 	//if(new_msg->header.id != ???) //falta elegir un msg_id
 		;//abortar la ejecucion?
