@@ -212,12 +212,13 @@ void *atenderProceso(void* parametro) {
 			switch(msg->header.id) {
 			case WRITE_MEMORY:
 				pid = msg->argv[0];
+				size = msg->argv[2];
 				direccionLogica = msg->argv[1];
 				bytesAEscribir = msg->stream;
-				size = msg->argv[2];
 
 				pthread_mutex_lock(&LogMutex);
-				log_trace(Logger,"Recepción de solicitud Escribir Memoria\nPID: %u\nDirección Lógica: %u\nBytes a Escribir: %s\nTamaño: %u",pid,direccionLogica,bytesAEscribir,size);
+				log_trace(Logger,"Recepción de solicitud Escribir Memoria:");
+				log_trace(Logger,"PID: %u, Dirección Lógica: %u, Bytes a Escribir: %s, Tamaño: %u.",pid,direccionLogica,bytesAEscribir,size);
 				pthread_mutex_unlock(&LogMutex);
 
 				pthread_mutex_lock(&MemMutex);
@@ -226,6 +227,7 @@ void *atenderProceso(void* parametro) {
 
 				free(msg->argv);
 				free(msg->stream);
+				msg->stream = NULL;
 				msg->header.argc = 0;
 				msg->header.length = 0;
 
@@ -236,7 +238,8 @@ void *atenderProceso(void* parametro) {
 				size = msg->argv[1];
 
 				pthread_mutex_lock(&LogMutex);
-				log_trace(Logger,"Recepción de solicitud Crear Segmento\nPID: %u\nTamaño: %u",pid,size);
+				log_trace(Logger,"Recepción de solicitud Crear Segmento:");
+				log_trace(Logger,"PID: %u, Tamaño: %u.",pid,size);
 				pthread_mutex_unlock(&LogMutex);
 
 				pthread_mutex_lock(&MemMutex);
@@ -246,13 +249,13 @@ void *atenderProceso(void* parametro) {
 
 				pthread_mutex_lock(&LogMutex);
 				if(msg->header.id == OK_CREATE) {
-					log_trace(Logger,"Segmento %u del proceso %u creado correctamente",pid,segmento(direccionLogica));
+					log_trace(Logger,"Segmento %u del proceso %u creado correctamente.",pid,segmento(direccionLogica));
 					pthread_mutex_unlock(&LogMutex);
 				}
 				else {
 					error = id_string(msg->header.id);
 
-					log_error(Logger,"No se pudo crear el segmento %u del proceso %u: %s",pid,segmento(direccionLogica),error);
+					log_error(Logger,"No se pudo crear el segmento %u del proceso %u: %s.",pid,segmento(direccionLogica),error);
 					pthread_mutex_unlock(&LogMutex);
 
 					//free(error); por alguna razon no puedo liberar este espacio de memoria. Pasa lo mismo con el string Algoritmo de config.
@@ -265,7 +268,8 @@ void *atenderProceso(void* parametro) {
 				baseSegmento = msg->argv[1];
 
 				pthread_mutex_lock(&LogMutex);
-				log_trace(Logger,"Recepción de solicitud Destruir Segmento\nPID: %u\nNúmero de Segmento: %u",pid,segmento(baseSegmento));
+				log_trace(Logger,"Recepción de solicitud Destruir Segmento:");
+				log_trace(Logger,"PID: %u, Número de Segmento: %u.",pid,segmento(baseSegmento));
 				pthread_mutex_unlock(&LogMutex);
 
 				pthread_mutex_lock(&MemMutex);
@@ -274,11 +278,11 @@ void *atenderProceso(void* parametro) {
 
 				pthread_mutex_lock(&LogMutex);
 				if(msg->header.id == OK_DESTROY) {
-					log_trace(Logger,"Segmento %u del proceso %u destruido correctamente",pid,segmento(baseSegmento));
+					log_trace(Logger,"Segmento %u del proceso %u destruido correctamente.",pid,segmento(baseSegmento));
 					pthread_mutex_unlock(&LogMutex);
 				}
 				else {
-					log_error(Logger,"No se pudo destruir el segmento %u del proceso %u",pid,segmento(baseSegmento));
+					log_error(Logger,"No se pudo destruir el segmento %u del proceso %u.",pid,segmento(baseSegmento));
 					pthread_mutex_unlock(&LogMutex);
 				}
 
@@ -289,7 +293,8 @@ void *atenderProceso(void* parametro) {
 				break;
 			case REQUEST_MEMORY:
 				pthread_mutex_lock(&LogMutex);
-				log_trace(Logger,"Recepción de solicitud Escribir Memoria\nPID: %u\nDirección Lógica: %u\nTamaño: %u",pid,direccionLogica,size);
+				log_trace(Logger,"Recepción de solicitud Leer Memoria:");
+				log_trace(Logger,"PID: %u, Dirección Lógica: %u, Tamaño: %u.",pid,direccionLogica,size);
 				pthread_mutex_unlock(&LogMutex);
 
 				pid = msg->argv[0];
@@ -308,7 +313,7 @@ void *atenderProceso(void* parametro) {
 				break;
 			default:
 				pthread_mutex_lock(&LogMutex);
-				log_error(Logger,"Recepción de solicitud inválida");
+				log_error(Logger,"Recepción de solicitud inválida.");
 				pthread_mutex_unlock(&LogMutex);
 			}
 		}

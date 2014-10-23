@@ -15,19 +15,21 @@ void inicializarMSP(char* swapPath) {	//por ahí podría borrar acá lo que hay 
 
 	CantPaginasEnSwapMax = MaxSwap / PAG_SIZE;
 	CantPaginasEnSwapDisponibles = CantPaginasEnSwapMax - 1; 					/* Dejo un lugar disponible para hacer los intercambios */
-	CantPaginasEnMemoriaDisponibles = CantidadMarcosTotal = MaxMem / PAG_SIZE;	// Preguntar que pasa si la memoria no se puede repartir en exactamente n marcos
+	CantPaginasEnMemoriaDisponibles = CantidadMarcosTotal = MaxMem / PAG_SIZE;
 	CantPaginasDisponibles = CantPaginasEnMemoriaDisponibles + CantPaginasEnSwapDisponibles;
 
 
 	if((MemoriaPrincipal = malloc(CantidadMarcosTotal * sizeof(t_marco))) == NULL)
 		perror("MALLOC");
 
-	for(i=0;i < CantidadMarcosTotal;++i)	/* Inicializo el bit ocupado con 0 (todos los marcos disponibles) */
+	/* Inicializo el bit ocupado con 0 (todos los marcos disponibles) */
+	for(i=0;i < CantidadMarcosTotal;++i)
 		MemoriaPrincipal[i].ocupado = 0;
 
 	TablaSegmentosGlobal = dictionary_create();
 
-	if(strcmp(AlgoritmoSustitucion,"LRU")) {	/* Elige Clock por default */
+	/* Configuro las rutinas del algoritmo de selección a utilizar. Elige Clock por default */
+	if(strcmp(AlgoritmoSustitucion,"LRU")) {
 		ArrayClock = malloc(CantidadMarcosTotal * sizeof(t_clock_node));
 
 		RutinaSeleccionPaginaVictima = seleccionVictimaClock;
@@ -67,7 +69,7 @@ uint32_t crearSegmento(uint32_t pid, size_t size, t_msg_id* id) {
 		t_segmento *tablaLocal;
 		char *stringPID = string_uitoa(pid);
 
-		if( ( tablaLocal = tablaDelProceso(stringPID) ) == NULL )	{				//intentar evitar la conversion a char con itoa; el NULL está por el warning
+		if( ( tablaLocal = tablaDelProceso(stringPID) ) == NULL )	{
 			dictionary_put(TablaSegmentosGlobal,stringPID,tablaLocal = malloc(NUM_SEG_MAX * sizeof(t_segmento)));	/* Creo la tabla local del proceso PID */
 
 			for(numSegmento=0;numSegmento < NUM_SEG_MAX;++numSegmento)													/* Inicializo la Tabla Local de Segmentos */
@@ -89,7 +91,7 @@ uint32_t crearSegmento(uint32_t pid, size_t size, t_msg_id* id) {
 
 			char* path = string_from_format("%s%s-%u-%u",SwapPath,stringPID,numSegmento,pag);
 
-			create_file(path,PAG_SIZE-1);
+			create_file(path,PAG_SIZE);
 			paginaEnMemoria(tablaLocal,numSegmento,pag) = false;
 
 			free(path);
@@ -229,9 +231,11 @@ t_msg_id destruirSegmento(uint32_t pid, uint32_t baseSegmento){
 			}
 
 		/* Borra todas las páginas swappeadas del segmento */
-		shellInstruction = string_from_format("cd %s\nrm %s-%u-*",SwapPath,stringPID,numeroSegmento);
-
-		system(shellInstruction);
+		if(cantPagEnMemoria < cantPaginas) {
+			shellInstruction = string_from_format("cd %s\nrm %s-%u-*",SwapPath,stringPID,numeroSegmento);
+			system(shellInstruction);
+			free(shellInstruction);
+		}
 
 		CantPaginasDisponibles += cantPaginas;
 		CantPaginasEnSwapDisponibles += cantPaginas - cantPagEnMemoria;
@@ -239,7 +243,6 @@ t_msg_id destruirSegmento(uint32_t pid, uint32_t baseSegmento){
 		tabla[numeroSegmento].limite = 0;
 
 		free(stringPID);
-		free(shellInstruction);
 		//validar si es el único segmento del proceso, en ese caso probablemente habría que eliminar la entrada del diccionario
 		//Por ahi el kernel me puede avisar, total los últimos segmentos en borrarse son stack y código, y coinciden con la finalización del programa
 	}

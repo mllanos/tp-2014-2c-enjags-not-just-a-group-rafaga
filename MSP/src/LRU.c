@@ -73,10 +73,15 @@ bool match(void* LRU_node) {
 
 void imprimirListaLRU(void) {
 
-	printf("Algortimo de Sustitución: LRU\nLista de Páginas en Memoria:\n%-12s%-12s%-12s","PID","Nº Segmento","Nº Página");
+	pthread_mutex_lock(&LogMutex);
+	log_trace(Logger,"Algortimo de Sustitución: LRU");
+	log_trace(Logger,"Lista de Páginas en Memoria:");
+	log_trace(Logger,"%-12s%-14s%-s","PID","Nº Segmento","Nº Página");
+	pthread_mutex_unlock(&LogMutex);
+
+	printf("Algortimo de Sustitución: LRU\nLista de Páginas en Memoria:\n%-12s%-14s%-s\n","PID","Nº Segmento","Nº Página");
 
 	list_iterate(ListaLRU,imprimirLRU_node);
-
 }
 
 void imprimirLRU_node(void *data) {
@@ -84,8 +89,8 @@ void imprimirLRU_node(void *data) {
 	t_LRU_node *nodo = (t_LRU_node*) data;
 
 	pthread_mutex_lock(&LogMutex);
-	log_trace(Logger,"%-12u%-12%-u",nodo->pid,nodo->numPagina,nodo->numSegmento);
+	log_trace(Logger,"%-12u%-12u %-u",nodo->pid,nodo->numSegmento,nodo->numPagina);
 	pthread_mutex_unlock(&LogMutex);
 
-	printf("%-12u%-12u%-u",nodo->pid,nodo->numPagina,nodo->numSegmento);
+	printf("%-12u%-12u %-u\n",nodo->pid,nodo->numSegmento,nodo->numPagina);
 }

@@ -82,6 +82,31 @@ int accept_connection(int sock_fd)
 }
 
 
+t_msg *argv_message(t_msg_id id, uint16_t count, ...)
+{
+	va_list arguments;
+	va_start(arguments, count);
+
+	uint32_t *val = malloc(count * sizeof *val);
+
+	int i;
+	for (i = 0; i < count; i++) {
+		val[i] = va_arg(arguments, uint32_t);
+	}
+
+	t_msg *new = malloc(sizeof *new);
+	new->header.id = id;
+	new->header.argc = count;
+	new->argv = val;
+	new->header.length = 0;
+	new->stream = NULL;
+
+	va_end(arguments);
+
+	return new;
+}
+
+
 t_msg *string_message(t_msg_id id, char *message, uint16_t count, ...)
 {
 	va_list arguments;
@@ -326,8 +351,10 @@ void enviar_mensaje(int sock_fd, t_msg *msg)
 
 void destroy_message(t_msg *msg)
 {
-	free(msg->stream);
-	free(msg->argv);
+	if(msg->header.length)
+		free(msg->stream);
+	if(msg->header.argc)
+		free(msg->argv);
 	free(msg);
 }
 
@@ -355,7 +382,7 @@ void create_file(char *path,size_t size) {
 
 	FILE *f = fopen(path, "wb");
 
-	fseek(f,size,SEEK_SET);
+	fseek(f,size-1,SEEK_SET);
 
 	fputc('\n', f);
 

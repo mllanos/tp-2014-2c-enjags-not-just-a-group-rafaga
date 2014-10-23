@@ -76,14 +76,21 @@ void imprimirArrayClock(void) {
 
 	int i;
 
-	printf("Algortimo de Sustitución: Clock\nPosición del puntero: %u\nLista de Páginas en Memoria:\n%-12s%-12s%-12s%-s",ClockIndex,"PID","Nº Segmento","Nº Página","Bit de Referencia");
+	pthread_mutex_lock(&LogMutex);
+	log_trace(Logger,"Algortimo de Sustitución: Clock:");
+	log_trace(Logger,"Posición del puntero: %u",ClockIndex);
+	log_trace(Logger,"Lista de Páginas en Memoria:");
+	log_trace(Logger,"%-12s%-14s%-14s%-s","PID","Nº Segmento","Nº Página","Bit de Referencia");
+	pthread_mutex_unlock(&LogMutex);
+
+	printf("Algortimo de Sustitución: Clock\nPosición del puntero: %u\nLista de Páginas en Memoria:\n%-12s%-14s%-14s%-s\n",ClockIndex,"PID","Nº Segmento","Nº Página","Bit de Referencia");
 
 	for(i=0;i < ClockEmptyIndex;++i) {
 		pthread_mutex_lock(&LogMutex);
-		log_trace(Logger,"%-12u%-12%-12u%-1u",ArrayClock[i].pid,ArrayClock[i].numPagina,ArrayClock[i].numSegmento,ArrayClock[i].bitReferencia);
+		log_trace(Logger,"%-12u%-12u %-12u%-1u",ArrayClock[i].pid,ArrayClock[i].numSegmento,ArrayClock[i].numPagina,ArrayClock[i].bitReferencia);
 		pthread_mutex_unlock(&LogMutex);
 
-		printf("%-12u%-12u%-12u%-1u",ArrayClock[i].pid,ArrayClock[i].numPagina,ArrayClock[i].numSegmento,ArrayClock[i].bitReferencia);
+		printf("%-12u%-12u %-12u%-1u\n",ArrayClock[i].pid,ArrayClock[i].numSegmento,ArrayClock[i].numPagina,ArrayClock[i].bitReferencia);
 	}
 
 }

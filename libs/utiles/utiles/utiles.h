@@ -164,6 +164,11 @@ void enviar_mensaje(int sock_fd, t_msg *msg);
 /****************** FUNCIONES T_MSG. ******************/
 
 /*
+ * Crea un t_msg a partir de count argumentos.
+ */
+t_msg *argv_message(t_msg_id id, uint16_t count, ...);
+
+/*
  * Crea un t_msg a partir de un string y count argumentos.
  */
 t_msg *string_message(t_msg_id id, char *message, uint16_t count, ...);
