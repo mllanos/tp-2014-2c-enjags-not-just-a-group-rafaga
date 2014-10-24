@@ -7,6 +7,8 @@
 
 #include "execution_unit.h"
 
+/* Instrucciones de Usuario*/
+
 void load (void) {
 
 	Registros.registros_programacion[fetch_registro()] = fetch_numero();
@@ -142,7 +144,6 @@ void jpnz (void) {
 void inte (void) {
 
 	//mando un mensaje con la interrupcion, y despues el hilo? o mando todo junto? arreglar con mario
-	//servicio_kernel(CPU_INTERRUPT,fetch_direccion());
 	Quantum = 0;
 	t_msg *msg = argv_message(CPU_INTERRUPT,1,fetch_direccion());
 
@@ -173,7 +174,7 @@ void eso_push (void) {
 	int32_t size = fetch_numero();
 	uint32_t i = fetch_registro();
 
-	msp_memcpy(STACK_TOP,registro(i),size);
+	msp_memcpy(stack_top,registro(i),size);
 	Registros.S += size;
 
 }
@@ -183,7 +184,7 @@ void take (void) {
 	int32_t size = fetch_numero();
 	uint32_t i = fetch_registro();
 
-	msp_memcpy(registro(i),STACK_TOP-size,size);
+	msp_memcpy(registro(i),stack_top-size,size);
 	Registros.S -= size;
 
 }
@@ -191,5 +192,121 @@ void take (void) {
 void xxxx (void) {
 
 	Execution_State = FINISHED_THREAD;
+
+}
+
+
+/* Instrucciones Protegidas */
+
+void innn (void) {
+
+	t_msg *msg = id_message(NUMERIC_INPUT);
+
+	enviar_mensaje(Kernel,msg);
+
+	destroy_message(msg);
+
+	msg = recibir_mensaje(Kernel);
+
+	registro(A) = msg->argv[0];
+
+	destroy_message(msg);
+
+}
+
+void innc (void) {
+
+	t_msg *msg = argv_message(STRING_INPUT,1,registro(B));
+
+	enviar_mensaje(Kernel,msg);
+
+	destroy_message(msg);
+
+	msg = recibir_mensaje(Kernel);
+
+	escribir_memoria(registro(A),msg->stream,registro(B));
+
+	destroy_message(msg);
+
+}
+
+void outn (void) {
+
+	t_msg *msg = argv_message(STRING_OUTPUT,1,registro(A));//NUMERIC_OUTPUT
+
+	enviar_mensaje(Kernel,msg);
+
+	destroy_message(msg);
+
+}
+
+void outc (void) {
+
+	char *buffer = solicitar_memoria(registro(A),registro(B));
+
+	t_msg *msg = string_message(STRING_OUTPUT,buffer,1,registro(B));
+
+	enviar_mensaje(Kernel,msg);
+
+	destroy_message(msg);
+
+}
+
+void crea (void) {
+
+	t_msg *msg;
+	t_msg_id id;
+	t_hilo *hilo_hijo = malloc(sizeof(t_hilo));
+
+	memcpy(hilo_hijo,&Hilo,sizeof(t_hilo));
+
+	++hilo_hijo->tid;
+	hilo_hijo->puntero_instruccion = registro(B);
+	hilo_hijo->kernel_mode = 0;
+	hilo_hijo->base_stack = crear_segmento(stack_size,&id);
+
+	if(id == OK_CREATE) {
+
+		hilo_hijo->cursor_stack = hilo_hijo->base_stack + stack_size;
+		msp_memcpy(hilo_hijo->base_stack,Registros.X,stack_size);
+
+		msg = tcb_message(CPU_CREA,hilo_hijo,0);
+	}
+	else
+		msg = id_message(CPU_CREA);//CPU_ABORT
+
+	enviar_mensaje(Kernel,msg);
+
+	destroy_message(msg);
+
+}
+
+void join (void) {
+
+	t_msg *msg = argv_message(CPU_JOIN,1,registro(A));
+
+	enviar_mensaje(Kernel,msg);
+
+	destroy_message(msg);
+
+}
+
+void block (void) {
+
+	t_msg *msg = argv_message(CPU_BLOCK,1,registro(B));
+
+	enviar_mensaje(Kernel,msg);
+
+	destroy_message(msg);
+
+}
+
+void wake (void) {
+
+	t_msg *msg = argv_message(CPU_WAKE,1,registro(B));
+
+	enviar_mensaje(Kernel,msg);
+
+	destroy_message(msg);
 
 }

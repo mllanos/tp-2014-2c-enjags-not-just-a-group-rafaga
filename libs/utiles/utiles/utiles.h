@@ -69,6 +69,7 @@ typedef enum {
 
 	FINISHED_THREAD,			/* Envío de TCB, cuya ejecución ha finalizado, de CPU a Kernel. */
 
+	CPU_ABORT,				/* Pedido de la CPU al Kernel para abortar la ejecución de un hilo */
 
 	/****************** SERVICIOS EXPUESTOS A CPU: INTERRUPCIÓN. ******************/ 
 	CPU_INTERRUPT,				/* Pedido de interrupción de un hilo de proceso de CPU a Kernel. */
@@ -79,7 +80,8 @@ typedef enum {
 	REPLY_INPUT,				/* Respuesta de input de Consola. */
 
 	/****************** SERVICIOS EXPUESTOS A CPU: SALIDA ESTÁNDAR. ******************/
-	STRING_OUTPUT,				/* Pedido de salida estándar de CPU. */
+	NUMERIC_OUTPUT,				/* Pedido de output numérico de CPU. */
+	STRING_OUTPUT,				/* Pedido de output de string de CPU. */
 
 	/****************** SERVICIOS EXPUESTOS A CPU: CREAR HILO. ******************/
 	CPU_CREA,					/* Pedido de nuevo hilo de proceso de CPU a Kernel. */
@@ -124,14 +126,14 @@ typedef enum {
 
 typedef struct {
 	t_msg_id id;
-	uint16_t length;
+	uint32_t length;
 	uint16_t argc;
 }__attribute__ ((__packed__)) t_header;
 
 typedef struct {
 	t_header header;
 	char *stream;
-	uint32_t *argv;
+	int32_t *argv;
 }__attribute__ ((__packed__)) t_msg;
 
 

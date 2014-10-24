@@ -365,9 +365,9 @@ void enviar_mensaje(int sock_fd, t_msg *msg)
 
 void destroy_message(t_msg *msg)
 {
-	if(msg->header.length)
+	if(msg->header.length && msg->stream != NULL)
 		free(msg->stream);
-	if(msg->header.argc)
+	if(msg->header.argc && msg->argv != NULL)
 		free(msg->argv);
 	free(msg);
 }
@@ -573,6 +573,8 @@ char *id_string(t_msg_id id)
 			return "KILL_CONSOLE";
 		case NUMERIC_INPUT:
 			return "NUMERIC_INPUT";
+		case NUMERIC_OUTPUT:
+			return "NUMERIC_OUTPUT";
 		case REPLY_INPUT:
 			return "REPLY_INPUT";
 		case STRING_INPUT:
@@ -609,6 +611,8 @@ char *id_string(t_msg_id id)
 			return "NEXT_TCB";
 		case CPU_TCB:
 			return "CPU_TCB";
+		case CPU_ABORT:
+			return "CPU_ABORT";
 		case FINISHED_THREAD:
 			return "FINISHED_THREAD";
 		case CPU_CONNECT:

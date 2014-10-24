@@ -77,7 +77,7 @@ void devolver_hilo() {
 	destroy_message(msg);
 }
 
-int fetch_operand(t_operandos tipo_operando){
+int fetch_operand(t_operandos tipo_operando) {
 
 	uint8_t size;
 
@@ -87,6 +87,26 @@ int fetch_operand(t_operandos tipo_operando){
 		size = sizeof(uint32_t);
 
 	return atoi(solicitar_memoria(program_counter,Instruction_size += size));
+}
+
+uint32_t crear_segmento(uint32_t size,t_msg_id *id) {
+
+	uint32_t aux;
+
+	t_msg *msg = argv_message(CREATE_SEGMENT,2,PID,size);
+
+	enviar_mensaje(MSP,msg);
+
+	destroy_message(msg);
+
+	msg = recibir_mensaje(MSP);
+
+	*id = msg->header.id;
+	aux = (uint32_t) msg->argv[0];
+
+	destroy_message(msg);
+
+	return aux;
 }
 
 char* solicitar_memoria(uint32_t direccionLogica,uint32_t size) {
@@ -112,7 +132,9 @@ char* solicitar_memoria(uint32_t direccionLogica,uint32_t size) {
 
 }
 
-void escribir_memoria(uint32_t direccionLogica,char *bytesAEscribir,uint32_t size) {
+t_msg_id escribir_memoria(uint32_t direccionLogica,char *bytesAEscribir,uint32_t size) {
+
+	t_msg_id id;
 
 	t_msg *msg = string_message(WRITE_MEMORY,bytesAEscribir,3,PID,direccionLogica,size);
 
@@ -124,9 +146,9 @@ void escribir_memoria(uint32_t direccionLogica,char *bytesAEscribir,uint32_t siz
 
 	msg = recibir_mensaje(MSP);
 
-	if(msg->header.id != OK_WRITE)
-		puts("No se pudo escribir la memoria");
+	id = msg->header.id;
 
 	destroy_message(msg);
 
+	return id;
 }

@@ -14,13 +14,15 @@
 #include <utiles/utiles.h>
 #include <commons/string.h>
 #include <commons/collections/dictionary.h>
-#include "cpu_log.h"
+#include <panel/cpu_log.h>
 
 #define MAX_SHIF 31
 #define PID Registros.I
 #define OPERATION_CODE_SIZE 4
-#define STACK_TOP Registros.X + Registros.S
-#define program_counter Registros.M + Registros.P
+#define stack_top (Registros.X + Registros.S)
+#define stack_size (Registros.S - Registros.X)
+#define program_counter (Registros.M + Registros.P)
+
 
 typedef enum {A,B,C,D,E} t_registros_programacion;
 typedef enum {REGISTRO,NUMERO,DIRECCION} t_operandos;
@@ -48,7 +50,7 @@ void (*Instruccion)(void);
 
 #define msp_memcpy(DEST,SOURCE,SIZE) escribir_memoria(DEST,solicitar_memoria(SOURCE,SIZE),SIZE)
 
-#define avanzar_puntero_instruccion() Registros.P += Instruction_size
+#define avanzar_puntero_instruccion() (Registros.P += Instruction_size)
 #define eu_fetch_instruccion(OC) OC = solicitar_memoria(program_counter,Instruction_size = OPERATION_CODE_SIZE)
 /* FIN Funciones Macro */
 
@@ -63,8 +65,9 @@ void eu_decode(char *operation_code);
 int fetch_operand(t_operandos tipo_operando);
 void eu_ejecutar(char *operation_code,uint32_t retardo);
 
+uint32_t crear_segmento(uint32_t size,t_msg_id *id);
 char* solicitar_memoria(uint32_t direccionLogica,uint32_t size);
-void escribir_memoria(uint32_t direccionLogica,char *bytesAEscribir,uint32_t size);
+t_msg_id escribir_memoria(uint32_t direccionLogica,char *bytesAEscribir,uint32_t size);
 //void servicio_kernel(void);
 /*FIN_Funciones de la UE (Unidad de Ejecución)*/
 
