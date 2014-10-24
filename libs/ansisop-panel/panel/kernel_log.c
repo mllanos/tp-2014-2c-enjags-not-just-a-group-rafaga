@@ -1,5 +1,5 @@
-#include "kernel.h"
 #include <stdio.h>
+#include "kernel_log.h"
 
 void conexion_cpu(uint32_t id) {
 	printf("Se conectó la CPU %d\n", id);

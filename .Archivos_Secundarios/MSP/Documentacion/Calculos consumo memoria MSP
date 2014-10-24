@@ -1,0 +1,21 @@
+8 páginas promedio por segmento, cada programa tiene el máximo de segmentos:
+
+1 segmento = 2KB
+
+4k segmentos = 8MB = 1 proceso
+
+512 procesos = 4GB = Tamaño Memoria (2GB Principal + 2GB SWAP)
+
+2GB / 256B = 8M marcos
+
+----------------------
+(en x64)
+
+8MB en marcos +
+1024 procesos * 4K segmentos * 16B = 64MB +
+1024 procesos * 4K segmentos * 8 paginas * 6B = 192MB +
+24KB en dictionary_structs + 1024 * (4B + 8B) = 36KB =
+---------------------------------------------------------------------------------
+264MB ocupa el proceso MSP para manejar 4GB de memoria (2GB Principal + 2GB SWAP)
+
+Teniendo en cuenta solo la Memoria Principal y redondeando, la MSP necesita el 13% de la Memoria que va a manejar para funcionar (en x64). Teniendo en cuenta que hay 2GB más de memoria SWAP que maneja, estaría necesitando el 6.5% de la memoria total que gestiona.

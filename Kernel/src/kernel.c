@@ -238,11 +238,13 @@ void interpret_message(int sock_fd, t_msg *recibido)
 		case CPU_CONNECT:										/* <[STRING]> */
 		case CPU_TCB:											/* <[STRING]> */
 		case RETURN_TCB:										/* <TCB_STRING> */
+		case FINISHED_THREAD:										//elegí como tratás este caso así lo cambio en la CPU. O te mando el id solo
+														//y después el tcb con RETURN_TCB, o te mando todo de una en este mensaje.
 		case CPU_INTERRUPT: 									/* <MEM_DIR, TCB_STRING> */
 		case NUMERIC_INPUT: 									/* <PID, [STRING]> */
 		case STRING_INPUT: 										/* <PID, [STRING]> */
 		case STRING_OUTPUT: 									/* <PID, OUT_STRING> */
-		case CPU_THREAD:										/* <TCB_STRING> */
+		case CPU_CREA:										/* <TCB_STRING> */
 		case CPU_JOIN:											/* <CALLER_TID, WAITER_TID, [STRING]> */
 		case CPU_BLOCK:											/* <RESOURCE_ID, TCB_STRING> */
 		case CPU_WAKE:											/* <RESOURCE_ID, [STRING]> */

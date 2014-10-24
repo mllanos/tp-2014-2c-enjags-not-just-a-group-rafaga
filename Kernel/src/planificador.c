@@ -20,6 +20,8 @@ void *planificador(void *arg)
 			case RETURN_TCB:
 				return_process(recibido->argv[0], retrieve_tcb(recibido));
 				break;
+			//case FINISHED_THREAD:
+			//	break;
 			case CPU_INTERRUPT:
 				syscall_start(recibido->argv[0], retrieve_tcb(recibido));
 				break;
@@ -31,7 +33,7 @@ void *planificador(void *arg)
 			case REPLY_INPUT:
 				return_input(recibido->argv[0], recibido->stream);
 				break;
-			case CPU_THREAD:
+			case CPU_CREA:
 				create_thread(retrieve_tcb(recibido));
 				break;
 			case CPU_JOIN:
@@ -131,7 +133,7 @@ void assign_process(uint32_t sock_fd)
 	t_hilo *tcb = list_find(process_list, (void *) _find_first_ready);
 	tcb->cola = EXEC;
 
-	t_msg *msg = tcb_message(NEXT_THREAD, tcb, 1, get_quantum());
+	t_msg *msg = tcb_message(NEXT_TCB, tcb, 1, get_quantum());
 
 	enviar_mensaje(sock_fd, msg);
 

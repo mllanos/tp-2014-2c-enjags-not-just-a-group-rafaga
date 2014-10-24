@@ -82,6 +82,20 @@ int accept_connection(int sock_fd)
 }
 
 
+t_msg *id_message(t_msg_id id) {
+
+	t_msg *new = malloc(sizeof *new);
+
+	new->header.id = id;
+	new->argv = NULL;
+	new->stream = NULL;
+	new->header.argc = 0;
+	new->header.length = 0;
+	
+	return new;
+}
+
+
 t_msg *argv_message(t_msg_id id, uint16_t count, ...)
 {
 	va_list arguments;
@@ -591,16 +605,18 @@ char *id_string(t_msg_id id)
 			return "REQUEST_MEMORY";
 		case OK_REQUEST:
 			return "OK_REQUEST";
-		case NEXT_THREAD:
-			return "NEXT_THREAD";
+		case NEXT_TCB:
+			return "NEXT_TCB";
 		case CPU_TCB:
 			return "CPU_TCB";
+		case FINISHED_THREAD:
+			return "FINISHED_THREAD";
 		case CPU_CONNECT:
 			return "CPU_CONNECT";
 		case CPU_INTERRUPT:
 			return "CPU_INTERRUPT";
-		case CPU_THREAD:
-			return "CPU_THREAD";
+		case CPU_CREA:
+			return "CPU_CREA";
 		case CPU_JOIN:
 			return "CPU_JOIN";
 		case CPU_BLOCK:

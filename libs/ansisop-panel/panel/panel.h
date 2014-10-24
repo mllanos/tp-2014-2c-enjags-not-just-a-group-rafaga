@@ -1,6 +1,9 @@
 #ifndef PANEL_H_
 #define PANEL_H_
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <commons/collections/list.h>
@@ -21,15 +24,5 @@ typedef struct {
 	int32_t registros[5];
 	t_cola cola;
 } __attribute__ ((__packed__)) t_hilo;
-
-
-	/*Loggeo de eventos Kernel*/
-void conexion_cpu(uint32_t id);
-void desconexion_cpu(uint32_t id);
-void conexion_consola(uint32_t id);
-void desconexion_consola(uint32_t id);
-void instruccion_protegida(char* mnemonico, t_hilo* hilo);
-void inicializar_panel(t_tipo_proceso tipo_proceso, char* path);
-	/*FIN_Loggeo de eventos Kernel*/
 
 #endif

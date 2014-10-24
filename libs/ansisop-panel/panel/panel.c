@@ -1,7 +1,4 @@
 #include "panel.h"
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 
 void inicializar_panel(t_tipo_proceso tipo_proceso, char* path){
 	char* tipo_proceso_str;

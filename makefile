@@ -1,6 +1,6 @@
 all: install-libs compile-procs
 
-clean: uninstall-libs clean-procs clean-libs
+clean: uninstall-libs clean-procs clean-libs clean-tempfiles
 
 install-libs:
 	cd libs/commons-library && sudo make install
@@ -28,3 +28,6 @@ clean-libs:
 	cd libs/commons-library && sudo make clean
 	cd libs/ansisop-panel && sudo make clean
 	cd libs/utiles && sudo make clean
+
+clean-tempfiles:
+	find . -name "*~" -type f -delete

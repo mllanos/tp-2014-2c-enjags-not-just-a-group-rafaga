@@ -7,167 +7,126 @@
 
 #include "execution_unit.h"
 
-/*Variables Locales*/
-static t_list *parametros;
-static char oc_instruccion[5];											//operation code
-static int cursor_tabla, fin_tabla;
-/*FIN_Variables Locales*/
-
 void obtener_siguiente_hilo(void) {
-	/*
-	t_msg *buffer;
-	parametros = list_create();
 
-	do {
-	buffer = recibir_mensaje(kernel);
-	} while(buffer->header.id != NEXT_THREAD);
+	t_msg *msg = id_message(CPU_TCB);
 
-	memcpy(&quantum,buffer->stream,sizeof quantum);
-	deserializar_tcb(&hilo,buffer->stream + sizeof quantum);
-	destroy_message(buffer);
-	*/
+	enviar_mensaje(Kernel,msg);
 
-	t_msg *buffer = recibir_mensaje(kernel);
-	quantum = buffer->argv[0];
-	hilo = *retrieve_tcb(buffer);
-	destroy_message(buffer);
-}
+	msg = recibir_mensaje(Kernel);
 
-void avanzar_puntero_instruccion(size_t desplazamiento) {
-	registros.P += instruccion_size;
+	if(msg->header.id != NEXT_TCB)
+		puts("No se pudo obtener el siguiente hilo a ejecutar");
+
+	Quantum = msg->argv[0];
+	Execution_State = CPU_TCB;
+	memcpy(&Hilo,msg->stream,sizeof(t_hilo));
+
+	destroy_message(msg);
 }
 
 void eu_cargar_registros(void) {
+
 	int i;
 	for (i = 0;i < 5; ++i)
-		registros.registros_programacion[i] = hilo.registros[i];
+		Registros.registros_programacion[i] = Hilo.registros[i];
 
-	registros.I = hilo.pid;
-	registros.X = hilo.base_stack;
-	registros.K = hilo.kernel_mode;
-	registros.S = hilo.cursor_stack;
-	registros.M = hilo.segmento_codigo;
-	registros.P = hilo.puntero_instruccion;
+	Registros.I = Hilo.pid;
+	Registros.X = Hilo.base_stack;
+	Registros.K = Hilo.kernel_mode;
+	Registros.S = Hilo.cursor_stack;
+	Registros.M = Hilo.segmento_codigo;
+	Registros.P = Hilo.puntero_instruccion;
+}
+
+void eu_decode(char *operation_code) {
+
+	Instruccion = dictionary_get(SetInstruccionesDeUsuario,operation_code);
+
+	if (Registros.K && *Instruccion == NULL)
+		Instruccion = dictionary_get(SetInstruccionesProtegidas,operation_code);
+
+}
+
+void eu_ejecutar(char *operation_code,uint32_t retardo) {
+
+	msleep(retardo);
+
+	--Quantum;
+	Instruccion();
+
+	//ejecucion_instruccion();
+	cambio_registros(Registros);
 }
 
 void eu_actualizar_registros(void) {
 	int i;
 	for (i = 0;i < 5; ++i)
-		hilo.registros[i] = registros.registros_programacion[i];
+		Hilo.registros[i] = Registros.registros_programacion[i];
 
-	hilo.cursor_stack = registros.S;
-	hilo.puntero_instruccion = registros.P;
+	Hilo.cursor_stack = Registros.S;
+	Hilo.puntero_instruccion = Registros.P;
 }
 
-void eu_fetch_instruccion(void) {
+void devolver_hilo() {
 
-	instruccion_size = OPERATION_CODE_SIZE;
-	t_msg *new_msg = msp_solicitar_memoria(registros.I, registros.M + registros.P,OPERATION_CODE_SIZE, REQUEST_MEMORY);
-	//if(new_msg->header.id != NEXT_ARG)
-		//abortar la ejecucion?
+	t_msg *msg = tcb_message(Execution_State, &Hilo, 0);
 
-	memcpy(oc_instruccion,new_msg->stream,OPERATION_CODE_SIZE);
-	destroy_message(new_msg);
+	enviar_mensaje(Kernel, msg);
 
-	//list_destroy(parametros);
-	//parametros = list_create();
-	list_clean(parametros);
-}
-
-void eu_decode(void) {
-
-	if (registros.K == 0)
-		fin_tabla = 22;
-	else
-		fin_tabla = 32;
-
-	for (cursor_tabla = 0; cursor_tabla <= fin_tabla && strcmp(oc_instruccion,tabla_instrucciones[cursor_tabla].mnemonico); ++cursor_tabla)
-	;
-	//if(cursor_tabla > fin_tabla)
-		;//hacer algo con las instrucciones inválidas (no existe o no tiene privilegios para ejecutarla)
-
-}
-
-void eu_ejecutar(int retardo){
-
-	msleep(retardo);
-	tabla_instrucciones[cursor_tabla].rutina();
-	--quantum;
-	ejecucion_instruccion(tabla_instrucciones[cursor_tabla].mnemonico, parametros);
-	cambio_registros(registros);
-	printf("\n\nREGISTRO A: %X\n\n", registros.registros_programacion[A]);
-	fflush(stdout);
-
+	destroy_message(msg);
 }
 
 int fetch_operand(t_operandos tipo_operando){
 
-	int arg = 0;
-	uint32_t size;
+	uint8_t size;
 
 	if(tipo_operando == REGISTRO)
 		size = sizeof(char);
 	else
-		size = sizeof(int32_t);
+		size = sizeof(uint32_t);
 
-	t_msg *new_msg = msp_solicitar_memoria(registros.I,registros.M + registros.P, size, REQUEST_MEMORY);
-	//if(new_msg->header.id != NEXT_OC)
-			;//abortar la ejecucion?
-	//memcpy(&arg,new_msg->stream,size);
-	arg = new_msg->argv[0];
-	instruccion_size += size;
-	destroy_message(new_msg);
-
-	list_add(parametros, &arg);
-
-	return arg;
+	return atoi(solicitar_memoria(program_counter,Instruction_size += size));
 }
 
-void devolver_hilo(void) {
-	t_msg *buffer = tcb_message(CPU_TCB, &hilo, 0);
-	enviar_mensaje(kernel, buffer);
-	destroy_message(buffer);
-}
+char* solicitar_memoria(uint32_t direccionLogica,uint32_t size) {
 
-t_msg* msp_solicitar_memoria(uint32_t pid, uint32_t direccion_logica, uint32_t size, t_msg_id id) {
+	char *buffer;
 
-	/*
-	int stream_size = 2 * REG_SIZE + sizeof size;
-	char *stream = malloc(stream_size);
-	memcpy(stream,&pid,REG_SIZE);
-	memcpy(stream + REG_SIZE,&direccion_logica,REG_SIZE);
-	memcpy(stream + 2*REG_SIZE,&size,sizeof size);
-	*/
+	t_msg *msg = argv_message(REQUEST_MEMORY,3,PID,direccionLogica,size);
 
-	t_msg *new_msg = string_message(id, "Solicitando memoria.", 3, pid, direccion_logica, size);
+	enviar_mensaje(MSP,msg);
 
-	enviar_mensaje(msp,new_msg);
-	destroy_message(new_msg);
+	destroy_message(msg);
 
-	return recibir_mensaje(msp);
-}
+	msg = recibir_mensaje(MSP);
 
-t_msg* msp_escribir_memoria(uint32_t pid, uint32_t direccion_logica, void *bytes_a_escribir, uint32_t size) {
+	if(msg->header.id != OK_REQUEST)
+		puts("No se pudo acceder a la memoria");
 
-	/*
-	char *stream = malloc(2 * REG_SIZE + size);
-	memcpy(stream,&pid,REG_SIZE);
-	memcpy(stream + REG_SIZE,&direccion_logica,REG_SIZE);
-	memcpy(stream + 2 * REG_SIZE,&bytes_a_escribir,size);
-	*/
+	buffer = msg->stream;
 
-	t_msg *new_msg = string_message(WRITE_MEMORY, bytes_a_escribir, 2, pid, direccion_logica);
+	destroy_message(msg);
 
-	enviar_mensaje(msp,new_msg);
-	destroy_message(new_msg);
-
-	return recibir_mensaje(msp);
+	return buffer;
 
 }
 
-void servicio_kernel() {
+void escribir_memoria(uint32_t direccionLogica,char *bytesAEscribir,uint32_t size) {
 
+	t_msg *msg = string_message(WRITE_MEMORY,bytesAEscribir,3,PID,direccionLogica,size);
 
+	enviar_mensaje(MSP,msg);
+
+	destroy_message(msg);
+
+	free(bytesAEscribir);
+
+	msg = recibir_mensaje(MSP);
+
+	if(msg->header.id != OK_WRITE)
+		puts("No se pudo escribir la memoria");
+
+	destroy_message(msg);
 
 }
-

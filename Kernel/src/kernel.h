@@ -12,8 +12,7 @@
 #include <commons/collections/list.h>
 #include <commons/collections/queue.h>
 #include <utiles/utiles.h>
-#include <panel/panel.h>
-#include <panel/kernel.h>
+#include <panel/kernel_log.h>
 #include <pthread.h>
 #include <sys/types.h>
 #include <unistd.h>

@@ -1,7 +1,7 @@
 CC = gcc
 LIBS = -lcommons -lutiles -lpthread
 OBJ = obj/Clock.o obj/LRU.o obj/administradorDeConexionesYConfig.o obj/administradorDeMemoria.o obj/msp.o
-DIRS = bin/ obj/ log/
+DIRS = bin/ obj/ log/ swap/
 OUT = bin/MSP
 
 all: directories msp

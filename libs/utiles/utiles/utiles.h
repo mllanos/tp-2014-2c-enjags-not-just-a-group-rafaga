@@ -63,9 +63,11 @@ typedef enum {
 	CPU_CONNECT,				/* Pedido de conexión de CPU a Kernel. */
 
 	CPU_TCB,					/* Pedido de TCB de CPU a Kernel. */
-	NEXT_THREAD,				/* Envío de TCB de Kernel a CPU. */
+	NEXT_TCB,				/* Envío de TCB de Kernel a CPU. */
 
 	RETURN_TCB,					/* Retorno de TCB de CPU a Kernel. */
+
+	FINISHED_THREAD,			/* Envío de TCB, cuya ejecución ha finalizado, de CPU a Kernel. */
 
 
 	/****************** SERVICIOS EXPUESTOS A CPU: INTERRUPCIÓN. ******************/ 
@@ -80,7 +82,7 @@ typedef enum {
 	STRING_OUTPUT,				/* Pedido de salida estándar de CPU. */
 
 	/****************** SERVICIOS EXPUESTOS A CPU: CREAR HILO. ******************/
-	CPU_THREAD,					/* Pedido de nuevo hilo de proceso de CPU a Kernel. */
+	CPU_CREA,					/* Pedido de nuevo hilo de proceso de CPU a Kernel. */
 
 	/****************** SERVICIOS EXPUESTOS A CPU: JOIN. ******************/
 	CPU_JOIN,					/* Pedido de unión a hilo de proceso de CPU a Kernel. */
@@ -162,6 +164,11 @@ void enviar_mensaje(int sock_fd, t_msg *msg);
 
 
 /****************** FUNCIONES T_MSG. ******************/
+
+/*
+ * Crea un t_msg sin argumentos, a partir del id.
+ */
+t_msg *id_message(t_msg_id id);
 
 /*
  * Crea un t_msg a partir de count argumentos.

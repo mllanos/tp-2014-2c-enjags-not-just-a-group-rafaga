@@ -1,0 +1,52 @@
+Inicio de Consola MSP. A la espera de comandos...
+
+new 78 10244
+
+destroy 78 0
+new 1 10240
+
+write 1 1023 40 "Hola Sr. Thompson... Creo que le habla a usted?".
+read 1 1023 40
+
+"Hola Sr. Thompson... Creo que le habla 
+write 1 1063 20 a usted?"
+
+read 1 1023 60
+"Hola Sr. Thompson... Creo que le habla a usted?"
+
+new 56 1048576
+
+new 56 1048576
+
+new 56 1048576
+
+new 56 1048576
+
+new 56 1048576
+
+new 56 1048576
+
+new 56 1048576
+
+new 56 1048576
+
+new 56 1048576
+
+new 56 1048576
+
+new 78 91904
+
+write 56 10785 78 Miaumiuamas dasdias slslsl akak qiw asas 445454 a4a5dd1 4;/**/
+
+read 56 10785 78
+
+Miaumiuamas dasdias slslsl akak qiw asas 445454 a4a5dd1 4;/**/
+
+write 56 254 17 Lalalon lulala;
+
+read 1 1023 40
+"Hola Sr. Thompson... Creo que le habla 
+read 1 1023 60
+"Hola Sr. Thompson... Creo que le habla a usted?"
+read 56 254 17
+Lalalon lulala;

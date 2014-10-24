@@ -23,3 +23,28 @@
 *.i*86
 *.x86_64
 *.hex
+# Temp
+*~
+#Eclipse Directories
+Consola/Debug
+Consola/release
+MSP/Debug
+MSP/release
+CPU/Debug
+CPU/release
+Kernel/Debug
+Kernel/release
+#Compile Directories
+MSP/bin
+CPU/bin
+Kernel/bin
+Consola/bin
+MSP/obj
+CPU/obj
+Kernel/obj
+Consola/obj
+Consola/log
+MSP/swap
+MSP/log
+/libs/commons-library/src/build
+Ensamblador/build

@@ -1,0 +1,7 @@
+Controlar los cálculos de direcciones cuando hago desplazamientos a derecha (Consultar el tema de los desplazamientos logicos a derecha)
+Preguntar que pasa si la memoria no se puede repartir en exactamente n marcos
+Preguntar cuándo finalizan los procesos
+Preguntar si los comandos de la MSP llevan algún nombre en especial
+Preguntar si hay que dejar siempre minimo un lugar disponible en SWAP para hacer el intercambio
+validar si es el único segmento del proceso, en ese caso probablemente habría que eliminar la entrada del diccionario
+Preguntar el tema del config_destroy y la variable error que no se pueden liberar.
