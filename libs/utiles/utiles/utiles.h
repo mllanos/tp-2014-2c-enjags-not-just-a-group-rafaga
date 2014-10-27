@@ -162,7 +162,7 @@ t_msg *recibir_mensaje(int sock_fd);
 /*
  * Envia los contenidos de un t_msg a un socket determinado.
  */
-void enviar_mensaje(int sock_fd, t_msg *msg);
+int enviar_mensaje(int sock_fd, t_msg *msg);
 
 
 /****************** FUNCIONES T_MSG. ******************/

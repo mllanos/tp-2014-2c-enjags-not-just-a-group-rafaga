@@ -22,11 +22,18 @@ int main(int argc, char **argv) {
 	char *direccionIpMSP = config_get_string_value(config,"IP_MSP");
 	uint16_t puertoKernel = config_get_int_value(config,"PUERTO_KERNEL");
 	char *direccionIpKernel = config_get_string_value(config,"IP_KERNEL");
-	//config_destroy(config);
 
-	Kernel = client_socket(direccionIpKernel, puertoKernel);
+	if((Kernel = client_socket(direccionIpKernel, puertoKernel)) < 0) {
+		puts("ERROR: No se pudo conectar al Kernel.");
+		exit(EXIT_FAILURE);
+	}
 
-	MSP = client_socket(direccionIpMSP, puertoMSP);
+	if((MSP = client_socket(direccionIpMSP, puertoMSP)) < 0) {
+		puts("ERROR: No se pudo conectar a la MSP.");
+		exit(EXIT_FAILURE);
+	}
+
+	config_destroy(config);
 
 	inicializar_tabla_instrucciones();
 

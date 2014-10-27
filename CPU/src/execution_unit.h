@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <utiles/utiles.h>
 #include <commons/string.h>
+#include <commons/collections/list.h>
 #include <commons/collections/dictionary.h>
 #include <panel/cpu_log.h>
 
@@ -32,6 +33,7 @@ int MSP;
 int Kernel;
 t_hilo Hilo;
 uint16_t Quantum;
+t_list *Parametros;
 t_msg_id Execution_State;
 uint32_t Instruction_size;
 t_registros_cpu Registros;

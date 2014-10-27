@@ -303,37 +303,39 @@ t_msg *recibir_mensaje(int sock_fd)
 
  	/* Get message info. */
 	int status = recv(sock_fd, &(msg->header), sizeof(t_header), MSG_WAITALL);
-	if (status < 0) {
- 		/* An error has ocurred. */
-		perror("recv");
-		exit(EXIT_FAILURE);
-	} else if (status == 0) {
- 		/* Remote connection has been closed. */
-		free(msg->stream);
+	if (status <= 0) {
+ 		/* An error has ocurred or remote connection has been closed. */
 		free(msg);
 		return NULL;
 	}
 
  	/* Get message data. */
-	msg->argv = realloc(msg->argv, msg->header.argc * sizeof(uint32_t));
+	if (msg->header.argc > 0) {
+		msg->argv = malloc(msg->header.argc * sizeof(uint32_t));
 
-	if (msg->header.argc > 0 && recv(sock_fd, msg->argv, msg->header.argc * sizeof(uint32_t), MSG_WAITALL) < 0) {
-		perror("recv");
-		exit(EXIT_FAILURE);
+		if (recv(sock_fd, msg->argv, msg->header.argc * sizeof(uint32_t), MSG_WAITALL) <= 0) {
+			free(msg->argv);
+			free(msg);
+			return NULL;
+		}
 	}
 
-	msg->stream = realloc(msg->stream, msg->header.length);
+	if (msg->header.length > 0) {
+		msg->stream = malloc(msg->header.length);
 
-	if (msg->header.length > 0 && recv(sock_fd, msg->stream, msg->header.length, MSG_WAITALL) < 0) {
-		perror("recv");
-		exit(EXIT_FAILURE);
+		if (recv(sock_fd, msg->stream, msg->header.length, MSG_WAITALL) <= 0) {
+			free(msg->stream);		
+			free(msg->argv);
+			free(msg);
+			return NULL;
+		}
 	}
-	
+
 	return msg;
 }
 
 
-void enviar_mensaje(int sock_fd, t_msg *msg)
+int enviar_mensaje(int sock_fd, t_msg *msg)
 {
 	int total = 0;
 	int pending = msg->header.length + sizeof(t_header) + msg->header.argc * sizeof(uint32_t);
@@ -351,15 +353,15 @@ void enviar_mensaje(int sock_fd, t_msg *msg)
  	/* Send message(s). */
 	while (total < pending) {
 		int sent = send(sock_fd, buffer, msg->header.length + sizeof msg->header + msg->header.argc * sizeof(uint32_t), MSG_NOSIGNAL);
-		if (sent < 0) {
-			perror("send");
-			exit(EXIT_FAILURE);
-		}
+		if (sent < 0)
+			return -1;
 		total += sent;
 		pending -= sent;
 	}
 
 	free(buffer);
+
+	return total;
 }
 
 
@@ -610,6 +612,8 @@ char *id_string(t_msg_id id)
 		case NEXT_TCB:
 			return "NEXT_TCB";
 		case CPU_TCB:
+			return "CPU_TCB";
+		case RETURN_TCB:
 			return "CPU_TCB";
 		case CPU_ABORT:
 			return "CPU_ABORT";

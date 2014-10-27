@@ -11,7 +11,10 @@
 
 void load (void) {
 
-	Registros.registros_programacion[fetch_registro()] = fetch_numero();
+	int reg = fetch_registro();
+	int value = fetch_numero();
+
+	Registros.registros_programacion[reg] = value;
 
 }
 

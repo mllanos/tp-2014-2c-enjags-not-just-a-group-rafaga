@@ -39,16 +39,13 @@ void ejecucion_instruccion(char* mnemonico, t_list* parametros) {
 
 	printf("Ejecutar instrucción %s; Parámetros: [", mnemonico);
 
+	char *parametro;
 	bool primero = true;
-	void _imprimirParametro(int* parametro) {
+	while((parametro = (char*) list_remove(parametros,0)) != NULL) {
 		if (!primero) printf(", ");
-		char buffer[20];
-		itoa(*parametro,buffer,10);   // here 10 means decimal
-		printf("%s", buffer);
+		printf("%s", parametro);
 		primero = false;
 	}
-
-	list_iterate(parametros, (void*) _imprimirParametro);
 
 	printf("]\n");
 }
