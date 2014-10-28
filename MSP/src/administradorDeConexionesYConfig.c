@@ -24,7 +24,7 @@ void *atenderConsola(void* parametro) {
 	uint32_t i;
 	t_msg_id msg_id;
 	t_segmento *tabla;
-	uint16_t seg,pag,cantPag;
+	uint32_t seg,pag,cantPag;	//son uint16 en realidad
 	uint32_t pid,size,direccionLogica,baseSegmento;
 	char *error,*buffer,*stringPID,*parameters,aux[1];
 
@@ -33,6 +33,17 @@ void *atenderConsola(void* parametro) {
 	while(true) {
 
 		switch(esperarComando()) {
+		case SWAP:
+			if(scanf("%m[^\n]",&parameters) == 0 || sscanf(parameters,"%u%u%u%1s",&pid,&seg,&pag,aux) != 3) {
+							puts("Argumentos inválidos");
+							free(parameters);
+							break;
+						}
+
+			tabla = tablaDelProceso(string_itoa(pid));
+
+			write_file("swapAProposito",direccionFisica(tabla,seg,pag,0),PAG_SIZE);
+			break;
 		case ESCRIBIR_MEMORIA:
 			if(scanf("%m[^\n]",&parameters) == 0 || sscanf(parameters,"%u%u%u%*[ \t]%m[^\n]",&pid,&direccionLogica,&size,&buffer) != 4) {
 				puts("Argumentos inválidos");
@@ -292,14 +303,14 @@ void *atenderProceso(void* parametro) {
 				enviar_mensaje(proceso,msg);
 				break;
 			case REQUEST_MEMORY:
+				pid = msg->argv[0];
+				direccionLogica = msg->argv[1];
+				size = msg->argv[2];
+
 				pthread_mutex_lock(&LogMutex);
 				log_trace(Logger,"Recepción de solicitud Leer Memoria:");
 				log_trace(Logger,"PID: %u, Dirección Lógica: %u, Tamaño: %u.",pid,direccionLogica,size);
 				pthread_mutex_unlock(&LogMutex);
-
-				pid = msg->argv[0];
-				direccionLogica = msg->argv[1];
-				size = msg->argv[2];
 
 				pthread_mutex_lock(&MemMutex);
 				msg->stream = solicitarMemoria(pid,direccionLogica,size,&msg->header.id);
@@ -349,6 +360,8 @@ t_comando_consola esperarComando(void) {
 		idCommand = TABLA_PAGINAS;
 	else if(!strcmp(command,"frames"))
 		idCommand = LISTAR_MARCOS;
+	else if(!strcmp(command,"swap"))
+		idCommand = SWAP;
 	else {
 		idCommand = COMANDO_INVALIDO;
 		scanf("%*[^\n]");
@@ -359,6 +372,7 @@ t_comando_consola esperarComando(void) {
 	return idCommand;
 
 }
+
 
 void imprimirSegmento(char *pid,void *data) {
 

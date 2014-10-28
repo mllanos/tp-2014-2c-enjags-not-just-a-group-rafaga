@@ -77,7 +77,8 @@ typedef enum {
 	/****************** SERVICIOS EXPUESTOS A CPU: ENTRADA ESTÁNDAR. ******************/
 	NUMERIC_INPUT,				/* Pedido de input numérico de CPU. */
 	STRING_INPUT,				/* Pedido de input de string de CPU. */
-	REPLY_INPUT,				/* Respuesta de input de Consola. */
+	REPLY_NUMERIC_INPUT,			/* Respuesta de numeric input de Consola. */
+	REPLY_STRING_INPUT,			/* Respuesta de string input de Consola. */
 
 	/****************** SERVICIOS EXPUESTOS A CPU: SALIDA ESTÁNDAR. ******************/
 	NUMERIC_OUTPUT,				/* Pedido de output numérico de CPU. */

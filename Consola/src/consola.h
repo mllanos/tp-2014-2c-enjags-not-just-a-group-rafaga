@@ -9,16 +9,11 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <stdlib.h>
-#include <commons/config.h>
+#include <errno.h>
 #include <commons/log.h>
 #include <utiles/utiles.h>
-#include <sys/mman.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <errno.h>
+#include <commons/string.h>
+#include <commons/config.h>
 
 #define CONF_PATH "config/consola.conf"
 #define LOG_PATH "log/consola.log"

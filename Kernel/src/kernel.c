@@ -257,7 +257,8 @@ void interpret_message(int sock_fd, t_msg *recibido)
 
 			break;
 		/* Mensaje para CPU de Consola. */
-		case REPLY_INPUT:										/* <CPU_SOCK_FD, REPLY_STRING> */
+		case REPLY_STRING_INPUT:
+		case REPLY_NUMERIC_INPUT:								/* <CPU_SOCK_FD, REPLY_STRING> */
 			pthread_mutex_lock(&planificador_mutex);
 			queue_push(planificador_queue, recibido);
 			pthread_mutex_unlock(&planificador_mutex);

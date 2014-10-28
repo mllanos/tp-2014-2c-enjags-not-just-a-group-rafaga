@@ -23,7 +23,11 @@ void getm (void) {
 	uint32_t i = fetch_registro();
 	uint32_t j = fetch_registro();
 
-	registro(i) = atoi(solicitar_memoria(registro(j),sizeof(uint32_t)));
+	char *buffer = solicitar_memoria(registro(j),1);	//cuantos bytes? 1 o sizeof(uint32_t)?
+
+	memcpy(&registro(i),buffer,1);
+
+	free(buffer);
 
 }
 
@@ -126,7 +130,7 @@ void cleq (void) {
 
 void eso_goto (void) {
 
-	Registros.P = registro(fetch_registro());
+	Registros.P = registro(fetch_registro()) - Instruction_size;
 
 }
 
@@ -237,7 +241,7 @@ void innc (void) {
 
 void outn (void) {
 
-	t_msg *msg = argv_message(STRING_OUTPUT,1,registro(A));//NUMERIC_OUTPUT
+	t_msg *msg = argv_message(NUMERIC_OUTPUT,1,registro(A));
 
 	enviar_mensaje(Kernel,msg);
 
@@ -249,7 +253,7 @@ void outc (void) {
 
 	char *buffer = solicitar_memoria(registro(A),registro(B));
 
-	t_msg *msg = string_message(STRING_OUTPUT,buffer,1,registro(B));
+	t_msg *msg = string_message(STRING_OUTPUT,buffer,0);
 
 	enviar_mensaje(Kernel,msg);
 

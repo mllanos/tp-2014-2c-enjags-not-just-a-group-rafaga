@@ -64,9 +64,14 @@ void syscall_start(uint32_t call_dir, t_hilo *tcb);
 void standard_io(t_msg *msg);
 
 /*
- * Envia a CPU el input de su Consola asignada.
+ * Envia a CPU el string input de su Consola asignada.
  */
-void return_input(uint32_t cpu_sock_fd, char *stream);
+void return_string_input(uint32_t cpu_sock_fd, char *stream);
+
+/*
+ * Envia a CPU el numeric input de su Consola asignada.
+ */
+void return_numeric_input(uint32_t cpu_sock_fd, int32_t number);
 
 /*
  * Creamos un nuevo TCB de iguall pid que el padre, reservamos el segmento y lo encolamos a READY.

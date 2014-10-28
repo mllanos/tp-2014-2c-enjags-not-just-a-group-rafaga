@@ -30,8 +30,11 @@ void *planificador(void *arg)
 			case STRING_OUTPUT:
 				standard_io(recibido);
 				break;
-			case REPLY_INPUT:
-				return_input(recibido->argv[0], recibido->stream);
+			case REPLY_NUMERIC_INPUT:
+				return_numeric_input(recibido->argv[0],recibido->argv[1]);
+				break;
+			case REPLY_STRING_INPUT:
+				return_string_input(recibido->argv[0], recibido->stream);
 				break;
 			case CPU_CREA:
 				create_thread(retrieve_tcb(recibido));
@@ -236,13 +239,19 @@ void standard_io(t_msg *msg)
 }
 
 
-void return_input(uint32_t cpu_sock_fd, char *stream)
+void return_numeric_input(uint32_t cpu_sock_fd, int32_t number)
 {
-	t_msg *msg = string_message(REPLY_INPUT, stream, 0);
+	t_msg *msg = argv_message(REPLY_NUMERIC_INPUT, 1, number);
 	enviar_mensaje(cpu_sock_fd, msg);
 	destroy_message(msg);
 }
 
+void return_string_input(uint32_t cpu_sock_fd, char *stream)
+{
+	t_msg *msg = string_message(REPLY_STRING_INPUT, stream, 0);
+	enviar_mensaje(cpu_sock_fd, msg);
+	destroy_message(msg);
+}
 
 void create_thread(t_hilo *padre)
 {

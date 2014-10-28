@@ -577,8 +577,10 @@ char *id_string(t_msg_id id)
 			return "NUMERIC_INPUT";
 		case NUMERIC_OUTPUT:
 			return "NUMERIC_OUTPUT";
-		case REPLY_INPUT:
-			return "REPLY_INPUT";
+		case REPLY_STRING_INPUT:
+			return "REPLY_STRING_INPUT";
+		case REPLY_NUMERIC_INPUT:
+			return "REPLY_NUMERIC_INPUT";
 		case STRING_INPUT:
 			return "STRING_INPUT";
 		case STRING_OUTPUT:

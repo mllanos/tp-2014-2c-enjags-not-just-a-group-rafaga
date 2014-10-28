@@ -1,7 +1,5 @@
 #include "consola.h"
 
-//TESTEANDO Y DEBUGEANDO
-
 int main(int argc, char **argv)
 {
 
@@ -45,9 +43,8 @@ void receive_messages(void)
 
 int interpret_message(t_msg *recibido)
 {
-	char str_input[255];
-	char *str_tmp;
-	long num_input;
+	char *str_input;
+	int32_t num_input;
 	t_msg *msg;
 
 	log_trace(logger, "RECIBIDO: %s", recibido->stream);
@@ -55,22 +52,23 @@ int interpret_message(t_msg *recibido)
 	switch (recibido->header.id) {
 		case NUMERIC_INPUT:
 			puts("Ingrese un valor numerico.");
-			scanf("%ld", &num_input);
+			scanf("%d", &num_input);
 			clean_stdin_buffer();
-			str_tmp = string_itoa(num_input);
 			/* Adjuntamos el cpu_sock_fd del mensaje recibido. */
-			msg = string_message(REPLY_INPUT, str_tmp, 1, recibido->argv[0]);
+			msg = argv_message(REPLY_NUMERIC_INPUT, 2, recibido->argv[0],num_input);
 			enviar_mensaje(kernel_fd, msg);
 			destroy_message(msg);
-			free(str_tmp);
 			break;
 		case STRING_INPUT:
 			puts("Ingrese un literal cadena.");
 			/* Adjuntamos el cpu_sock_fd del mensaje recibido. */
-			msg = string_message(REPLY_INPUT, fgets(str_input, sizeof(str_input), stdin), 1, recibido->argv[0]);
+			str_input = malloc(recibido->argv[0]+1);
+			msg = string_message(REPLY_STRING_INPUT, fgets(str_input, recibido->argv[0], stdin), 1, recibido->argv[1]);
 			enviar_mensaje(kernel_fd, msg);
 			destroy_message(msg);
 			break;
+		case NUMERIC_OUTPUT:
+			printf("Número recibido: %d\n", recibido->argv[0]);
 		case STRING_OUTPUT:
 			printf("Mensaje recibido: %s\n", recibido->stream);
 			break;

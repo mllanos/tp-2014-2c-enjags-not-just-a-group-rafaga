@@ -70,6 +70,8 @@ void eu_ejecutar(char *operation_code,uint32_t retardo) {
 	ejecucion_instruccion(operation_code,Parametros);
 	cambio_registros(Registros);
 	list_destroy(Parametros);
+
+	free(operation_code);
 }
 
 void eu_actualizar_registros(void) {
@@ -111,6 +113,12 @@ int fetch_operand(t_operandos tipo_operando) {
 	else {
 		size = sizeof(uint32_t);
 		buffer = solicitar_memoria(program_counter + Instruction_size,size);
+
+		buffer[0];
+		buffer[1];
+		buffer[2];
+		buffer[3];
+
 		memcpy(&aux,buffer,size);
 		parametro = string_itoa(aux);
 		list_add(Parametros,parametro);
