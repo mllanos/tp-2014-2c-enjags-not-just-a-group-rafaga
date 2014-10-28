@@ -85,25 +85,12 @@ void devolver_hilo() {
 
 	t_msg *msg = tcb_message(Execution_State, &Hilo, 0);
 
-	enviar_mensaje(Kernel, msg);
-
 	if(enviar_mensaje(Kernel, msg) == -1) {
 		puts("ERROR: No se pudo enviar el TCB del hilo en ejecución.");
 		exit(EXIT_FAILURE);
 	}
 
 	destroy_message(msg);
-}
-
-int32_t toBigEndian(char *s) {
-
-	int32_t a,b,c;
-
-	a = s[3] << 24;
-	b = s[2] << 16;
-	c = s[1] << 8;
-
-	return a+b+c+*s;
 }
 
 int fetch_operand(t_operandos tipo_operando) {
@@ -124,7 +111,7 @@ int fetch_operand(t_operandos tipo_operando) {
 	else {
 		size = sizeof(uint32_t);
 		buffer = solicitar_memoria(program_counter + Instruction_size,size);
-		aux = toBigEndian(buffer);
+		memcpy(&aux,buffer,size);
 		parametro = string_itoa(aux);
 		list_add(Parametros,parametro);
 	}
@@ -192,7 +179,9 @@ t_msg_id escribir_memoria(uint32_t direccionLogica,char *bytesAEscribir,uint32_t
 
 	t_msg_id id;
 
-	t_msg *msg = string_message(WRITE_MEMORY,bytesAEscribir,3,PID,direccionLogica,size);
+	t_msg *msg = string_message(WRITE_MEMORY,bytesAEscribir,2,PID,direccionLogica);
+
+	msg->header.length = size;
 
 	if(enviar_mensaje(MSP,msg) == -1) {
 		puts("ERROR: No se pudo escribir en la memoria.");

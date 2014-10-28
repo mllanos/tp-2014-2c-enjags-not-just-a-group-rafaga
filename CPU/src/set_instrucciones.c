@@ -194,6 +194,8 @@ void take (void) {
 
 void xxxx (void) {
 
+	Quantum = 0;
+
 	Execution_State = FINISHED_THREAD;
 
 }

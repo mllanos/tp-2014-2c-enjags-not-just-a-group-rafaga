@@ -212,7 +212,7 @@ void *atenderProceso(void* parametro) {
 			switch(msg->header.id) {
 			case WRITE_MEMORY:
 				pid = msg->argv[0];
-				size = msg->argv[2];
+				size = msg->header.length;
 				direccionLogica = msg->argv[1];
 				bytesAEscribir = msg->stream;
 
@@ -249,13 +249,13 @@ void *atenderProceso(void* parametro) {
 
 				pthread_mutex_lock(&LogMutex);
 				if(msg->header.id == OK_CREATE) {
-					log_trace(Logger,"Segmento %u del proceso %u creado correctamente.",pid,segmento(direccionLogica));
+					log_trace(Logger,"Segmento %u del proceso %u creado correctamente.",segmento(direccionLogica),pid);
 					pthread_mutex_unlock(&LogMutex);
 				}
 				else {
 					error = id_string(msg->header.id);
 
-					log_error(Logger,"No se pudo crear el segmento %u del proceso %u: %s.",pid,segmento(direccionLogica),error);
+					log_error(Logger,"No se pudo crear el segmento %u del proceso %u: %s.",segmento(direccionLogica),pid,error);
 					pthread_mutex_unlock(&LogMutex);
 
 					//free(error); por alguna razon no puedo liberar este espacio de memoria. Pasa lo mismo con el string Algoritmo de config.
