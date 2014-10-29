@@ -23,7 +23,7 @@ int main(void) {
 		hilo.registros[i] = 0;
 	hilo.tid = 0;
 
-	msp = client_socket("127.0.0.1",2233);
+	msp = client_socket("192.168.3.68",2233);
 
 	int listener = server_socket(1122);
 

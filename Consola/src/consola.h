@@ -18,18 +18,18 @@
 #define CONF_PATH "config/consola.conf"
 #define LOG_PATH "log/consola.log"
 
- int kernel_fd;
- t_config *config;
- t_log *logger;
+#define get_ip_kernel() config_get_string_value(config, "IP_KERNEL")
+#define get_puerto_kernel() config_get_int_value(config, "PUERTO_KERNEL")
 
- void initialize(void);
- void kernel_connect(char *beso_path);
- void receive_messages(void);
- int interpret_message(t_msg *recibido);
- void finalize(void);
+int kernel_fd;
+t_config *config;
+t_log *logger;
 
- char *get_ip_kernel(void);
- int get_puerto_kernel(void);
+void initialize(void);
+void kernel_connect(char *beso_path);
+void receive_messages(void);
+int interpret_message(t_msg *recibido);
+void finalize(void);
  
 #define CONSOLA_H_
 

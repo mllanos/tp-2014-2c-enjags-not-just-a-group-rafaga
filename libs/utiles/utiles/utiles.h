@@ -23,22 +23,22 @@
 /*
  * Compara dos numeros y retorna el mínimo.
  */
-#define min(n,m) (n < m ? n : m)
+#define min(n, m) (n < m ? n : m)
 
 /*
  * Compara dos numeros y retorna el máximo.
  */
-#define max(n,m) (n > m ? n : m)
+#define max(n, m) (n > m ? n : m)
 
 /*
  * Sleep en microsegundos.
  */
-#define msleep(usecs) usleep(usecs*1000)
+#define msleep(usecs) usleep(usecs * 1000)
 
 /*
  * Alternativa sin undefined behavior a fflush(STDIN) para usar con scanf().
  */
-#define clean_stdin_buffer() scanf ("%*[^\n]")
+#define clean_stdin_buffer() scanf("%*[^\n]")
 
 /*
  * RNG. Retorna valores entre 0 y limit.
@@ -63,13 +63,13 @@ typedef enum {
 	CPU_CONNECT,				/* Pedido de conexión de CPU a Kernel. */
 
 	CPU_TCB,					/* Pedido de TCB de CPU a Kernel. */
-	NEXT_TCB,				/* Envío de TCB de Kernel a CPU. */
+	NEXT_TCB,					/* Envío de TCB de Kernel a CPU. */
 
 	RETURN_TCB,					/* Retorno de TCB de CPU a Kernel. */
 
 	FINISHED_THREAD,			/* Envío de TCB, cuya ejecución ha finalizado, de CPU a Kernel. */
 
-	CPU_ABORT,				/* Pedido de la CPU al Kernel para abortar la ejecución de un hilo */
+	CPU_ABORT,					/* Pedido de la CPU al Kernel para abortar la ejecución de un hilo */
 
 	/****************** SERVICIOS EXPUESTOS A CPU: INTERRUPCIÓN. ******************/ 
 	CPU_INTERRUPT,				/* Pedido de interrupción de un hilo de proceso de CPU a Kernel. */
@@ -77,7 +77,7 @@ typedef enum {
 	/****************** SERVICIOS EXPUESTOS A CPU: ENTRADA ESTÁNDAR. ******************/
 	NUMERIC_INPUT,				/* Pedido de input numérico de CPU. */
 	STRING_INPUT,				/* Pedido de input de string de CPU. */
-	REPLY_NUMERIC_INPUT,			/* Respuesta de numeric input de Consola. */
+	REPLY_NUMERIC_INPUT,		/* Respuesta de numeric input de Consola. */
 	REPLY_STRING_INPUT,			/* Respuesta de string input de Consola. */
 
 	/****************** SERVICIOS EXPUESTOS A CPU: SALIDA ESTÁNDAR. ******************/
@@ -129,13 +129,13 @@ typedef struct {
 	t_msg_id id;
 	uint32_t length;
 	uint16_t argc;
-}__attribute__ ((__packed__)) t_header;
+} __attribute__ ((__packed__)) t_header;
 
 typedef struct {
 	t_header header;
 	char *stream;
 	int32_t *argv;
-}__attribute__ ((__packed__)) t_msg;
+} __attribute__ ((__packed__)) t_msg;
 
 
 /****************** FUNCIONES SOCKET. ******************/
@@ -204,14 +204,10 @@ t_msg *beso_message(t_msg_id id, char *beso_path, uint16_t count, ...);
 t_msg *tcb_message(t_msg_id id, t_hilo *tcb, uint16_t count, ...);
 
 /*
- * Crea un mensaje (viejo).
- */
-t_msg *crear_mensaje(t_msg_id id, char *message, uint32_t size);
-
-/*
  * Libera los contenidos de un t_msg.
  */
 void destroy_message(t_msg *mgs);
+
 
 /****************** FUNCIONES FILE SYSTEM. ******************/
 
@@ -254,6 +250,7 @@ char* read_whole_file_and_clean(char *path);
  * Abre el archivo indicado por path (si no existe lo crea) y escribe size bytes de data.
  */
 void write_file(char *path,char* data,size_t size);
+
 
 /****************** FUNCIONES AUXILIARES. ******************/
 

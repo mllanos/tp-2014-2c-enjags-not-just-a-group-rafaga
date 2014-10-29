@@ -284,16 +284,6 @@ t_msg *tcb_message(t_msg_id id, t_hilo *tcb, uint16_t count, ...)
 }
 
 
-t_msg *crear_mensaje(t_msg_id id, char *message,uint32_t size)
-{
-	t_msg *new = malloc(sizeof *new);
-	new->header.id = id;
-	new->header.length = size;
-	new->stream = message;
-	return new;
-}
-
-
 t_msg *recibir_mensaje(int sock_fd)
 {
 	t_msg *msg = malloc(sizeof *msg);
@@ -376,18 +366,15 @@ void destroy_message(t_msg *msg)
 
 void seedgen(void)
 {
-	long s, seed, pid;
+	long seed;
 	time_t seconds;
-	pid = getpid();
-    	s = time (&seconds); /* get CPU seconds since 01/01/1970 */
-	seed = abs(((s*181)*((pid-83)*359))%104729);
+	seed = abs(((time(&seconds) * 181) * ((getpid() - 83) * 359)) % 104729);
 	srand(seed);
 }
 
 
 t_hilo *retrieve_tcb(t_msg *msg)
 {
-
 	t_hilo *new = malloc(sizeof *new);
 	memcpy(new, msg->stream, sizeof *new);
 	return new;
@@ -438,7 +425,7 @@ char* read_file(char *path, size_t size) {
 }
 
 
-void memcpy_from_file(char *dest,char *path,size_t size) {
+void memcpy_from_file(char *dest, char *path, size_t size) {
 	FILE *f = fopen(path, "rb");
 	if(f == NULL) {
 		perror("fopen");
@@ -451,7 +438,7 @@ void memcpy_from_file(char *dest,char *path,size_t size) {
 }
 
 
-char* read_file_and_clean(char *path, size_t size) {
+char *read_file_and_clean(char *path, size_t size) {
 
 	FILE *f = fopen(path, "rb");
 	if(f == NULL) {
@@ -479,7 +466,7 @@ char* read_file_and_clean(char *path, size_t size) {
 }
 
 
-char* read_whole_file(char *path) {
+char *read_whole_file(char *path) {
 
 	FILE *f = fopen(path, "rb");
 	if(f == NULL) {
@@ -507,7 +494,7 @@ char* read_whole_file(char *path) {
 }
 
 
-char* read_whole_file_and_clean(char *path) {
+char *read_whole_file_and_clean(char *path) {
 
 	FILE *f = fopen(path, "rb");
 	if(f == NULL) {
@@ -535,11 +522,11 @@ char* read_whole_file_and_clean(char *path) {
 }
 
 
-void write_file(char *path,char *data,size_t size) {
+void write_file(char *path, char *data, size_t size) {
 
 	FILE *f = fopen(path, "wb");
 
-	fwrite(data,1,size,f);
+	fwrite(data, 1, size, f);
 
 	fclose(f);
 }
@@ -548,7 +535,7 @@ void write_file(char *path,char *data,size_t size) {
 void putmsg(t_msg *msg)
 {
 	int i;
-	puts("\n**************************************************");
+	puts("\n==================================================");
 	printf("CONTENIDOS DEL MENSAJE:\n");
 	printf("- ID: %s\n", id_string(msg->header.id));
 
@@ -561,79 +548,116 @@ void putmsg(t_msg *msg)
 
 	for (i = 0; i < msg->header.length; i++)
 		putchar(*(msg->stream + i));
-	puts("\n**************************************************\n");
+	puts("\n==================================================\n");
 }
 
 char *id_string(t_msg_id id)
 {
+	char *buf;
 	switch(id) {
 		case NO_NEW_ID:
-			return "NO_NEW_ID";
+			buf = strdup("NO_NEW_ID");
+			break;
 		case INIT_CONSOLE:
-			return "INIT_CONSOLE";
+			buf = strdup("INIT_CONSOLE");
+			break;
 		case KILL_CONSOLE:
-			return "KILL_CONSOLE";
+			buf = strdup("KILL_CONSOLE");
+			break;
 		case NUMERIC_INPUT:
-			return "NUMERIC_INPUT";
+			buf = strdup("NUMERIC_INPUT");
+			break;
 		case NUMERIC_OUTPUT:
-			return "NUMERIC_OUTPUT";
+			buf = strdup("NUMERIC_OUTPUT");
+			break;
 		case REPLY_STRING_INPUT:
-			return "REPLY_STRING_INPUT";
+			buf = strdup("REPLY_STRING_INPUT");
+			break;
 		case REPLY_NUMERIC_INPUT:
-			return "REPLY_NUMERIC_INPUT";
+			buf = strdup("REPLY_NUMERIC_INPUT");
+			break;
 		case STRING_INPUT:
-			return "STRING_INPUT";
+			buf = strdup("STRING_INPUT");
+			break;
 		case STRING_OUTPUT:
-			return "STRING_OUTPUT";
+			buf = strdup("STRING_OUTPUT");
+			break;
 		case CREATE_SEGMENT:
-			return "CREATE_SEGMENT";
+			buf = strdup("CREATE_SEGMENT");
+			break;
 		case OK_CREATE:
-			return "OK_CREATE";
+			buf = strdup("OK_CREATE");
+			break;
 		case FULL_MEMORY:
-			return "FULL_MEMORY";
+			buf = strdup("FULL_MEMORY");
+			break;
 		case INVALID_SEG_SIZE:
-			return "INVALID_SEG_SIZE";
+			buf = strdup("INVALID_SEG_SIZE");
+			break;
 		case MAX_SEG_NUM_REACHED:
-			return "MAX_SEG_NUM_REACHED";
+			buf = strdup("MAX_SEG_NUM_REACHED");
+			break;
 		case WRITE_MEMORY:
-			return "WRITE_MEMORY";
+			buf = strdup("WRITE_MEMORY");
+			break;
 		case OK_WRITE:
-			return "OK_WRITE";
+			buf = strdup("OK_WRITE");
+			break;
 		case SEGMENTATION_FAULT:
-			return "SEGMENTATION_FAULT";
+			buf = strdup("SEGMENTATION_FAULT");
+			break;
 		case INVALID_DIR:
-			return "INVALID_DIR";
+			buf = strdup("INVALID_DIR");
+			break;
 		case DESTROY_SEGMENT:
-			return "DESTROY_SEGMENT";
+			buf = strdup("DESTROY_SEGMENT");
+			break;
 		case OK_DESTROY:
-			return "OK_DESTROY";
+			buf = strdup("OK_DESTROY");
+			break;
 		case REQUEST_MEMORY:
-			return "REQUEST_MEMORY";
+			buf = strdup("REQUEST_MEMORY");
+			break;
 		case OK_REQUEST:
-			return "OK_REQUEST";
+			buf = strdup("OK_REQUEST");
+			break;
 		case NEXT_TCB:
-			return "NEXT_TCB";
+			buf = strdup("NEXT_TCB");
+			break;
 		case CPU_TCB:
-			return "CPU_TCB";
+			buf = strdup("CPU_TCB");
+			break;
 		case RETURN_TCB:
-			return "CPU_TCB";
+			buf = strdup("RETURN_TCB");
+			break;
 		case CPU_ABORT:
-			return "CPU_ABORT";
+			buf = strdup("CPU_ABORT");
+			break;
 		case FINISHED_THREAD:
-			return "FINISHED_THREAD";
+			buf = strdup("FINISHED_THREAD");
+			break;
 		case CPU_CONNECT:
-			return "CPU_CONNECT";
+			buf = strdup("CPU_CONNECT");
+			break;
 		case CPU_INTERRUPT:
-			return "CPU_INTERRUPT";
+			buf = strdup("CPU_INTERRUPT");
+			break;
 		case CPU_CREA:
-			return "CPU_CREA";
+			buf = strdup("CPU_CREA");
+			break;
 		case CPU_JOIN:
-			return "CPU_JOIN";
+			buf = strdup("CPU_JOIN");
+			break;
 		case CPU_BLOCK:
-			return "CPU_BLOCK";
+			buf = strdup("CPU_BLOCK");
+			break;
 		case CPU_WAKE:
-			return "CPU_WAKE";
+			buf = strdup("CPU_WAKE");
+			break;
 		default:
-			return string_from_format("%d, <AGREGAR A LA LISTA>", id);
+			buf = string_from_format("%d, <AGREGAR A LA LISTA>", id);
+			break;
 	}
+
+	return buf;
 }

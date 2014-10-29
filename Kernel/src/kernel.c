@@ -26,9 +26,9 @@ void initialize(char *config_path)
 	sem_init(&sem_loader, 0, 0);
 	sem_init(&sem_planificador, 0, 0);
 	inicializar_panel(KERNEL, PANEL_PATH);
-	if((msp_fd = client_socket(get_ip_msp(), get_puerto_msp())) < 0) {
+	msp_fd = client_socket(get_ip_msp(), get_puerto_msp());
+	if(msp_fd < 0)
 		exit(EXIT_FAILURE);
-	}
 	pthread_create(&loader_th, NULL, loader, NULL);
 	pthread_create(&planificador_th, NULL, planificador, NULL);
 }
@@ -107,6 +107,7 @@ void receive_messages_epoll(void)
 
 				event.data.fd = infd;
 				event.events = EPOLLIN | EPOLLET;
+
 				s = epoll_ctl(efd, EPOLL_CTL_ADD, infd, &event);
 				if (s == -1) {
 					perror("epoll_ctl");
@@ -225,48 +226,42 @@ void finalize(void)
 
 void interpret_message(int sock_fd, t_msg *recibido)
 {
+	/* Tipos de mensaje: <[stream]; [argv, [argv, ]*]> */
 	switch (recibido->header.id) {
-		/* Mensaje de Consola. */
-		case INIT_CONSOLE: 										/* <BESO_STRING> */
-			
+		/* Mensaje de conexion de Consola. */
+		case INIT_CONSOLE: 										/* <BESO_STRING;> */
 			pthread_mutex_lock(&loader_mutex);
-			queue_push(loader_queue, remake_message(NO_NEW_ID, recibido, 1, sock_fd));
+			queue_push(loader_queue, modify_message(NO_NEW_ID, recibido, 1, sock_fd));
 			pthread_mutex_unlock(&loader_mutex);
-
 			sem_post(&sem_loader);
-
 			break;
-		/* Mensaje de CPU. */
-		case CPU_CONNECT:										/* <[STRING]> */
-		case CPU_TCB:											/* <[STRING]> */
-		case RETURN_TCB:										/* <TCB_STRING> */
-		case FINISHED_THREAD:										//elegí como tratás este caso así lo cambio en la CPU. O te mando el id solo
-														//y después el tcb con RETURN_TCB, o te mando todo de una en este mensaje.
-		case CPU_INTERRUPT: 									/* <MEM_DIR, TCB_STRING> */
-		case NUMERIC_INPUT: 									/* <PID, [STRING]> */
-		case STRING_INPUT: 										/* <PID, [STRING]> */
-		case STRING_OUTPUT: 									/* <PID, OUT_STRING> */
-		case CPU_CREA:										/* <TCB_STRING> */
-		case CPU_JOIN:											/* <CALLER_TID, WAITER_TID, [STRING]> */
-		case CPU_BLOCK:											/* <RESOURCE_ID, TCB_STRING> */
-		case CPU_WAKE:											/* <RESOURCE_ID, [STRING]> */
-			
+		/* Mensajes de CPU que necesitan el cpu_sock_fd. */
+		case CPU_CONNECT:										/* <;> */
+		case CPU_TCB:											/* <;> */
+		case RETURN_TCB:										/* <TCB_STRING;> */
+		case FINISHED_THREAD:									//elegí como tratás este caso así lo cambio en la CPU. O te mando el id solo
+																//y después el tcb con RETURN_TCB, o te mando todo de una en este mensaje.
+		case NUMERIC_INPUT: 									/* <; PID> */
+		case STRING_INPUT: 										/* <; PID> */
+		case STRING_OUTPUT: 									/* <OUT_STRING; PID> */
 			pthread_mutex_lock(&planificador_mutex);
 			queue_push(planificador_queue, modify_message(NO_NEW_ID, recibido, 1, sock_fd));
 			pthread_mutex_unlock(&planificador_mutex);
-
 			sem_post(&sem_planificador);
-
 			break;
-		/* Mensaje para CPU de Consola. */
-		case REPLY_STRING_INPUT:
-		case REPLY_NUMERIC_INPUT:								/* <CPU_SOCK_FD, REPLY_STRING> */
+		/* Mensajes de CPU que no necesitan el cpu_sock_fd. */
+		case CPU_CREA:											/* <TCB_STRING;> */
+		case CPU_INTERRUPT: 									/* <TCB_STRING; MEM_DIR> */
+		case CPU_JOIN:											/* <; CALLER_TID, WAITER_TID> */
+		case CPU_BLOCK:											/* <TCB_STRING; RESOURCE_ID> */
+		case CPU_WAKE:											/* <RESOURCE_ID> */		
+		/* Mensajes de Consola para delegar a CPU. */
+		case REPLY_STRING_INPUT:								/* <REPLY_STRING; CPU_SOCK_FD> */
+		case REPLY_NUMERIC_INPUT:								/* <; CPU_SOCK_FD, REPLY_NUMERIC> */
 			pthread_mutex_lock(&planificador_mutex);
 			queue_push(planificador_queue, recibido);
 			pthread_mutex_unlock(&planificador_mutex);
-
 			sem_post(&sem_planificador);
-
 			break;
 		default: 												/* Nunca deberia pasar. */
 			errno = EBADMSG;
@@ -283,42 +278,45 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 	t_msg *message[6];
 	t_msg **status = message + 3;
 
-	message[0] = string_message(CREATE_SEGMENT, "Reserva de segmento de codigo.", 2, tcb->pid, msg->header.length);
-	message[1] = string_message(CREATE_SEGMENT, "Reserva de segmento de stack.", 2, tcb->pid, get_stack_size());
-	message[2] = remake_message(WRITE_MEMORY, msg, 1, tcb->pid);
+	message[0] = argv_message(CREATE_SEGMENT, 2, tcb->pid, msg->header.length);
+	message[1] = argv_message(CREATE_SEGMENT, 2, tcb->pid, get_stack_size());
 
-	for (i = 0; i < 3 && cont; i++) {
+
+	for (i = 0; i < 2 && cont; i++) {
 		enviar_mensaje(msp_fd, message[i]);
 		putmsg(message[i]);
 
 		status[i] = recibir_mensaje(msp_fd);
 		putmsg(status[i]);
-		
-		if (i < 2) {
-			if (MSP_RESERVE_FAILURE(status[i]->header.id)) {
-				cont = 0;
-				free(tcb);
-				tcb = NULL;
-			} else if (!MSP_RESERVE_SUCCESS(status[i]->header.id)) {
-				errno = EBADMSG;
-				perror("reservar_memoria");
-				exit(EXIT_FAILURE);
-			}
-		} else {
-			if (MSP_WRITE_FAILURE(status[i]->header.id)) {
-				cont = 0;
-				free(tcb);
-				tcb = NULL;
-			} else if (!MSP_WRITE_SUCCESS(status[i]->header.id)) {
-				errno = EBADMSG;
-				perror("reservar_memoria");
-				exit(EXIT_FAILURE);
-			}
-		}
 
+		if (MSP_RESERVE_FAILURE(status[i]->header.id)) {
+			cont = 0;
+			free(tcb);
+			tcb = NULL;
+		} else if (!MSP_RESERVE_SUCCESS(status[i]->header.id)) {
+			errno = EBADMSG;
+			perror("reservar_memoria");
+			exit(EXIT_FAILURE);
+		}
 	}
 
-	
+	message[2] = remake_message(WRITE_MEMORY, msg, 2, tcb->pid, status[0]->argv[0]);
+
+	enviar_mensaje(msp_fd, message[2]);
+	putmsg(message[2]);
+
+	status[2] = recibir_mensaje(msp_fd);
+	putmsg(status[2]);
+
+	if (MSP_WRITE_FAILURE(status[2]->header.id)) {
+	cont = 0;
+	free(tcb);
+	tcb = NULL;
+	} else if (!MSP_WRITE_SUCCESS(status[2]->header.id)) {
+		errno = EBADMSG;
+		perror("reservar_memoria");
+		exit(EXIT_FAILURE);
+	}
 
 	if (cont) {
 		tcb->segmento_codigo = status[0]->argv[0];

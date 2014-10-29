@@ -11,8 +11,8 @@ void cargarConfiguracion(char *path) {
 
 	t_config *config = config_create(path);
 	Puerto = config_get_int_value(config, "PUERTO");
-	MaxMem = config_get_int_value(config, "CANTIDAD_MEMORIA")*K;
-	MaxSwap = config_get_int_value(config, "CANTIDAD_SWAP")*M;
+	MaxMem = config_get_int_value(config, "CANTIDAD_MEMORIA") * K;
+	MaxSwap = config_get_int_value(config, "CANTIDAD_SWAP") * M;
 	AlgoritmoSustitucion = config_get_string_value(config, "SUST_PAGS");
 	//config_destroy(config);
 	//por alguna razon no puedo accede al espacio de memoria de AlgoritmoSustitucion. Pasa lo mismo con el string error en atender consola.
@@ -62,16 +62,16 @@ void *atenderConsola(void *parametro) {
 			free(parameters);
 
 			pthread_mutex_lock(&MemMutex);
-			msg_id = escribirMemoria(pid,direccionLogica, buffer, size);
+			msg_id = escribirMemoria(pid, direccionLogica, buffer, size);
 			pthread_mutex_unlock(&MemMutex);
 
-			if ( msg_id == SEGMENTATION_FAULT)
+			if (msg_id == SEGMENTATION_FAULT)
 				puts("ERROR: SEGMENTATION FAULT.");
 
 			free(buffer);
 			break;
 		case CREAR_SEGMENTO:
-			if (scanf(QUERY_PARAMS, &parameters) == 0 || sscanf(parameters, "%u%u%1s", &pid,&size, aux) != 2) {
+			if (scanf(QUERY_PARAMS, &parameters) == 0 || sscanf(parameters, "%u%u%1s", &pid, &size, aux) != 2) {
 				puts("Argumentos inválidos");
 				free(parameters);
 				break;
@@ -85,7 +85,7 @@ void *atenderConsola(void *parametro) {
 
 			pthread_mutex_lock(&LogMutex);
 			if (msg_id == OK_CREATE) {
-				log_trace(Logger,"Segmento %u del proceso %u creado correctamente.", segmento(direccionLogica), pid);
+				log_trace(Logger, "Segmento %u del proceso %u creado correctamente.", segmento(direccionLogica), pid);
 				pthread_mutex_unlock(&LogMutex);
 
 				printf("Dirección base del segmento %u del proceso %u: %u.\n", segmento(direccionLogica), pid, direccionLogica);
@@ -101,7 +101,7 @@ void *atenderConsola(void *parametro) {
 			}
 			break;
 		case DESTRUIR_SEGMENTO:
-			if (scanf(QUERY_PARAMS,&parameters) == 0 || sscanf(parameters, "%u%u%1s", &pid, &baseSegmento, aux) != 2) {
+			if (scanf(QUERY_PARAMS, &parameters) == 0 || sscanf(parameters, "%u%u%1s", &pid, &baseSegmento, aux) != 2) {
 				puts("Argumentos inválidos");
 				free(parameters);
 				break;
@@ -137,7 +137,7 @@ void *atenderConsola(void *parametro) {
 			free(parameters);
 
 			pthread_mutex_lock(&MemMutex);
-			buffer = solicitarMemoria(pid,direccionLogica, size, &msg_id);
+			buffer = solicitarMemoria(pid, direccionLogica, size, &msg_id);
 			pthread_mutex_unlock(&MemMutex);
 
 			if (msg_id == SEGMENTATION_FAULT)
@@ -146,7 +146,7 @@ void *atenderConsola(void *parametro) {
 				printf("%.*s\n",size,buffer);
 			break;
 		case TABLA_SEGMENTOS:
-			printf("%-14s%-14s %-14s %-s\n","PID","Nº Segmento","Tamaño","Dirección Base");
+			printf("%-14s%-14s %-14s %-s\n", "PID", "Nº Segmento", "Tamaño", "Dirección Base");
 
 			pthread_mutex_lock(&LogMutex);
 			log_trace(Logger, "%-14s%-14s %-14s %-s", "PID", "Nº Segmento", "Tamaño" ,"Dirección Base");
@@ -163,7 +163,7 @@ void *atenderConsola(void *parametro) {
 
 			free(parameters);
 
-			if ((tabla = dictionary_get(TablaSegmentosGlobal,stringPID = string_uitoa(pid))) == NULL) {
+			if ((tabla = dictionary_get(TablaSegmentosGlobal, stringPID = string_uitoa(pid))) == NULL) {
 				free(stringPID);
 				puts("PID INVÁLIDO");
 				break;
@@ -242,7 +242,7 @@ void *atenderProceso(void *parametro) {
 
 	t_msg *msg;
 	char *error, *bytesAEscribir;
-	int proceso = *((int*) parametro);
+	int proceso = *((int *) parametro);
 	uint32_t pid, size, direccionLogica, baseSegmento;
 
 	while (1) {
@@ -391,9 +391,9 @@ t_comando_consola esperarComando(void) {
 		idCommand = LISTAR_MARCOS;
 	else if (!strcmp(command, "swap"))
 		idCommand = SWAP;
-	else if(!strcmp(command,"clear"))
+	else if(!strcmp(command, "clear"))
 		idCommand = CLEAR;
-	else if(!strcmp(command,"swapclr"))
+	else if(!strcmp(command, "swapclr"))
 		idCommand = CLEAR_SWAP;
 	else if (!strcmp(command, "help"))
 		idCommand = HELP;

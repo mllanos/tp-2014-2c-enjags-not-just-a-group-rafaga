@@ -7,12 +7,12 @@ int main(int argc, char **argv)
 	kernel_connect(argv[1]);
 	receive_messages();
 	finalize();
-	return 0;
+	return EXIT_SUCCESS;
 }
 
 void initialize(void)
 {
-	logger = log_create(LOG_PATH, "Consola", 1, LOG_LEVEL_TRACE);
+	logger = log_create(LOG_PATH, "Consola", false, LOG_LEVEL_TRACE);
 	config = config_create(CONF_PATH);
 }
 
@@ -21,7 +21,7 @@ void kernel_connect(char *beso_path)
 	log_trace(logger, "Bienvenido al proceso Consola.");
 
 	kernel_fd = client_socket(get_ip_kernel(), get_puerto_kernel());
-	if (kernel_fd == -2) {
+	if (kernel_fd < 0) {
 		log_trace(logger, "Error al conectar con Kernel.");
 		exit(EXIT_FAILURE);
 	}
@@ -60,17 +60,18 @@ int interpret_message(t_msg *recibido)
 			scanf("%d", &num_input);
 			clean_stdin_buffer();
 			/* Adjuntamos el cpu_sock_fd del mensaje recibido. */
-			msg = argv_message(REPLY_NUMERIC_INPUT, 2, recibido->argv[0],num_input);
+			msg = argv_message(REPLY_NUMERIC_INPUT, 2, recibido->argv[0], num_input);
 			enviar_mensaje(kernel_fd, msg);
 			destroy_message(msg);
 			break;
 		case STRING_INPUT:
 			puts("Ingrese un literal cadena.");
 			/* Adjuntamos el cpu_sock_fd del mensaje recibido. */
-			str_input = malloc(recibido->argv[0]+1);
+			str_input = malloc(recibido->argv[0] + 1);
 			msg = string_message(REPLY_STRING_INPUT, fgets(str_input, recibido->argv[0], stdin), 1, recibido->argv[1]);
 			enviar_mensaje(kernel_fd, msg);
 			destroy_message(msg);
+			free(str_input);
 			break;
 		case NUMERIC_OUTPUT:
 			printf("Número recibido: %d\n", recibido->argv[0]);
@@ -94,15 +95,4 @@ void finalize(void)
 	log_destroy(logger);
 	config_destroy(config);
 	close(kernel_fd);
-}
-
-
-char *get_ip_kernel(void)
-{
-	return config_get_string_value(config, "IP_KERNEL");
-}
-
-int get_puerto_kernel(void)
-{
-	return config_get_int_value(config, "PUERTO_KERNEL");
 }

@@ -9,7 +9,7 @@ void *planificador(void *arg)
 		t_msg *recibido = queue_pop(planificador_queue);
 		pthread_mutex_unlock(&planificador_mutex);
 
-		switch (recibido->header.id) {
+		switch (recibido->header.id) {	
 			case CPU_CONNECT:
 				cpu_add(recibido->argv[0]);
 				break;
@@ -31,7 +31,7 @@ void *planificador(void *arg)
 				standard_io(recibido);
 				break;
 			case REPLY_NUMERIC_INPUT:
-				return_numeric_input(recibido->argv[0],recibido->argv[1]);
+				return_numeric_input(recibido->argv[0], recibido->argv[1]);
 				break;
 			case REPLY_STRING_INPUT:
 				return_string_input(recibido->argv[0], recibido->stream);
@@ -157,7 +157,8 @@ void assign_process(uint32_t sock_fd)
 
 void return_process(uint32_t sock_fd, t_hilo *tcb)
 {
-	if (tcb->kernel_mode == false) { /* Recibido hilo comun. */
+	if (tcb->kernel_mode == false) { 
+		/* Recibido hilo comun. */
 		/* Actualizamos el tcb recibido y lo encolamos a READY. */
 		void _update_tcb(t_hilo *a_tcb) {
 			if (a_tcb->tid == tcb->tid) {
@@ -167,7 +168,8 @@ void return_process(uint32_t sock_fd, t_hilo *tcb)
 		}
 
 		list_iterate(process_list, (void *) _update_tcb);
-	} else { /* Recibido hilo de Kernel. */
+	} else { 
+		/* Recibido hilo de Kernel. */
 		/* Copiamos registros al proceso bloqueado por syscalls y lo encolamos a READY. */
 		t_hilo *tcb_syscall = queue_pop(syscall_queue);
 		memcpy(tcb_syscall->registros, tcb->registros, sizeof(int32_t) * 5);
@@ -234,7 +236,7 @@ void standard_io(t_msg *msg)
 
 	t_console *console = list_find(console_list, (void *) _find_by_pid);
 
-	/* Nota: msg contiene el sock_fd del CPU para terminar la operacion en return_input(). */
+	/* Nota: msg contiene el sock_fd del CPU para terminar la operacion en return_x_input(). */
 	enviar_mensaje(console->sock_fd, msg);
 }
 
@@ -246,12 +248,14 @@ void return_numeric_input(uint32_t cpu_sock_fd, int32_t number)
 	destroy_message(msg);
 }
 
+
 void return_string_input(uint32_t cpu_sock_fd, char *stream)
 {
 	t_msg *msg = string_message(REPLY_STRING_INPUT, stream, 0);
 	enviar_mensaje(cpu_sock_fd, msg);
 	destroy_message(msg);
 }
+
 
 void create_thread(t_hilo *padre)
 {
@@ -266,13 +270,15 @@ void create_thread(t_hilo *padre)
 
 	t_msg *status = recibir_mensaje(msp_fd);
 
-	if (MSP_RESERVE_SUCCESS(status->header.id)) { /* Memoria reservada. */
+	if (MSP_RESERVE_SUCCESS(status->header.id)) { 
+		/* Memoria reservada. */
 		/* Encolar el hilo a READY. */
 		new_tcb->base_stack = status->argv[0];
 		new_tcb->cursor_stack = new_tcb->base_stack;
 		new_tcb->cola = READY;
 		list_add(process_list, new_tcb);
-	} else if (MSP_RESERVE_FAILURE(status->header.id)) { /* No hay suficiente memoria. */
+	} else if (MSP_RESERVE_FAILURE(status->header.id)) { 
+		/* No hay suficiente memoria. */
 		/* Finalizar todos los hilos del proceso y avisar a consola. */
 
 		void _finalize_by_pid(t_hilo *a_tcb) {
@@ -335,7 +341,8 @@ void block_thread(uint32_t resource, t_hilo *tcb)
 	}
 
 	t_resource *rsc = list_find(resource_list, (void *) _find_by_id);
-	if (rsc == NULL) { /* Crear nuevo recurso. */
+	if (rsc == NULL) { 
+		/* Crear nuevo recurso. */
 		rsc = malloc(sizeof *rsc);
 		rsc->id_resource = resource;
 		rsc->queue = queue_create();
