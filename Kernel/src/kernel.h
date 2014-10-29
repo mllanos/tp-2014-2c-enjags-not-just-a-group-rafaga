@@ -24,7 +24,7 @@
 #include "loader.h"
 #include "planificador.h"
 
-#define PANEL_PATH "../panel"
+#define PANEL_PATH "panel/"
 #define MAXEVENTS 64
 
 /* Macros de respuesta MSP. */
@@ -33,9 +33,20 @@
 #define MSP_WRITE_FAILURE(s) (s == INVALID_DIR || s == SEGMENTATION_FAULT)
 #define MSP_WRITE_SUCCESS(s) (s == OK_WRITE)
 
+/* Macros getters de config. */
+#define get_puerto() config_get_int_value(config, "PUERTO")
+#define get_ip_msp() config_get_string_value(config, "IP_MSP")
+#define get_puerto_msp() config_get_int_value(config, "PUERTO_MSP")
+#define get_quantum() config_get_int_value(config, "QUANTUM")
+#define get_stack_size() config_get_int_value(config, "TAMANIO_STACK")
+#define get_syscalls() config_get_string_value(config, "SYSCALLS")
 
 
-typedef enum { THREAD_ID, CONSOLE_ID, CPU_ID } t_unique_id;
+typedef enum { 
+	THREAD_ID, 
+	CONSOLE_ID, 
+	CPU_ID 
+} t_unique_id;
 
 /* Funciones Kernel. */
 
@@ -83,12 +94,6 @@ int remove_from_lists(uint32_t sock_fd);
 
 
 /* Funciones auxiliares. */
-int get_puerto(void);
-char *get_ip_msp(void);
-int get_puerto_msp(void);
-int get_quantum(void);
-int get_stack_size(void);
-char *get_syscalls(void);
 static int make_socket_non_blocking(int sfd);
 
 

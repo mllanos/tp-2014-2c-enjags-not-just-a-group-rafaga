@@ -15,7 +15,7 @@ bool isValidReg(char);
 
 t_rule searchRule(char* line){
 	static t_rule rules[] ={
-			#include "sintax/bytecodes.txt"
+			#include "syntax/bytecodes.txt"
 	};
 
 	int i;

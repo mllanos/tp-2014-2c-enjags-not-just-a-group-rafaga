@@ -1,0 +1,5 @@
+#!/bin/bash
+for f in $(find ./ESO/* -name '*.txt' -print); do
+	echo $f $(./build/so-ensamblador -o ${f%.txt}.bc $f)
+	mv ${f%.txt}.bc ../Consola/BESO
+done

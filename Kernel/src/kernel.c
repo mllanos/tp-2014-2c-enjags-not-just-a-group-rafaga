@@ -26,7 +26,9 @@ void initialize(char *config_path)
 	sem_init(&sem_loader, 0, 0);
 	sem_init(&sem_planificador, 0, 0);
 	inicializar_panel(KERNEL, PANEL_PATH);
-	msp_fd = client_socket(get_ip_msp(), get_puerto_msp());
+	if((msp_fd = client_socket(get_ip_msp(), get_puerto_msp())) < 0) {
+		exit(EXIT_FAILURE);
+	}
 	pthread_create(&loader_th, NULL, loader, NULL);
 	pthread_create(&planificador_th, NULL, planificador, NULL);
 }
@@ -409,42 +411,6 @@ int remove_from_lists(uint32_t sock_fd)
 	}
 
 	return 0;
-}
-
-
-int get_puerto(void)
-{
-	return config_get_int_value(config, "PUERTO");
-}
-
-
-char *get_ip_msp(void)
-{
-	return config_get_string_value(config, "IP_MSP");
-}
-
-
-int get_puerto_msp(void)
-{
-	return config_get_int_value(config, "PUERTO_MSP");
-}
-
-
-int get_quantum(void)
-{
-	return config_get_int_value(config, "QUANTUM");
-}
-
-
-int get_stack_size(void)
-{
-	return config_get_int_value(config, "TAMANIO_STACK");
-}
-
-
-char *get_syscalls(void)
-{
-	return config_get_string_value(config, "SYSCALLS");
 }
 
 

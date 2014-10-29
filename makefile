@@ -17,12 +17,15 @@ compile-procs:
 	cd CPU && make
 	cd MSP && make
 	cd Consola && make
+	cd Ensamblador && make
+	cd Ensamblador && sh ./massAssemble
 
 clean-procs:
 	cd Kernel && make clean
 	cd CPU && make clean
 	cd MSP && make clean
 	cd Consola && make clean
+	cd Ensamblador && make clean
 
 clean-libs:
 	cd libs/commons-library && sudo make clean

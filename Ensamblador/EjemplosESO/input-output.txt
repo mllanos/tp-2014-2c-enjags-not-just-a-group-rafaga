@@ -1,6 +1,0 @@
-INNN,
-OUTN,
-LOAD B,20,
-INNC,
-OUTC,
-XXXX

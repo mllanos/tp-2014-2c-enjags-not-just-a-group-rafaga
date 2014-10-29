@@ -11,7 +11,23 @@
 #include "msp.h"
 #include "administradorDeMemoria.h"
 
-typedef enum { CREAR_SEGMENTO,DESTRUIR_SEGMENTO,ESCRIBIR_MEMORIA,LEER_MEMORIA,TABLA_SEGMENTOS,TABLA_PAGINAS,LISTAR_MARCOS, COMANDO_INVALIDO, SWAP, CLEAR, CLEAR_SWAP } t_comando_consola;
+#define QUERY_PARAMS "%m[^\n]"
+
+typedef enum {
+	CREAR_SEGMENTO,
+	DESTRUIR_SEGMENTO,
+	ESCRIBIR_MEMORIA,
+	LEER_MEMORIA,
+	TABLA_SEGMENTOS,
+	TABLA_PAGINAS,
+	LISTAR_MARCOS, 
+	COMANDO_INVALIDO, 
+	SWAP,
+	CLEAR,
+	CLEAR_SWAP,
+	HELP,
+	QUIT
+} t_comando_consola;
 
 /* el archivo configuracion será del tipo:
  * PUERTO=[1024-65535]

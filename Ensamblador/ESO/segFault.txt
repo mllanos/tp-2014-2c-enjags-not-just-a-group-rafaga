@@ -1,0 +1,3 @@
+LOAD A,500
+GETM A,A^ Levanta *500
+XXXX

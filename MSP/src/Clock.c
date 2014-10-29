@@ -7,14 +7,14 @@
 
 #include "Clock.h"
 
-void seleccionVictimaClock(t_segmento** tabla,uint32_t *pid,uint16_t *seg,uint16_t *pag) {
+void seleccionVictimaClock(t_segmento** tabla, uint32_t *pid, uint16_t *seg, uint16_t *pag) {
 
 	char *stringPID;
 	uint32_t inPid = *pid;
 	uint16_t inSeg = *seg;
 	uint16_t inPag = *pag;
 
-	for(;ArrayClock[ClockIndex = ClockIndex % ClockEmptyIndex].bitReferencia;++ClockIndex)
+	for (; ArrayClock[ClockIndex = ClockIndex % ClockEmptyIndex].bitReferencia; ++ClockIndex)
 		ArrayClock[ClockIndex].bitReferencia = 0;
 
 	t_clock_node* pagMenosUsada = ArrayClock + ClockIndex;	/* Es equivalente a &ArrayClock[ClockIndex] */
@@ -33,17 +33,17 @@ void seleccionVictimaClock(t_segmento** tabla,uint32_t *pid,uint16_t *seg,uint16
 
 }
 
-void actualizarEnArrayClock(uint32_t pid,uint16_t seg,uint16_t pag) {
+void actualizarEnArrayClock(uint32_t pid, uint16_t seg, uint16_t pag) {
 
 	int i;
-	for(i=0;ArrayClock[i].pid != pid || ArrayClock[i].numSegmento != seg || ArrayClock[i].numPagina != pag;++i)
+	for (i = 0; ArrayClock[i].pid != pid || ArrayClock[i].numSegmento != seg || ArrayClock[i].numPagina != pag; ++i)
 		;
 
 	ArrayClock[i].bitReferencia = 1;
 
 }
 
-void agregarPaginaEnArrayClock(uint32_t pid,uint16_t seg,uint16_t pag) {
+void agregarPaginaEnArrayClock(uint32_t pid, uint16_t seg, uint16_t pag) {
 
 	ArrayClock[ClockEmptyIndex].pid = pid;
 	ArrayClock[ClockEmptyIndex].numPagina = pag;
@@ -52,14 +52,14 @@ void agregarPaginaEnArrayClock(uint32_t pid,uint16_t seg,uint16_t pag) {
 
 }
 
-void quitarPaginaDeArrayClock(uint32_t pid,uint16_t seg,uint16_t pag) {
+void quitarPaginaDeArrayClock(uint32_t pid, uint16_t seg, uint16_t pag) {
 
 	int i;
-	for(i=0;ArrayClock[i].pid != pid || ArrayClock[i].numSegmento != seg || ArrayClock[i].numPagina != pag;++i)
+	for (i = 0; ArrayClock[i].pid != pid || ArrayClock[i].numSegmento != seg || ArrayClock[i].numPagina != pag; ++i)
 		;
 
 	/* Muevo todos los registros una posición, pisando el de la página que se fue de memoria */
-	for(++i;i < ClockEmptyIndex;++i) {
+	for (++i; i < ClockEmptyIndex; ++i) {
 
 		ArrayClock[i-1].pid = ArrayClock[i].pid;
 		ArrayClock[i-1].numPagina = ArrayClock[i].numPagina;
@@ -77,20 +77,20 @@ void imprimirArrayClock(void) {
 	int i;
 
 	pthread_mutex_lock(&LogMutex);
-	log_trace(Logger,"Algortimo de Sustitución: Clock:");
-	log_trace(Logger,"Posición del puntero: %u",ClockIndex);
-	log_trace(Logger,"Lista de Páginas en Memoria:");
-	log_trace(Logger,"%-12s%-14s%-14s%-s","PID","Nº Segmento","Nº Página","Bit de Referencia");
+	log_trace(Logger, "Algoritmo de Sustitución: Clock:");
+	log_trace(Logger, "Posición del puntero: %u", ClockIndex);
+	log_trace(Logger, "Lista de Páginas en Memoria:");
+	log_trace(Logger, "%-12s%-14s%-14s%-s", "PID", "Nº Segmento", "Nº Página", "Bit de Referencia");
 	pthread_mutex_unlock(&LogMutex);
 
-	printf("Algortimo de Sustitución: Clock\nPosición del puntero: %u\nLista de Páginas en Memoria:\n%-12s%-14s%-14s%-s\n",ClockIndex,"PID","Nº Segmento","Nº Página","Bit de Referencia");
+	printf("Algoritmo de Sustitución: Clock\nPosición del puntero: %u\nLista de Páginas en Memoria:\n%-12s%-14s%-14s%-s\n", ClockIndex, "PID", "Nº Segmento", "Nº Página", "Bit de Referencia");
 
-	for(i=0;i < ClockEmptyIndex;++i) {
+	for (i = 0; i < ClockEmptyIndex; ++i) {
 		pthread_mutex_lock(&LogMutex);
-		log_trace(Logger,"%-12u%-12u %-12u%-1u",ArrayClock[i].pid,ArrayClock[i].numSegmento,ArrayClock[i].numPagina,ArrayClock[i].bitReferencia);
+		log_trace(Logger, "%-12u%-12u %-12u%-1u", ArrayClock[i].pid, ArrayClock[i].numSegmento, ArrayClock[i].numPagina, ArrayClock[i].bitReferencia);
 		pthread_mutex_unlock(&LogMutex);
 
-		printf("%-12u%-12u %-12u%-1u\n",ArrayClock[i].pid,ArrayClock[i].numSegmento,ArrayClock[i].numPagina,ArrayClock[i].bitReferencia);
+		printf("%-12u%-12u %-12u%-1u\n", ArrayClock[i].pid, ArrayClock[i].numSegmento, ArrayClock[i].numPagina, ArrayClock[i].bitReferencia);
 	}
 
 }

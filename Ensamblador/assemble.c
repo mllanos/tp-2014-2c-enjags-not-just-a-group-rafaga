@@ -4,7 +4,7 @@ void decompile(char* start, char* end){
 	int i, isData=false;
 	while (start != end) {
 		if( isData && end-start>0){
-			printf("%.*s\n", end-start, start); //imprimi lo que puedas!
+			//printf("%.*s\n", end-start, start); //imprimi lo que puedas!
 			return;
 		}
 
@@ -96,7 +96,7 @@ void assembleLine(char* begin, int offset, void(*save)(short, unsigned int*, cha
 							} else
 								saver = atoi(line);
 							if( !strncmp(r.literal, "INTE", LITERAL_SIZE)){
-								#include "sintax/syscallLibraryPointers.txt"
+								#include "syntax/syscallLibraryPointers.txt"
 								{
 									fprintf(stderr, "No se encontro el syscall `%s`", line);
 									saver = atoi(line);

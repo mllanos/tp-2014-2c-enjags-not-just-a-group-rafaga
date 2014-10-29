@@ -21,6 +21,8 @@
 #define NUM_SEG_MAX 4*K
 #define NUM_PAG_MAX NUM_SEG_MAX
 #define SEG_MAX_SIZE 1048576
+#define SWAP_PATH "swap/"
+#define LOG_PATH "log/msp.log"
 
 typedef uint8_t bit;
 
@@ -44,15 +46,13 @@ typedef struct {
 /* FIN Estructuras */
 
 /* Variables Globales */
-int  Puerto;
+int Puerto;
 t_log *Logger;
 uint32_t MaxMem;
 uint32_t MaxSwap;
-char *SwapPath;
 char *AlgoritmoSustitucion;
-pthread_mutex_t LogMutex,MemMutex;
+pthread_mutex_t LogMutex, MemMutex;
 /* FIN Variables Globales */
 
-void inicializarMSP(char* swapPath);
 
 #endif /* MSP_H_ */

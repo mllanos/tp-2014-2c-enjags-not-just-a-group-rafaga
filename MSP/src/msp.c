@@ -11,30 +11,28 @@
 int main (int argc, char** argv) {
 
 	pthread_t thread;
-	int listener,nuevaConexion;
+	int listener, nuevaConexion;
 
 	/* Creación de archivo log */
-	clean_file(argv[2]);
-	Logger = log_create(argv[2],"MSP",false,LOG_LEVEL_TRACE);
+	Logger = log_create(LOG_PATH,"MSP", false, LOG_LEVEL_TRACE);
 
 	cargarConfiguracion(argv[1]);
-	inicializarMSP(argv[3]);
+	inicializarMSP();
 
-	log_trace(Logger,"Inicio de MSP.\n	Tamaño de Memoria Principal: %u.\n	Tamaño de SWAP: %u.",MaxMem,MaxSwap);
+	log_trace(Logger, "Inicio de MSP.\n	Tamaño de Memoria Principal: %u.\n	Tamaño de SWAP: %u.", MaxMem, MaxSwap);
 
 	listener = server_socket(Puerto);
-	pthread_create(&thread,NULL,atenderConsola,NULL);
+	pthread_create(&thread, NULL, atenderConsola, NULL);
 
-	while(true) {
+	while (true) {
 
 		nuevaConexion = accept_connection(listener);
 
 		pthread_mutex_lock(&LogMutex);
-		log_trace(Logger,"Nueva conexión.");
+		log_trace(Logger, "Nueva conexión.");
 		pthread_mutex_unlock(&LogMutex);
 
-		pthread_create(&thread,NULL,atenderProceso,&nuevaConexion);
-
+		pthread_create(&thread, NULL, atenderProceso, &nuevaConexion);
 	}
 
 	return EXIT_SUCCESS;

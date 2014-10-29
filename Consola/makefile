@@ -1,7 +1,7 @@
 CC = gcc
 LIBS = -lcommons -lutiles
 OBJ = obj/consola.o 
-DIRS = bin/ obj/ log/
+DIRS = bin/ obj/ log/ BESO/
 OUT = bin/Consola
 
 all: directories consola
