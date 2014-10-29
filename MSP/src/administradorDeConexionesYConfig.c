@@ -44,6 +44,14 @@ void *atenderConsola(void* parametro) {
 
 			write_file("swapAProposito",direccionFisica(tabla,seg,pag,0),PAG_SIZE);
 			break;
+		case CLEAR:
+			system("clear");
+			break;
+		case CLEAR_SWAP:
+			buffer = string_from_format("cd %s\nrm *",SwapPath);
+			system(buffer);
+			free(buffer);
+			break;
 		case ESCRIBIR_MEMORIA:
 			if(scanf("%m[^\n]",&parameters) == 0 || sscanf(parameters,"%u%u%u%*[ \t]%m[^\n]",&pid,&direccionLogica,&size,&buffer) != 4) {
 				puts("Argumentos inválidos");
@@ -362,6 +370,10 @@ t_comando_consola esperarComando(void) {
 		idCommand = LISTAR_MARCOS;
 	else if(!strcmp(command,"swap"))
 		idCommand = SWAP;
+	else if(!strcmp(command,"clear"))
+		idCommand = CLEAR;
+	else if(!strcmp(command,"swapclr"))
+		idCommand = CLEAR_SWAP;
 	else {
 		idCommand = COMANDO_INVALIDO;
 		scanf("%*[^\n]");
@@ -372,7 +384,6 @@ t_comando_consola esperarComando(void) {
 	return idCommand;
 
 }
-
 
 void imprimirSegmento(char *pid,void *data) {
 

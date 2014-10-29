@@ -86,12 +86,13 @@ void inicializar_tabla_instrucciones(void){
 /*
 	dictionary_put(SetInstruccionesProtegidas,"MALC");
 	dictionary_put(SetInstruccionesProtegidas,"FREE");
-	dictionary_put(SetInstruccionesProtegidas,"INNN");
-	dictionary_put(SetInstruccionesProtegidas,"INNC");
-	dictionary_put(SetInstruccionesProtegidas,"OUTN");
-	dictionary_put(SetInstruccionesProtegidas,"OUTC");
-	dictionary_put(SetInstruccionesProtegidas,"CREA");
-	dictionary_put(SetInstruccionesProtegidas,"JOIN");
-	dictionary_put(SetInstruccionesProtegidas,"BLOCK");
 */
+	dictionary_put(SetInstruccionesProtegidas,"INNN",innn);
+	dictionary_put(SetInstruccionesProtegidas,"INNC",innc);
+	dictionary_put(SetInstruccionesProtegidas,"OUTN",outn);
+	dictionary_put(SetInstruccionesProtegidas,"OUTC",outc);
+	dictionary_put(SetInstruccionesProtegidas,"CREA",crea);
+	dictionary_put(SetInstruccionesProtegidas,"JOIN",join);
+	dictionary_put(SetInstruccionesProtegidas,"BLOCK",block);
+
 }

@@ -34,8 +34,13 @@ void kernel_connect(char *beso_path)
 void receive_messages(void)
 {
 	int status = 1;
+	t_msg *recibido;
+	
 	while (status) {
-		t_msg *recibido = recibir_mensaje(kernel_fd);
+		if((recibido = recibir_mensaje(kernel_fd)) == NULL) {
+			puts("ERROR: Se ha perdido la conexión con el Kernel.");
+			exit(EXIT_FAILURE);
+		}
 		status = interpret_message(recibido);
 		destroy_message(recibido);
 	}

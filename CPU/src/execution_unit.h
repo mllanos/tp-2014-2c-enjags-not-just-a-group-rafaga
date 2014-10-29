@@ -20,7 +20,7 @@
 #define MAX_SHIF 31
 #define PID Registros.I
 #define OPERATION_CODE_SIZE 4
-#define stack_top (Registros.X + Registros.S)
+#define stack_top Registros.S
 #define stack_size (Registros.S - Registros.X)
 #define program_counter (Registros.M + Registros.P)
 
@@ -97,6 +97,15 @@ void take (void);
 void xxxx (void);
 void eso_goto (void);
 void eso_push (void);
+
+void innn (void);
+void innc (void);
+void outn (void);
+void outc (void);
+void crea (void);
+void join (void);
+void block (void);
+void wake (void);
 /*FIN Set de Instrucciones */
 
 #endif /*EXECUTION_UNIT_H*/

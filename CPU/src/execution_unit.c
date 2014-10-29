@@ -113,12 +113,6 @@ int fetch_operand(t_operandos tipo_operando) {
 	else {
 		size = sizeof(uint32_t);
 		buffer = solicitar_memoria(program_counter + Instruction_size,size);
-
-		buffer[0];
-		buffer[1];
-		buffer[2];
-		buffer[3];
-
 		memcpy(&aux,buffer,size);
 		parametro = string_itoa(aux);
 		list_add(Parametros,parametro);

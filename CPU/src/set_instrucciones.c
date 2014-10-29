@@ -179,9 +179,14 @@ void nopp (void) {
 void eso_push (void) {
 
 	int32_t size = fetch_numero();
-	uint32_t i = fetch_registro();
+	char *buffer = malloc(size+1);
 
-	msp_memcpy(stack_top,registro(i),size);
+	memcpy(buffer,&registro(fetch_registro()),size);
+
+	buffer[size] = '\0';
+
+	escribir_memoria(stack_top,buffer,size);
+
 	Registros.S += size;
 
 }
@@ -189,9 +194,13 @@ void eso_push (void) {
 void take (void) {
 
 	int32_t size = fetch_numero();
-	uint32_t i = fetch_registro();
 
-	msp_memcpy(registro(i),stack_top-size,size);
+	char *buffer = solicitar_memoria(stack_top-size,size);
+
+	memcpy(&registro(fetch_registro()),buffer,size);
+
+	free(buffer);
+
 	Registros.S -= size;
 
 }
