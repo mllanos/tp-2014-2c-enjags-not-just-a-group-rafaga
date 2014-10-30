@@ -24,7 +24,7 @@ void *atenderConsola(void *parametro) {
 	uint32_t i;
 	t_msg_id msg_id;
 	t_segmento *tabla;
-	uint16_t seg, pag, cantPag;	//son uint16 en realidad
+	uint16_t seg, pag, cantPag;
 	uint32_t pid, size, direccionLogica, baseSegmento;
 	char *error, *buffer, *stringPID, *parameters, aux[1];
 
@@ -34,15 +34,15 @@ void *atenderConsola(void *parametro) {
 
 		switch(esperarComando()) {
 		case SWAP:
-			if (scanf(QUERY_PARAMS, &parameters) == 0 || sscanf(parameters, "%u%hu%hu%1s", &pid, &seg, &pag, aux) != 3) {
+			if (scanf(A_LINE, &parameters) == 0 || sscanf(parameters, "%u%hu%hu%1s", &pid, &seg, &pag, aux) != 3) {
 				puts("Argumentos inválidos");
 				free(parameters);
 				break;
 			}
+			tabla = tablaDelProceso(stringPID = string_itoa(pid));
+			free(stringPID);
 
-			tabla = tablaDelProceso(string_itoa(pid));
-
-			write_file("swapAProposito", direccionFisica(tabla, seg, pag, 0), PAG_SIZE);
+			write_file("swapedPage", direccionFisica(tabla, seg, pag, 0), PAG_SIZE);
 			break;
 		case CLEAR:
 			system("clear");
@@ -53,7 +53,7 @@ void *atenderConsola(void *parametro) {
 			free(buffer);
 			break;
 		case ESCRIBIR_MEMORIA:
-			if (scanf(QUERY_PARAMS, &parameters) == 0 || sscanf(parameters, "%u%u%u%*[ \t]%m[^\n]", &pid, &direccionLogica, &size, &buffer) != 4) {
+			if (scanf(A_LINE, &parameters) == 0 || sscanf(parameters, "%u%u%u%*[ \t]%m[^\n]", &pid, &direccionLogica, &size, &buffer) != 4) {
 				puts("Argumentos inválidos");
 				free(parameters);
 				break;
@@ -71,7 +71,7 @@ void *atenderConsola(void *parametro) {
 			free(buffer);
 			break;
 		case CREAR_SEGMENTO:
-			if (scanf(QUERY_PARAMS, &parameters) == 0 || sscanf(parameters, "%u%u%1s", &pid, &size, aux) != 2) {
+			if (scanf(A_LINE, &parameters) == 0 || sscanf(parameters, "%u%u%1s", &pid, &size, aux) != 2) {
 				puts("Argumentos inválidos");
 				free(parameters);
 				break;
@@ -101,7 +101,7 @@ void *atenderConsola(void *parametro) {
 			}
 			break;
 		case DESTRUIR_SEGMENTO:
-			if (scanf(QUERY_PARAMS, &parameters) == 0 || sscanf(parameters, "%u%u%1s", &pid, &baseSegmento, aux) != 2) {
+			if (scanf(A_LINE, &parameters) == 0 || sscanf(parameters, "%u%u%1s", &pid, &baseSegmento, aux) != 2) {
 				puts("Argumentos inválidos");
 				free(parameters);
 				break;
@@ -128,7 +128,7 @@ void *atenderConsola(void *parametro) {
 			}
 			break;
 		case LEER_MEMORIA:
-			if (scanf(QUERY_PARAMS, &parameters) == 0 || sscanf(parameters, "%u%u%u%1s", &pid, &direccionLogica, &size, aux) != 3) {
+			if (scanf(A_LINE, &parameters) == 0 || sscanf(parameters, "%u%u%u%1s", &pid, &direccionLogica, &size, aux) != 3) {
 				puts("Argumentos inválidos");
 				free(parameters);
 				break;
@@ -155,7 +155,7 @@ void *atenderConsola(void *parametro) {
 			dictionary_iterator(TablaSegmentosGlobal,imprimirSegmento);
 			break;
 		case TABLA_PAGINAS:
-			if (scanf(QUERY_PARAMS, &parameters) == 0 || sscanf(parameters, "%u%1s", &pid, aux) != 1) {
+			if (scanf(A_LINE, &parameters) == 0 || sscanf(parameters, "%u%1s", &pid, aux) != 1) {
 				puts("Argumentos inválidos");
 				free(parameters);
 				break;
@@ -210,25 +210,25 @@ void *atenderConsola(void *parametro) {
 			break;
 		case HELP:
 			printf(
-			"command\t\tcommand description\t\tparameters\n"
-			"=======\t\t===================\t\t=========\n"
-			"new\t\tcreate a new segment\t\tpid, size\n"
-			"destroy\t\tdestroy a segment\t\tpid, base\n"
-			"read\t\tread a memory direction\t\tpid, dir, size\n"
-			"write\t\twrite in a memory direction\tpid, dir, bytes, size\n"
-			"segtable\tshow segments\t\t\tnone\n"
-			"pagtable\tshow pages\t\t\tpid\n"
-			"frames\t\tshow frames\t\t\tnone\n"
-			"swap\t\tswaps pages\t\t\tpid, seg, pag\n"
-			"clear\t\tclear window\t\t\tnone\n"
-			"swapclr\t\tclear swap\t\t\tnone\n"
-			"help\t\tshow the help page\t\tnone\n"
-			"quit\t\texit the application\t\tnone\n"
+			"Command\t\tCommand Description\t\t\tParameters\n"
+			"=======\t\t===================\t\t\t=========\n"
+			"new\t\tCreate a new segment.\t\t\tpid, size\n"
+			"destroy\t\tDestroy a segment.\t\t\tpid, base\n"
+			"read\t\tRead a memory direction.\t\tpid, dir, size\n"
+			"write\t\tWrite in a memory direction.\t\tpid, dir, size, text\n"
+			"segtable\tShow segments info.\t\t\tnone\n"
+			"pagtable\tShow process [pid]'s pages info.\tpid\n"
+			"frames\t\tShow frames info.\t\t\tnone\n"
+			"swap\t\tSwap a page.\t\t\t\tpid, seg, pag\n"
+			"clear\t\tClear screen.\t\t\t\tnone\n"
+			"swapclr\t\tRemove all pages in swap directory.\tnone\n"
+			"help\t\tShow the help page.\t\t\tnone\n"
+			"quit\t\tExit the application.\t\t\tnone\n"
 			);
 			break;
 		case QUIT:
 			puts("Saliendo de la MSP.");
-			exit(0);
+			exit(EXIT_SUCCESS);
 		default:
 			puts("COMANDO INVÁLIDO.");
 		}
@@ -408,7 +408,6 @@ t_comando_consola esperarComando(void) {
 
 	return idCommand;
 }
-
 
 void imprimirSegmento(char *pid, void *data) {
 

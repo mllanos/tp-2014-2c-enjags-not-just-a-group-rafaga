@@ -43,6 +43,7 @@
 #define paginaValida(TABLA, SEG, PAG, OFFSET) (bytesOcupadosHasta(PAG,OFFSET) <= TABLA[SEG].limite)
 
 /* Otros */
+#define string_uitoa(number) string_from_format("%u", number)
 #define bytesOcupadosHasta(PAG, OFFSET) (PAG * PAG_SIZE + OFFSET)
 #define bytesLeiblesDesde(TABLA, SEG, PAG, OFFSET) bytesEscribiblesDesde(TABLA,SEG,PAG,OFFSET)
 #define bytesEscribiblesDesde(TABLA, SEG, PAG, OFFSET) (TABLA[SEG].limite - bytesOcupadosHasta(PAG,OFFSET))
@@ -78,7 +79,6 @@ t_msg_id escribirMemoria(uint32_t pid, uint32_t direccionLogica, char* bytesAEsc
 
 /* Funciones Privadas */
 uint32_t marcoVacio(void);
-char* string_uitoa(uint32_t number);
 uint16_t primerEntradaLibre(t_segmento *tabla);
 uint32_t rutinaSustitucion(uint32_t inPid, uint16_t seg, uint16_t pag);
 void traerPaginaAMemoria(t_segmento *tabla, uint32_t pid, uint16_t seg, uint16_t pag);

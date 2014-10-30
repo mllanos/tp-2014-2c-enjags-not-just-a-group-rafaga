@@ -351,7 +351,3 @@ uint32_t rutinaSustitucion(uint32_t inPid, uint16_t inSeg, uint16_t inPag) {
 
 	return numMarcoLiberado;
 }
-
-char *string_uitoa(uint32_t number) {
-    return string_from_format("%u", number);
-}

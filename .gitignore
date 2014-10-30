@@ -44,6 +44,7 @@ CPU/obj
 Kernel/obj
 Consola/obj
 Consola/log
+Consola/BESO
 MSP/swap
 MSP/log
 /libs/commons-library/src/build

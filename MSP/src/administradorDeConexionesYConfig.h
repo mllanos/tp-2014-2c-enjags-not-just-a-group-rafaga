@@ -11,7 +11,7 @@
 #include "msp.h"
 #include "administradorDeMemoria.h"
 
-#define QUERY_PARAMS "%m[^\n]"
+#define A_LINE "%m[^\n]"
 
 typedef enum {
 	CREAR_SEGMENTO,

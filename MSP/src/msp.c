@@ -15,6 +15,7 @@ int main (int argc, char** argv) {
 
 	/* Creación de archivo log */
 	Logger = log_create(LOG_PATH, "MSP", false, LOG_LEVEL_TRACE);
+	clean_file(LOG_PATH);
 
 	cargarConfiguracion(argv[1]);
 	inicializarMSP();

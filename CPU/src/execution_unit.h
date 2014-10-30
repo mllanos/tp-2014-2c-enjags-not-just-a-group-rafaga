@@ -24,7 +24,6 @@
 #define stack_size (Registros.S - Registros.X)
 #define program_counter (Registros.M + Registros.P)
 
-
 typedef enum {A,B,C,D,E} t_registros_programacion;
 typedef enum {REGISTRO,NUMERO,DIRECCION} t_operandos;
 
@@ -70,7 +69,6 @@ void eu_ejecutar(char *operation_code,uint32_t retardo);
 uint32_t crear_segmento(uint32_t size,t_msg_id *id);
 char* solicitar_memoria(uint32_t direccionLogica,uint32_t size);
 t_msg_id escribir_memoria(uint32_t direccionLogica,char *bytesAEscribir,uint32_t size);
-//void servicio_kernel(void);
 /*FIN_Funciones de la UE (Unidad de Ejecución)*/
 
 /* Set de Instrucciones */
