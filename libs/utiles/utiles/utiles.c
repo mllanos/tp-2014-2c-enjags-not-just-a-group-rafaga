@@ -661,3 +661,23 @@ char *id_string(t_msg_id id)
 
 	return buf;
 }
+
+
+void print_tcb(t_hilo *tcb)
+{
+	int i;
+	puts("CONTENIDOS DEL TCB");
+	printf("Registro PID Valor:		%8d\n", tcb->pid);
+	printf("Registro TID Valor:		%8d\n", tcb->tid);
+	printf("Registro KM Valor:		%8d\n", tcb->kernel_mode);
+	printf("Registro CS Valor:		%8d\n", tcb->segmento_codigo);
+	printf("Registro CS_Size Valor:		%8d\n", tcb->segmento_codigo_size);
+	printf("Registro IP Valor:		%8d\n", tcb->puntero_instruccion);
+	printf("Registro Stack Valor:		%8d\n", tcb->base_stack);
+	printf("Registro Stack_Size Valor:	%8d\n", tcb->cursor_stack);
+
+	for(i = 0;i < 5; ++i)
+		printf("Registro %c. Valor:		%8d\n",('A'+i), tcb->registros[i]);
+	printf("Registro COLA:			%8d\n", tcb->cola);
+	puts("\n");
+}

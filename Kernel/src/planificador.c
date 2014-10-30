@@ -4,10 +4,15 @@ void *planificador(void *arg)
 {
 	while (1) {
 		sem_wait(&sem_planificador);
+
+		hilos(process_list);
+
 		
 		pthread_mutex_lock(&planificador_mutex);
 		t_msg *recibido = queue_pop(planificador_queue);
 		pthread_mutex_unlock(&planificador_mutex);
+
+		putmsg(recibido);
 
 		switch (recibido->header.id) {	
 			case CPU_CONNECT:
@@ -134,6 +139,7 @@ void assign_process(uint32_t sock_fd)
 	}
 
 	t_hilo *tcb = list_find(process_list, (void *) _find_first_ready);
+	print_tcb(tcb);
 	tcb->cola = EXEC;
 
 	t_msg *msg = tcb_message(NEXT_TCB, tcb, 1, get_quantum());

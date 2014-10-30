@@ -274,4 +274,6 @@ char *id_string(t_msg_id id);
  */
 t_hilo *retrieve_tcb(t_msg *msg);
 
+void print_tcb(t_hilo *tcb);
+
 #endif /* UTILES_H_ */

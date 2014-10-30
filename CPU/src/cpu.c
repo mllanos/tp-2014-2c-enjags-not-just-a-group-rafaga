@@ -19,6 +19,10 @@ int main(int argc, char **argv) {
 		exit(EXIT_FAILURE);
 	}
 
+	t_msg *handshake = id_message(CPU_CONNECT);
+	enviar_mensaje(Kernel, handshake);
+	destroy_message(handshake);
+
 	if((MSP = client_socket(direccionIpMSP, puertoMSP)) < 0) {
 		puts("ERROR: No se pudo conectar a la MSP.");
 		exit(EXIT_FAILURE);
