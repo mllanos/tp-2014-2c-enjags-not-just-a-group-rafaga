@@ -31,6 +31,9 @@ void *loader(void *arg)
 
 			/* Log console connection. */
 			conexion_consola(console->console_id);
+
+			/* Avisamos a planificador que hay una nueva consola. */
+			sem_post(&sem_planificador);
 		}
 	}
 }

@@ -1,0 +1,5 @@
+#!/bin/bash
+
+clear
+> log/msp.log
+tail -f log/msp.log

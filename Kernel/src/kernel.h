@@ -105,14 +105,19 @@ t_config *config;
 t_list *process_list;
 t_list *console_list;
 t_list *cpu_list;
-t_list *resource_list;
-t_list *join_list;
+//t_list *resource_list;
+//t_list *join_list;
 
+
+/* Diccionarios. */
+t_dictionary *join_dict;
+t_dictionary *resource_dict;
 
 /* Colas. */
 t_queue *loader_queue;
 t_queue *planificador_queue;
 t_queue *syscall_queue;
+t_queue *request_queue;
 
 
 /* Mutex. */

@@ -16,36 +16,37 @@ void initialize(char *config_path)
 	process_list = list_create();
 	console_list = list_create();
 	cpu_list = list_create();
-	resource_list = list_create();
-	join_list = list_create();
+	resource_dict = dictionary_create();
+	join_dict = dictionary_create();
 	loader_queue = queue_create();
 	planificador_queue = queue_create();
 	syscall_queue = queue_create();
+	request_queue = queue_create();
 	pthread_mutex_init(&loader_mutex, NULL);
 	pthread_mutex_init(&planificador_mutex, NULL);
 	sem_init(&sem_loader, 0, 0);
 	sem_init(&sem_planificador, 0, 0);
 	inicializar_panel(KERNEL, PANEL_PATH);
-	msp_fd = client_socket(get_ip_msp(), get_puerto_msp());
-	if(msp_fd < 0)
-		exit(EXIT_FAILURE);
 	pthread_create(&loader_th, NULL, loader, NULL);
 	pthread_create(&planificador_th, NULL, planificador, NULL);
+
+	msp_fd = client_socket(get_ip_msp(), get_puerto_msp());
+	if (msp_fd < 0) {
+		puts("Error conectando con MSP");
+		exit(EXIT_FAILURE);
+	}
 }
 
 
 void boot_kernel(void)
 {
-	t_hilo *_klt_tcb(void) {
-		t_hilo *new = malloc(sizeof *new);
-		new->pid = 0;
-		new->tid = 0;
-		new->kernel_mode = true;
-		return new;
-	}
+	t_hilo *tcb_klt = malloc(sizeof *tcb_klt);
+	tcb_klt->pid = 0;
+	tcb_klt->tid = 0;
+	tcb_klt->kernel_mode = true;
 
-	t_hilo *k_tcb = reservar_memoria(_klt_tcb(), beso_message(INIT_CONSOLE, get_syscalls(), 0));
-	if (k_tcb == NULL) {
+	tcb_klt = reservar_memoria(tcb_klt, beso_message(INIT_CONSOLE, get_syscalls(), 0));
+	if (tcb_klt == NULL) {
 		/* Couldn't allocate memory. */
 		errno = ENOMEM;
 		perror("boot_kernel");
@@ -54,10 +55,10 @@ void boot_kernel(void)
 
 	int i;
 	for (i = 0; i < 5; i++)
-		k_tcb->registros[i] = 0;
-	k_tcb->cola = BLOCK;
+		tcb_klt->registros[i] = 0;
+	tcb_klt->cola = BLOCK;
 
-	list_add(process_list, k_tcb);
+	list_add(process_list, tcb_klt);
 }
 
 
@@ -178,13 +179,13 @@ void receive_messages_select(void)
 				else {
 					/* Data arriving on an already-connected socket. */
 					t_msg *recibido = recibir_mensaje(i);
-					if(recibido == NULL) {
+					if (recibido == NULL) {
 						/* Socket closed connection. */
 						int status = remove_from_lists(i);
 						close(i);
 						FD_CLR(i, &master);
 
-						if(status == -1) {
+						if (status == -1) {
 							/* Exit program. */
 							close(listener);
 							return;
@@ -201,20 +202,32 @@ void receive_messages_select(void)
 
 void finalize(void)
 {
-	void _resource_destroyer(t_resource *a_res) {
-		queue_destroy_and_destroy_elements(a_res->queue, (void *) free);
-		free(a_res);
+	void _destroy_all_segments_and_free(t_hilo *a_tcb) {
+		t_msg *destroy_code = argv_message(DESTROY_SEGMENT, 2, a_tcb->tid, a_tcb->segmento_codigo);
+		t_msg *destroy_stack = argv_message(DESTROY_SEGMENT, 2, a_tcb->tid, a_tcb->base_stack);
+		if (a_tcb->tid == a_tcb->pid) {
+			enviar_mensaje(msp_fd, destroy_code);
+			destroy_message(recibir_mensaje(msp_fd));
+		}
+		enviar_mensaje(msp_fd, destroy_stack);
+		destroy_message(recibir_mensaje(msp_fd));
+
+		destroy_message(destroy_code);
+		destroy_message(destroy_stack);
+
+		free(a_tcb);
 	}
 
 	config_destroy(config);
-	list_destroy_and_destroy_elements(process_list, (void *) free);
+	list_destroy_and_destroy_elements(process_list, (void *) _destroy_all_segments_and_free);
 	list_destroy_and_destroy_elements(console_list, (void *) free);
 	list_destroy_and_destroy_elements(cpu_list, (void *) free);
-	list_destroy_and_destroy_elements(resource_list, (void *) _resource_destroyer);
-	list_destroy_and_destroy_elements(join_list, (void *) free);
+	dictionary_destroy_and_destroy_elements(resource_dict, (void *) free);
+	dictionary_destroy_and_destroy_elements(join_dict, (void *) free);
 	queue_destroy_and_destroy_elements(loader_queue, (void *) destroy_message);
 	queue_destroy_and_destroy_elements(planificador_queue, (void *) destroy_message);
 	queue_destroy_and_destroy_elements(syscall_queue, (void *) free);
+	queue_destroy_and_destroy_elements(request_queue, (void *) free);
 	sem_destroy(&sem_loader);
 	sem_destroy(&sem_planificador);
 	pthread_mutex_destroy(&loader_mutex);
@@ -239,8 +252,7 @@ void interpret_message(int sock_fd, t_msg *recibido)
 		case CPU_CONNECT:										/* <;> */
 		case CPU_TCB:											/* <;> */
 		case RETURN_TCB:										/* <TCB_STRING;> */
-		case FINISHED_THREAD:									//elegí como tratás este caso así lo cambio en la CPU. O te mando el id solo
-																//y después el tcb con RETURN_TCB, o te mando todo de una en este mensaje.
+		case FINISHED_THREAD:									/* <TCB_STRING;> */
 		case NUMERIC_INPUT: 									/* <; PID> */
 		case STRING_INPUT: 										/* <; PID> */
 		case STRING_OUTPUT: 									/* <OUT_STRING; PID> */
@@ -271,10 +283,9 @@ void interpret_message(int sock_fd, t_msg *recibido)
 }
 
 
-
 t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 {
-	int i = 0, cont = 1;
+	int i;
 	t_msg *message[6];
 	t_msg **status = message + 3;
 
@@ -282,7 +293,7 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 	message[1] = argv_message(CREATE_SEGMENT, 2, tcb->pid, get_stack_size());
 
 
-	for (i = 0; i < 2 && cont; i++) {
+	for (i = 0; i < 2; i++) {
 		enviar_mensaje(msp_fd, message[i]);
 		putmsg(message[i]);
 
@@ -290,9 +301,8 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 		putmsg(status[i]);
 
 		if (MSP_RESERVE_FAILURE(status[i]->header.id)) {
-			cont = 0;
 			free(tcb);
-			tcb = NULL;
+			return NULL;
 		} else if (!MSP_RESERVE_SUCCESS(status[i]->header.id)) {
 			errno = EBADMSG;
 			perror("reservar_memoria");
@@ -309,22 +319,19 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 	putmsg(status[2]);
 
 	if (MSP_WRITE_FAILURE(status[2]->header.id)) {
-	cont = 0;
-	free(tcb);
-	tcb = NULL;
+		free(tcb);
+		return NULL;
 	} else if (!MSP_WRITE_SUCCESS(status[2]->header.id)) {
 		errno = EBADMSG;
 		perror("reservar_memoria");
 		exit(EXIT_FAILURE);
 	}
 
-	if (cont) {
-		tcb->segmento_codigo = status[0]->argv[0];
-		tcb->segmento_codigo_size = msg->header.length;
-		tcb->puntero_instruccion = tcb->segmento_codigo;
-		tcb->base_stack = status[1]->argv[0];
-		tcb->cursor_stack = tcb->base_stack;
-	}
+	tcb->segmento_codigo = status[0]->argv[0];
+	tcb->segmento_codigo_size = msg->header.length;
+	tcb->puntero_instruccion = tcb->segmento_codigo;
+	tcb->base_stack = status[1]->argv[0];
+	tcb->cursor_stack = tcb->base_stack;
 
 	for (i = 0; i < 6; i++)
 		destroy_message(message[i]);
@@ -335,6 +342,8 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 
 int remove_from_lists(uint32_t sock_fd)
 {
+	int res = 0;
+
 	bool _remove_by_sock_fd_cnsl(t_console *console) { 
 		return console->sock_fd == sock_fd; 
 	}
@@ -347,10 +356,9 @@ int remove_from_lists(uint32_t sock_fd)
 
 	t_cpu *out_cpu = list_remove_by_condition(cpu_list, (void *) _remove_by_sock_fd_cpu);
 
-	if (out_console != NULL) { /* Es una consola. */
+	if (out_console != NULL) { 
+		/* Es una consola, finalizar todos sus procesos. Verificar que ninguno sea el hilo Kernel. */
 		desconexion_consola(out_console->console_id);
-
-		/* Finalizar todos los procesos de la consola. */
 
 		void _finalize_process_from_pid(t_hilo *a_tcb) {
 			if (a_tcb->pid == out_console->pid && a_tcb->kernel_mode == false) 
@@ -360,55 +368,41 @@ int remove_from_lists(uint32_t sock_fd)
 		list_iterate(process_list, (void *) _finalize_process_from_pid);
 
 		free(out_console);
-	} else if (out_cpu != NULL) { /* Es una CPU. */
+	} else if (out_cpu != NULL) { 
+		/* Es una CPU. Verificar si tiene hilos ejecutando. */
 		desconexion_cpu(out_cpu->cpu_id);
 
-		if(out_cpu->disponible == false) { /* La CPU  saliente tiene hilos ejecutando. */
+		if (out_cpu->disponible == false) { 
+			/* La CPU saliente tiene hilos ejecutando. */
 
-			if (out_cpu->kernel_mode == false) { /* La CPU saliente tiene un hilo comun ejecutando. */
+			if (out_cpu->kernel_mode == false) { 
+				/* Es un hilo de usuario, avisar a la Consola para que se desconecte. */
 
-				/* Finalizar el proceso del CPU y avisar a consola. */
-
-				void _notify_from_pid(t_hilo *a_tcb) {
-					if (a_tcb->pid == out_cpu->pid && a_tcb->pid == a_tcb->tid) { /* Hilo principal. */
-						a_tcb->cola = EXIT;
-
-						bool _has_console(t_console *a_cnsl) {
-							return a_cnsl->pid == a_tcb->pid && a_tcb->kernel_mode == false;
-						}
-
-						t_console *out_cons = list_remove_by_condition(console_list, (void *) _has_console);
-
-						t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: CPU saliente.", 0);
-						enviar_mensaje(out_cons->sock_fd, msg);
-						destroy_message(msg);
-					} else if (a_tcb->pid == out_cpu->pid) { /* Hilo secundario. */
-						a_tcb->cola = EXIT;
-					}
+				bool _find_by_pid(t_console *a_cnsl) {
+					return a_cnsl->pid == out_cpu->pid;
 				}
 
-				list_iterate(process_list, (void *) _notify_from_pid);
-			} else { /* La CPU saliente tiene el hilo kernel.*/
+				t_console *out_cons = list_find(console_list, (void *) _find_by_pid);
 
-				/* Finalizar todos los procesos y salir del programa. */
-
-				void _notify_all_consoles(t_console *a_cnsl) {
-					t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: CPU saliente.", 0);
-					enviar_mensaje(a_cnsl->sock_fd, msg);
-					destroy_message(msg);
-				}
-
-				list_iterate(console_list, (void *) _notify_all_consoles);
-
-				return -1;
+				t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: CPU saliente.", 0);
+				enviar_mensaje(out_cons->sock_fd, msg);
+				destroy_message(msg);
+			} else { 
+				/* Es el hilo de Kernel, liberar recursos y salir del programa. */
+				
+				res = -1;
 			} 
 
 			free(out_cpu);
 		}
-
+	} else {
+		/* No es ni CPU ni Consola. */
+		errno = EBADF;
+		perror("remove_from_lists");
+		exit(EXIT_FAILURE);
 	}
 
-	return 0;
+	return res;
 }
 
 

@@ -37,9 +37,10 @@ void receive_messages(void)
 	t_msg *recibido;
 	
 	while (status) {
-		if((recibido = recibir_mensaje(kernel_fd)) == NULL) {
-			puts("ERROR: Se ha perdido la conexión con el Kernel.");
-			exit(EXIT_FAILURE);
+		recibido = recibir_mensaje(kernel_fd);
+		if(recibido == NULL) {
+			log_trace(logger, "El Kernel ha finalizado su ejecucion.");
+			break;
 		}
 		status = interpret_message(recibido);
 		destroy_message(recibido);
@@ -79,7 +80,7 @@ int interpret_message(t_msg *recibido)
 			printf("Mensaje recibido: %s\n", recibido->stream);
 			break;
 		case KILL_CONSOLE:
-			printf("Cerrando consola. Razon: %s\n", msg->stream);
+			puts(recibido->stream);
 			return 0;
 		default:
 			errno = EBADMSG;
@@ -94,5 +95,4 @@ void finalize(void)
 {
 	log_destroy(logger);
 	config_destroy(config);
-	close(kernel_fd);
 }

@@ -13,7 +13,12 @@ typedef struct {
 	bool kernel_mode;
 } t_cpu;
 
+typedef struct {
+	int call_dir;
+	t_hilo *blocked;
+} t_syscall;
 
+/*
 typedef struct {
 	uint32_t id_resource;
 	t_queue *queue;
@@ -24,7 +29,7 @@ typedef struct {
 	uint32_t tid_waiter;
 	uint32_t tid_joined;
 } t_join;
-
+*/
 
 /* Funciones planificador. */
 
@@ -44,14 +49,24 @@ void bprr_algorithm(void);
 void cpu_add(uint32_t sock_fd);
 
 /*
- * Enviamos el primer TCB de READY a la CPU.
+ * Encolamos el pedido de TCB de un CPU.
  */
-void assign_process(uint32_t sock_fd);
+void cpu_queue(uint32_t sock_fd);
+
+/*
+ * Enviamos los TCB READY a los CPUs que lo hayan pedido.
+ */
+void assign_processes(void);
 
 /*
  * Agregamos el proceso a READY y desalojamos el CPU. 
  */
 void return_process(uint32_t sock_fd, t_hilo *tcb);
+
+/*
+ * Agregamos el proceso a EXIT y desalojamos el CPU. 
+ */
+void finish_process(uint32_t sock_fd, t_hilo *tcb);
 
 /*
  * Bloqueamos el tcb y ponemos el hilo Kernel en READY.
