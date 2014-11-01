@@ -31,7 +31,9 @@ typedef enum {REGISTRO,NUMERO,DIRECCION} t_operandos;
 int MSP;
 int Kernel;
 t_hilo Hilo;
+bool SystemCall;
 uint16_t Quantum;
+t_msg *Kernel_Msg;
 t_list *Parametros;
 t_msg_id Execution_State;
 uint32_t Instruction_size;
@@ -66,9 +68,10 @@ void eu_decode(char *operation_code);
 int fetch_operand(t_operandos tipo_operando);
 void eu_ejecutar(char *operation_code,uint32_t retardo);
 
-uint32_t crear_segmento(uint32_t size,t_msg_id *id);
+uint32_t crear_segmento(uint32_t size);
+void destruir_segmento(uint32_t baseSegmento);
 char* solicitar_memoria(uint32_t direccionLogica,uint32_t size);
-t_msg_id escribir_memoria(uint32_t direccionLogica,char *bytesAEscribir,uint32_t size);
+void escribir_memoria(uint32_t direccionLogica,char *bytesAEscribir,uint32_t size);
 /*FIN_Funciones de la UE (Unidad de Ejecución)*/
 
 /* Set de Instrucciones */
@@ -96,14 +99,16 @@ void xxxx (void);
 void eso_goto (void);
 void eso_push (void);
 
+void malc (void);
 void innn (void);
 void innc (void);
 void outn (void);
 void outc (void);
 void crea (void);
 void join (void);
-void block (void);
+void blok (void);
 void wake (void);
+void eso_free (void);
 /*FIN Set de Instrucciones */
 
 #endif /*EXECUTION_UNIT_H*/

@@ -211,7 +211,7 @@ t_msg_id destruirSegmento(uint32_t pid, uint32_t baseSegmento) {
 	t_segmento* tabla = tablaDelProceso(stringPID);
 	uint16_t numeroSegmento = segmento(baseSegmento);
 
-	if (tabla && segmentoValido(tabla, numeroSegmento)) {
+	if(tabla && segmentoValido(tabla, numeroSegmento)) {
 
 		char *shellInstruction;
 		int pag,cantPagEnMemoria;
@@ -240,9 +240,10 @@ t_msg_id destruirSegmento(uint32_t pid, uint32_t baseSegmento) {
 		free(tabla[numeroSegmento].tablaPaginas);
 		tabla[numeroSegmento].limite = 0;
 
+		if(baseSegmento == 0)											/* Si es el segmento de código, se elimina el proceso de la tabla */
+			dictionary_remove(TablaSegmentosGlobal,stringPID);
+
 		free(stringPID);
-		//validar si es el único segmento del proceso, en ese caso probablemente habría que eliminar la entrada del diccionario
-		//Por ahi el kernel me puede avisar, total los últimos segmentos en borrarse son stack y código, y coinciden con la finalización del programa
 	}
 	else
 		return INVALID_DIR;

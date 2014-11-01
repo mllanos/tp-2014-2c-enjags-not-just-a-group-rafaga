@@ -46,18 +46,13 @@ void eu_cargar_registros(void) {
 
 void eu_decode(char *operation_code) {
 
-	Instruccion = dictionary_get(SetInstruccionesDeUsuario,operation_code);
-
-	if (Registros.K && Instruccion == NULL)
-		Instruccion = dictionary_get(SetInstruccionesProtegidas,operation_code);
-
-	if(Instruccion == NULL) {
-		puts("ERROR: Instrucción inválida.");
-		exit(EXIT_FAILURE);
-	}
+	if((Instruccion = dictionary_get(SetInstruccionesDeUsuario,operation_code)) == NULL)
+		if(!Registros.K && (Instruccion = dictionary_get(SetInstruccionesProtegidas,operation_code)) == NULL) {
+			puts("ERROR: Instrucción inválida.");
+			exit(EXIT_FAILURE);
+		}
 
 	Parametros = list_create();
-
 }
 
 void eu_ejecutar(char *operation_code,uint32_t retardo) {
@@ -67,8 +62,8 @@ void eu_ejecutar(char *operation_code,uint32_t retardo) {
 	--Quantum;
 	Instruccion();
 
-	ejecucion_instruccion(operation_code,Parametros);
-	cambio_registros(Registros);
+	ejecucion_instruccion(operation_code,Parametros);	/* LOG */
+	cambio_registros(Registros);						/* LOG */
 	list_destroy(Parametros);
 
 	free(operation_code);
@@ -85,66 +80,70 @@ void eu_actualizar_registros(void) {
 
 void devolver_hilo() {
 
-	t_msg *msg = tcb_message(Execution_State, &Hilo, 0);
+	if(Kernel_Msg == NULL)
+		Kernel_Msg = tcb_message(Execution_State, &Hilo, 0);
 
-	if(enviar_mensaje(Kernel, msg) == -1) {
-		puts("ERROR: No se pudo enviar el TCB del hilo en ejecución.");
+	if(enviar_mensaje(Kernel, Kernel_Msg) == -1) {
+		puts("ERROR: No se pudo enviar el TCB del hilo en ejecución al Kernel.");
 		exit(EXIT_FAILURE);
 	}
 
-	destroy_message(msg);
+	destroy_message(Kernel_Msg);
+	Kernel_Msg = NULL;
 }
 
-int fetch_operand(t_operandos tipo_operando) {
+int fetch_operand(t_operandos tipo_operando) {	//se puede mejorar con un Union
 
-	int32_t aux;
 	uint8_t size;
 	char *buffer;
 	char *parametro;
+	int32_t aux = 'A';
 
-	if(tipo_operando == REGISTRO) {
-		size = sizeof(char);
-		buffer = solicitar_memoria(program_counter + Instruction_size,size);
-		parametro = malloc(2);
-		*parametro = aux = *buffer;
-		parametro[1] = '\0';
-		list_add(Parametros,parametro);
-	}
-	else {
-		size = sizeof(uint32_t);
-		buffer = solicitar_memoria(program_counter + Instruction_size,size);
-		memcpy(&aux,buffer,size);
-		parametro = string_itoa(aux);
-		list_add(Parametros,parametro);
-	}
-
+	size = tipo_operando == REGISTRO ? sizeof(char) : sizeof(uint32_t);
+	buffer = solicitar_memoria(program_counter + Instruction_size,size);
 	Instruction_size += size;
 
-	free(buffer);
+	if(buffer != NULL) {
+		if(tipo_operando == REGISTRO) {
+			parametro = malloc(2);
+			*parametro = aux = *buffer;
+			parametro[1] = '\0';
+			list_add(Parametros,parametro);
+		}
+		else {
+			memcpy(&aux,buffer,size);
+			parametro = string_itoa(aux);
+			list_add(Parametros,parametro);
+		}
+
+		free(buffer);
+	}
 
 	return aux;
 }
 
-uint32_t crear_segmento(uint32_t size,t_msg_id *id) {
+uint32_t crear_segmento(uint32_t size) {
 
 	uint32_t aux;
 
 	t_msg *msg = argv_message(CREATE_SEGMENT,2,PID,size);
 
 	if(enviar_mensaje(MSP,msg) == -1) {
-		puts("ERROR: No se pudo crear el segmento solicitado.");
+		puts("ERROR: Se ha perdido la conexión con la MSP.");
 		exit(EXIT_FAILURE);
 	}
 
 	destroy_message(msg);
 
-	if((msg = recibir_mensaje(MSP)) == NULL || msg->header.id != OK_CREATE) {
-		puts("ERROR: No se pudo crear el segmento solicitado.");
+	if((msg = recibir_mensaje(MSP)) == NULL) {
+		puts("ERROR: Se ha perdido la conexión con la MSP.");
 		exit(EXIT_FAILURE);
 	}
 
-	*id = msg->header.id;
-	aux = (uint32_t) msg->argv[0];
+	if(msg->header.id == OK_CREATE)
+		aux = (uint32_t) msg->argv[0];
+	else
+		Execution_State = CPU_ABORT;
 
 	destroy_message(msg);
 
@@ -158,18 +157,24 @@ char* solicitar_memoria(uint32_t direccionLogica,uint32_t size) {
 	t_msg *msg = argv_message(REQUEST_MEMORY,3,PID,direccionLogica,size);
 
 	if(enviar_mensaje(MSP,msg) == -1) {
-		puts("ERROR: No se pudo acceder a la memoria.");
+		puts("ERROR: Se ha perdido la conexión con la MSP.");
 		exit(EXIT_FAILURE);
 	}
 
 	destroy_message(msg);
 
-	if((msg = recibir_mensaje(MSP)) == NULL || msg->header.id != OK_REQUEST) {
-		puts("ERROR: No se pudo acceder a la memoria.");
+	if((msg = recibir_mensaje(MSP)) == NULL) {
+		puts("ERROR: Se ha perdido la conexión con la MSP.");
 		exit(EXIT_FAILURE);
 	}
 
-	memcpy(buffer,msg->stream,size);
+	if(msg->header.id == OK_REQUEST)
+		memcpy(buffer,msg->stream,size);
+	else {
+		Execution_State = CPU_ABORT;
+		free(buffer);
+		buffer = NULL;
+	}
 
 	destroy_message(msg);
 
@@ -177,30 +182,51 @@ char* solicitar_memoria(uint32_t direccionLogica,uint32_t size) {
 
 }
 
-t_msg_id escribir_memoria(uint32_t direccionLogica,char *bytesAEscribir,uint32_t size) {
-
-	t_msg_id id;
+void escribir_memoria(uint32_t direccionLogica,char *bytesAEscribir,uint32_t size) {
 
 	t_msg *msg = string_message(WRITE_MEMORY,bytesAEscribir,2,PID,direccionLogica);
 
 	msg->header.length = size;
 
 	if(enviar_mensaje(MSP,msg) == -1) {
-		puts("ERROR: No se pudo escribir en la memoria.");
+		puts("ERROR: Se ha perdido la conexión con la MSP.");
 		exit(EXIT_FAILURE);
 	}
 
 	destroy_message(msg);
 	free(bytesAEscribir);
 
-	if((msg = recibir_mensaje(MSP)) == NULL || msg->header.id != OK_WRITE) {
-		puts("ERROR: No se pudo escribir en la memoria.");
+	if((msg = recibir_mensaje(MSP)) == NULL) {
+		puts("ERROR: Se ha perdido la conexión con la MSP.");
 		exit(EXIT_FAILURE);
 	}
 
-	id = msg->header.id;
+	if(msg->header.id != OK_WRITE)
+			Execution_State = CPU_ABORT;
 
 	destroy_message(msg);
 
-	return id;
+}
+
+void destruir_segmento(uint32_t baseSegmento) {
+
+	t_msg *msg = argv_message(DESTROY_SEGMENT,2,PID,baseSegmento);
+
+	if(enviar_mensaje(MSP,msg) == -1) {
+		puts("ERROR: Se ha perdido la conexión con la MSP.");
+		exit(EXIT_FAILURE);
+	}
+
+	destroy_message(msg);
+
+	if((msg = recibir_mensaje(MSP)) == NULL) {
+		puts("ERROR: Se ha perdido la conexión con la MSP.");
+		exit(EXIT_FAILURE);
+	}
+
+	if(msg->header.id != OK_DESTROY)
+		Execution_State = CPU_ABORT;		//si se intenta destruir un segmento con una dirección inválida, también abortamos?
+
+	destroy_message(msg);
+
 }
