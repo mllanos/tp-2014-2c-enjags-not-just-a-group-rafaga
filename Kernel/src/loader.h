@@ -21,7 +21,7 @@ void *loader(void *arg);
 /*
  * Crea un nuevo TCB de usuario.
  */
-t_hilo *ult_tcb(void);
+t_hilo *ult_tcb(uint32_t pid);
 
 /*
  * Crea una nueva estructura de consola.

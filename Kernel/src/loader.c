@@ -10,10 +10,20 @@ void *loader(void *arg)
 		pthread_mutex_unlock(&loader_mutex);
 
 		uint32_t sock_fd = recibido->argv[0];
+		uint32_t new_pid = get_unique_id(THREAD_ID);
 
-		t_hilo *new_tcb = reservar_memoria(ult_tcb(), recibido);
+		/* New console. */
+		t_console *console = new_console(new_pid, sock_fd);
+
+		/* Log console connection. */
+		//conexion_consola(console->console_id);
+		log_trace(logger, "Nueva conexion de Consola %u.", console->console_id);
+
+		t_hilo *new_tcb = reservar_memoria(ult_tcb(new_pid), recibido);
 		if (new_tcb == NULL) {
 			/* Couldn't allocate memory. */
+			log_warning(logger, "No se pudo cargar a memoria el hilo principal de la Consola %u.", console->console_id);
+
 			t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: no hay espacio suficiente en MSP.", 0);
 			enviar_mensaje(sock_fd, msg);
 			destroy_message(msg);
@@ -25,12 +35,10 @@ void *loader(void *arg)
 			new_tcb->cola = NEW;
 			list_add(process_list, new_tcb);
 
-			/* Add console to list. */
-			t_console *console = new_console(new_tcb->pid, sock_fd);
-			list_add(console_list, console);
+			log_trace(logger, "Encolando el hilo principal (TID %u) de la Consola %u a NEW.", new_tcb->tid, console->console_id);
 
-			/* Log console connection. */
-			conexion_consola(console->console_id);
+			/* Add console to list. */
+			list_add(console_list, console);
 
 			/* Avisamos a planificador que hay una nueva consola. */
 			sem_post(&sem_planificador);
@@ -39,10 +47,10 @@ void *loader(void *arg)
 }
 
 
-t_hilo *ult_tcb(void)
+t_hilo *ult_tcb(uint32_t pid)
 {
 	t_hilo *new = malloc(sizeof *new);	
-	new->pid = get_unique_id(THREAD_ID);
+	new->pid = pid;
 	new->tid = new->pid;
 	new->kernel_mode = false;
 

@@ -13,6 +13,7 @@ int main(int argc, char **argv)
 void initialize(char *config_path)
 {
 	config = config_create(config_path);
+	logger = log_create(LOG_PATH, "Kernel", true, LOG_LEVEL_TRACE);
 	process_list = list_create();
 	console_list = list_create();
 	cpu_list = list_create();
@@ -24,6 +25,9 @@ void initialize(char *config_path)
 	request_queue = queue_create();
 	pthread_mutex_init(&loader_mutex, NULL);
 	pthread_mutex_init(&planificador_mutex, NULL);
+	pthread_mutex_init(&unique_id_mutex[THREAD_ID], NULL);
+	pthread_mutex_init(&unique_id_mutex[CONSOLE_ID], NULL);
+	pthread_mutex_init(&unique_id_mutex[CPU_ID], NULL);
 	sem_init(&sem_loader, 0, 0);
 	sem_init(&sem_planificador, 0, 0);
 	inicializar_panel(KERNEL, PANEL_PATH);
@@ -32,14 +36,18 @@ void initialize(char *config_path)
 
 	msp_fd = client_socket(get_ip_msp(), get_puerto_msp());
 	if (msp_fd < 0) {
-		puts("Error conectando con MSP");
+		log_error(logger, "Error conectando con MSP.");
 		exit(EXIT_FAILURE);
 	}
+
+	log_trace(logger, "Inicializando el proceso Kernel.");
 }
 
 
 void boot_kernel(void)
 {
+	log_trace(logger, "Reservando memoria para el KLT y cargando BESO de syscalls.");
+
 	t_hilo *tcb_klt = malloc(sizeof *tcb_klt);
 	tcb_klt->pid = 0;
 	tcb_klt->tid = 0;
@@ -48,6 +56,7 @@ void boot_kernel(void)
 	tcb_klt = reservar_memoria(tcb_klt, beso_message(INIT_CONSOLE, get_syscalls(), 0));
 	if (tcb_klt == NULL) {
 		/* Couldn't allocate memory. */
+		log_error(logger, "Error reservando memoria para el KLT.");
 		errno = ENOMEM;
 		perror("boot_kernel");
 		exit(EXIT_FAILURE);
@@ -57,6 +66,8 @@ void boot_kernel(void)
 	for (i = 0; i < 5; i++)
 		tcb_klt->registros[i] = 0;
 	tcb_klt->cola = BLOCK;
+
+	log_trace(logger, "Bloqueando el KLT.");
 
 	list_add(process_list, tcb_klt);
 }
@@ -68,11 +79,17 @@ void receive_messages_epoll(void)
 	struct epoll_event *events;
 
 	int sfd = server_socket(get_puerto());
+	if(sfd < 0) {
+		log_error(logger, "No se pudo crear socket escucha.");
+		perror("receive_messages_epoll");
+		exit(EXIT_FAILURE);
+	}
+
 
 	int efd = epoll_create1(0);
 	if (efd == -1) {
 		perror ("epoll_create");
-		exit (EXIT_FAILURE);
+		exit(EXIT_FAILURE);
 	}
 
 	event.data.fd = sfd;
@@ -132,7 +149,7 @@ void receive_messages_epoll(void)
 						return;
 					}
 				} else {
-					putmsg(msg);
+					//putmsg(msg);
 					interpret_message(events[i].data.fd, msg);
 				}
 			}
@@ -147,10 +164,15 @@ void receive_messages_select(void)
 
 	/* Create the socket and set it up to accept connections. */
 	int listener = server_socket(get_puerto());
+	if(listener < 0) {
+		log_error(logger, "No se pudo crear socket escucha.");
+		perror("receive_messages_select");
+		exit(EXIT_FAILURE);
+	}
 
 	/* Initialize the set of active sockets. */
-	FD_ZERO (&master);
-	FD_SET (listener, &master);
+	FD_ZERO(&master);
+	FD_SET(listener, &master);
 
 	int fdmax = listener;
 
@@ -158,14 +180,14 @@ void receive_messages_select(void)
 		/* Block until input arrives on one or more active sockets. */
 		memcpy(&read_fds, &master, sizeof(read_fds));
 
-		if (select (fdmax + 1, &read_fds, NULL, NULL, NULL) < 0) {
-			perror ("select");
+		if (select(fdmax + 1, &read_fds, NULL, NULL, NULL) < 0) {
+			perror("select");
 			exit(EXIT_FAILURE);
 		}
 		/* Service all the sockets with input pending. */
 		int i;
 		for (i = 0; i <= fdmax; i++)
-			if (FD_ISSET (i, &read_fds))
+			if (FD_ISSET(i, &read_fds))
 				if (i == listener) {
 					/* Connection request on original socket. */
 					int newfd = accept_connection(listener);
@@ -173,7 +195,7 @@ void receive_messages_select(void)
 						perror ("accept");
 						exit(EXIT_FAILURE);
 					}
-					FD_SET (newfd, &master);
+					FD_SET(newfd, &master);
 					fdmax = newfd > fdmax ? newfd : fdmax;
 				}
 				else {
@@ -192,7 +214,7 @@ void receive_messages_select(void)
 						}
 					} else {
 						/* Socket received message. */
-						putmsg(recibido);
+						//putmsg(recibido);
 						interpret_message(i, recibido);
 					}	
 				}
@@ -205,12 +227,14 @@ void finalize(void)
 	void _destroy_all_segments_and_free(t_hilo *a_tcb) {
 		t_msg *destroy_code = argv_message(DESTROY_SEGMENT, 2, a_tcb->tid, a_tcb->segmento_codigo);
 		t_msg *destroy_stack = argv_message(DESTROY_SEGMENT, 2, a_tcb->tid, a_tcb->base_stack);
+
+		enviar_mensaje(msp_fd, destroy_stack);
+		destroy_message(recibir_mensaje(msp_fd));
+
 		if (a_tcb->tid == a_tcb->pid) {
 			enviar_mensaje(msp_fd, destroy_code);
 			destroy_message(recibir_mensaje(msp_fd));
 		}
-		enviar_mensaje(msp_fd, destroy_stack);
-		destroy_message(recibir_mensaje(msp_fd));
 
 		destroy_message(destroy_code);
 		destroy_message(destroy_stack);
@@ -219,6 +243,7 @@ void finalize(void)
 	}
 
 	config_destroy(config);
+	log_destroy(logger);
 	list_destroy_and_destroy_elements(process_list, (void *) _destroy_all_segments_and_free);
 	list_destroy_and_destroy_elements(console_list, (void *) free);
 	list_destroy_and_destroy_elements(cpu_list, (void *) free);
@@ -232,6 +257,9 @@ void finalize(void)
 	sem_destroy(&sem_planificador);
 	pthread_mutex_destroy(&loader_mutex);
 	pthread_mutex_destroy(&planificador_mutex);
+	pthread_mutex_destroy(&unique_id_mutex[THREAD_ID]);
+	pthread_mutex_destroy(&unique_id_mutex[CONSOLE_ID]);
+	pthread_mutex_destroy(&unique_id_mutex[CPU_ID]);
 	pthread_kill(loader_th, SIGTERM);
 	pthread_kill(planificador_th, SIGTERM);
 }
@@ -240,6 +268,8 @@ void finalize(void)
 void interpret_message(int sock_fd, t_msg *recibido)
 {
 	/* Tipos de mensaje: <[stream]; [argv, [argv, ]*]> */
+
+	putmsg(recibido);
 	switch (recibido->header.id) {
 		/* Mensaje de conexion de Consola. */
 		case INIT_CONSOLE: 										/* <BESO_STRING;> */
@@ -277,6 +307,7 @@ void interpret_message(int sock_fd, t_msg *recibido)
 			break;
 		default: 												/* Nunca deberia pasar. */
 			errno = EBADMSG;
+			log_error(logger, "ID de mensaje desconocido.");
 			perror("interpret_message");
 			exit(EXIT_FAILURE);
 	}
@@ -295,10 +326,10 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 
 	for (i = 0; i < 2; i++) {
 		enviar_mensaje(msp_fd, message[i]);
-		putmsg(message[i]);
+		//putmsg(message[i]);
 
 		status[i] = recibir_mensaje(msp_fd);
-		putmsg(status[i]);
+		//putmsg(status[i]);
 
 		if (MSP_RESERVE_FAILURE(status[i]->header.id)) {
 			free(tcb);
@@ -313,10 +344,10 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 	message[2] = remake_message(WRITE_MEMORY, msg, 2, tcb->pid, status[0]->argv[0]);
 
 	enviar_mensaje(msp_fd, message[2]);
-	putmsg(message[2]);
+	//putmsg(message[2]);
 
 	status[2] = recibir_mensaje(msp_fd);
-	putmsg(status[2]);
+	//putmsg(status[2]);
 
 	if (MSP_WRITE_FAILURE(status[2]->header.id)) {
 		free(tcb);
@@ -358,7 +389,9 @@ int remove_from_lists(uint32_t sock_fd)
 
 	if (out_console != NULL) { 
 		/* Es una consola, finalizar todos sus procesos. Verificar que ninguno sea el hilo Kernel. */
-		desconexion_consola(out_console->console_id);
+		//desconexion_consola(out_console->console_id);
+
+		log_trace(logger, "Desconexion Consola %u.", out_console->console_id);
 
 		void _finalize_process_from_pid(t_hilo *a_tcb) {
 			if (a_tcb->pid == out_console->pid && a_tcb->kernel_mode == false) 
@@ -370,13 +403,15 @@ int remove_from_lists(uint32_t sock_fd)
 		free(out_console);
 	} else if (out_cpu != NULL) { 
 		/* Es una CPU. Verificar si tiene hilos ejecutando. */
-		desconexion_cpu(out_cpu->cpu_id);
+		//desconexion_cpu(out_cpu->cpu_id);
+
+		log_trace(logger, "Desconexion CPU %u.", out_cpu->cpu_id);
 
 		if (out_cpu->disponible == false) { 
 			/* La CPU saliente tiene hilos ejecutando. */
 
 			if (out_cpu->kernel_mode == false) { 
-				/* Es un hilo de usuario, avisar a la Consola para que se desconecte. */
+				/* Es un ULT, avisar a la Consola para que se desconecte. */
 
 				bool _find_by_pid(t_console *a_cnsl) {
 					return a_cnsl->pid == out_cpu->pid;
@@ -388,7 +423,7 @@ int remove_from_lists(uint32_t sock_fd)
 				enviar_mensaje(out_cons->sock_fd, msg);
 				destroy_message(msg);
 			} else { 
-				/* Es el hilo de Kernel, liberar recursos y salir del programa. */
+				/* Es el KLT, liberar recursos y salir del programa. */
 				
 				res = -1;
 			} 
@@ -408,27 +443,33 @@ int remove_from_lists(uint32_t sock_fd)
 
 uint32_t get_unique_id(t_unique_id id)
 {
-	static int tid = 0;
-	static int console_id = 0;
-	static int cpu_id = 0;
+	static uint32_t unique_id[3] = {0, 0, 0};
+	uint32_t ret;
 
-	int ret = -1;
-
-	switch (id) {
-		case THREAD_ID:
-			ret = ++tid;
-			break;
-		case CONSOLE_ID:
-			ret = ++console_id;
-			break;
-		case CPU_ID:
-			ret = ++cpu_id;
-			break;
-		default:
-			break;
-	}
-
+	pthread_mutex_lock(&unique_id_mutex[id]);
+	ret = ++unique_id[id];
+	pthread_mutex_unlock(&unique_id_mutex[id]);
+	
 	return ret;
+}
+
+
+char *string_cola(t_cola cola)
+{
+	switch(cola) {
+		case NEW:
+			return "NEW";
+		case READY:
+			return "READY";
+		case BLOCK:
+			return "BLOCK";
+		case EXEC:
+			return "EXEC";
+		case EXIT:
+			return "EXIT";
+		default:
+			return NULL;
+	}
 }
 
 

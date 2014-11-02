@@ -9,6 +9,7 @@
 #include <semaphore.h>
 #include <commons/string.h>
 #include <commons/config.h>
+#include <commons/log.h>
 #include <commons/collections/list.h>
 #include <commons/collections/queue.h>
 #include <utiles/utiles.h>
@@ -25,6 +26,7 @@
 #include "planificador.h"
 
 #define PANEL_PATH "panel/"
+#define LOG_PATH "log/kernel.log"
 #define MAXEVENTS 64
 
 /* Macros de respuesta MSP. */
@@ -82,11 +84,6 @@ void interpret_message(int sock_fd, t_msg *recibido);
 t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg);
 
 /*
- * Nos devuelve tres tipos de id unicos segun parametro.
- */
-uint32_t get_unique_id(t_unique_id id);
-
-/*
  * Se encarga de sacar de las listas a los CPUs y Consolas salientes.
  * En caso de ser una CPU con el TCB Kernel finaliza el programa.
  */
@@ -94,24 +91,26 @@ int remove_from_lists(uint32_t sock_fd);
 
 
 /* Funciones auxiliares. */
+uint32_t get_unique_id(t_unique_id id);
+char *string_cola(t_cola cola);
 static int make_socket_non_blocking(int sfd);
 
 
-/* Archivo de configuracion. */
+/* Archivos de configuracion y log. */
 t_config *config;
+t_log *logger;
 
 
 /* Listas. */
 t_list *process_list;
 t_list *console_list;
 t_list *cpu_list;
-//t_list *resource_list;
-//t_list *join_list;
 
 
 /* Diccionarios. */
 t_dictionary *join_dict;
 t_dictionary *resource_dict;
+
 
 /* Colas. */
 t_queue *loader_queue;
@@ -123,6 +122,7 @@ t_queue *request_queue;
 /* Mutex. */
 pthread_mutex_t loader_mutex;
 pthread_mutex_t planificador_mutex;
+pthread_mutex_t unique_id_mutex[3];
 
 
 /* Semaphores. */
