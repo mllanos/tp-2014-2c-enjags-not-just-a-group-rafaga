@@ -319,6 +319,8 @@ t_msg *recibir_mensaje(int sock_fd)
 			free(msg);
 			return NULL;
 		}
+		
+		msg->stream[msg->header.length] = '\0';
 	}
 
 	return msg;
