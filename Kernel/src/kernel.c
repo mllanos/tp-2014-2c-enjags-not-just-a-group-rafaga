@@ -93,7 +93,7 @@ void receive_messages_epoll(void)
 	}
 
 	event.data.fd = sfd;
-	event.events = EPOLLIN | EPOLLET;
+	event.events = EPOLLIN;
 	int s = epoll_ctl(efd, EPOLL_CTL_ADD, sfd, &event);
 	if (s == -1) {
 		perror("epoll_ctl");
@@ -124,7 +124,7 @@ void receive_messages_epoll(void)
 				}
 
 				event.data.fd = infd;
-				event.events = EPOLLIN | EPOLLET;
+				event.events = EPOLLIN;
 
 				s = epoll_ctl(efd, EPOLL_CTL_ADD, infd, &event);
 				if (s == -1) {
@@ -270,6 +270,7 @@ void interpret_message(int sock_fd, t_msg *recibido)
 	/* Tipos de mensaje: <[stream]; [argv, [argv, ]*]> */
 
 	putmsg(recibido);
+
 	switch (recibido->header.id) {
 		/* Mensaje de conexion de Consola. */
 		case INIT_CONSOLE: 										/* <BESO_STRING;> */
