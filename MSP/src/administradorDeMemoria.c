@@ -84,16 +84,9 @@ uint32_t crearSegmento(uint32_t pid, size_t size, t_msg_id* id) {
 		tablaLocal[numSegmento].bytesOcupados = 0;
 		tablaLocal[numSegmento].tablaPaginas = malloc(cantPaginas * sizeof(t_pagina));
 
-		/* Creo las páginas que va a ocupar el segmento en el espacio de SWAP */
-		for (pag = 0; pag < cantPaginas && CantPaginasEnSwapDisponibles; ++pag, --CantPaginasEnSwapDisponibles) {
-
-			char* path = string_from_format("%s%s-%u-%u", SWAP_PATH, stringPID, numSegmento, pag);
-
-			create_file(path, PAG_SIZE);
+		/* Marco las páginas como NO en Memoria Principal */
+		for (pag = 0; pag < cantPaginas && CantPaginasEnSwapDisponibles; ++pag, --CantPaginasEnSwapDisponibles)
 			paginaEnMemoria(tablaLocal, numSegmento, pag) = false;
-
-			free(path);
-		}
 
 		if (CantPaginasEnSwapDisponibles == 0) {
 			pthread_mutex_lock(&LogMutex);
@@ -240,8 +233,8 @@ t_msg_id destruirSegmento(uint32_t pid, uint32_t baseSegmento) {
 		free(tabla[numeroSegmento].tablaPaginas);
 		tabla[numeroSegmento].limite = 0;
 
-		if(baseSegmento == 0)											/* Si es el segmento de código, se elimina el proceso de la tabla */
-			dictionary_remove(TablaSegmentosGlobal,stringPID);
+		//if(baseSegmento == 0)											/* Si es el segmento de código, se elimina el proceso de la tabla */
+			//dictionary_remove(TablaSegmentosGlobal,stringPID);
 
 		free(stringPID);
 	}

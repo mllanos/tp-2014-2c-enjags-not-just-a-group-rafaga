@@ -52,13 +52,13 @@ void ejecucion_instruccion(char* mnemonico, t_list* parametros) {
 
 void cambio_registros(t_registros_cpu registros) {
 
-	printf("Registros: { A: %d, B: %d, C: %d, D: %d, E: %d, M: %d, P: %d, S: %d, K: %d, I: %d }\n",
+	printf("Registros: { A: %d, B: %d, C: %d, D: %d, E: %d, M: %u, P: %u, X: %u, S: %u, K: %u, I: %u }\n",
 	registros.registros_programacion[0],
 	registros.registros_programacion[1],
 	registros.registros_programacion[2],
 	registros.registros_programacion[3],
 	registros.registros_programacion[4],
-	registros.M, registros.P, registros.S, registros.K, registros.I);
+	registros.M, registros.P, registros.X, registros.S, registros.K, registros.I);
 }
 
 void fin_ejecucion() {

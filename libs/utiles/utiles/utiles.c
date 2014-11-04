@@ -428,15 +428,13 @@ char* read_file(char *path, size_t size) {
 
 
 void memcpy_from_file(char *dest, char *path, size_t size) {
+	
 	FILE *f = fopen(path, "rb");
-	if(f == NULL) {
-		perror("fopen");
-		exit(EXIT_FAILURE);
+
+	if(f != NULL) {
+		fread(dest, size, 1, f);
+		fclose(f);
 	}
-
-	fread(dest, size, 1, f);
-
-	fclose(f);
 }
 
 

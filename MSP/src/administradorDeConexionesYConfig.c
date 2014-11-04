@@ -48,7 +48,7 @@ void *atenderConsola(void *parametro) {
 			system("clear");
 			break;
 		case CLEAR_SWAP:
-			buffer = string_from_format("cd %s\nrm *", SWAP_PATH);
+			buffer = string_from_format("cd %s\nrm -f *", SWAP_PATH);
 			system(buffer);
 			free(buffer);
 			break;

@@ -227,7 +227,7 @@ void clean_file(char *path);
 char* read_file(char *path, size_t size);
 
 /*
- * Copia el contenido del archivo path (debe existir) en dest.
+ * Si existe, copia el contenido del archivo path en dest.
  */
 void memcpy_from_file(char *dest,char *path,size_t size);
 

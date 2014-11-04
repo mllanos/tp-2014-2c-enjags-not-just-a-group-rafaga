@@ -38,16 +38,16 @@ void eu_cargar_registros(void) {
 
 	Registros.I = Hilo.pid;
 	Registros.X = Hilo.base_stack;
-	Registros.K = Hilo.kernel_mode;
 	Registros.S = Hilo.cursor_stack;
 	Registros.M = Hilo.segmento_codigo;
 	Registros.P = Hilo.puntero_instruccion;
+	KernelMode = (Registros.K = Hilo.kernel_mode);
 }
 
 void eu_decode(char *operation_code) {
 
 	if((Instruccion = dictionary_get(SetInstruccionesDeUsuario,operation_code)) == NULL)
-		if(!Registros.K && (Instruccion = dictionary_get(SetInstruccionesProtegidas,operation_code)) == NULL) {
+		if(!Registros.K || (Instruccion = dictionary_get(SetInstruccionesProtegidas,operation_code)) == NULL) {
 			puts("ERROR: Instrucción inválida.");
 			exit(EXIT_FAILURE);
 		}
@@ -70,6 +70,7 @@ void eu_ejecutar(char *operation_code,uint32_t retardo) {
 }
 
 void eu_actualizar_registros(void) {
+
 	int i;
 	for (i = 0;i < 5; ++i)
 		Hilo.registros[i] = Registros.registros_programacion[i];
@@ -80,15 +81,14 @@ void eu_actualizar_registros(void) {
 
 void devolver_hilo() {
 
-	if(Kernel_Msg == NULL)
-		Kernel_Msg = tcb_message(Execution_State, &Hilo, 0);
+	t_msg *msg = Kernel_Msg == NULL ? tcb_message(Execution_State, &Hilo, 0) : Kernel_Msg;
 
-	if(enviar_mensaje(Kernel, Kernel_Msg) == -1) {
+	if(enviar_mensaje(Kernel, msg) == -1) {
 		puts("ERROR: No se pudo enviar el TCB del hilo en ejecución al Kernel.");
 		exit(EXIT_FAILURE);
 	}
 
-	destroy_message(Kernel_Msg);
+	destroy_message(msg);
 	Kernel_Msg = NULL;
 }
 
@@ -142,8 +142,11 @@ uint32_t crear_segmento(uint32_t size) {
 
 	if(msg->header.id == OK_CREATE)
 		aux = (uint32_t) msg->argv[0];
-	else
+	else {
+		Quantum = 0;
+		KernelMode = false;
 		Execution_State = CPU_ABORT;
+	}
 
 	destroy_message(msg);
 
@@ -171,9 +174,11 @@ char* solicitar_memoria(uint32_t direccionLogica,uint32_t size) {
 	if(msg->header.id == OK_REQUEST)
 		memcpy(buffer,msg->stream,size);
 	else {
-		Execution_State = CPU_ABORT;
 		free(buffer);
 		buffer = NULL;
+		Quantum = 0;
+		KernelMode = false;
+		Execution_State = CPU_ABORT;
 	}
 
 	destroy_message(msg);
@@ -201,8 +206,11 @@ void escribir_memoria(uint32_t direccionLogica,char *bytesAEscribir,uint32_t siz
 		exit(EXIT_FAILURE);
 	}
 
-	if(msg->header.id != OK_WRITE)
-			Execution_State = CPU_ABORT;
+	if(msg->header.id != OK_WRITE) {
+		Quantum = 0;
+		KernelMode = false;
+		Execution_State = CPU_ABORT;
+	}
 
 	destroy_message(msg);
 
@@ -224,8 +232,11 @@ void destruir_segmento(uint32_t baseSegmento) {
 		exit(EXIT_FAILURE);
 	}
 
-	if(msg->header.id != OK_DESTROY)
-		Execution_State = CPU_ABORT;		//si se intenta destruir un segmento con una dirección inválida, también abortamos?
+	if(msg->header.id != OK_DESTROY) {
+		Quantum = 0;
+		KernelMode = false;
+		Execution_State = CPU_ABORT;
+	}
 
 	destroy_message(msg);
 

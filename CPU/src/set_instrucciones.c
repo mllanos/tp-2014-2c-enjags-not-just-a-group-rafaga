@@ -36,10 +36,10 @@ void getm (void) {
 	uint8_t j = fetch_registro();
 
 	if(Execution_State != CPU_ABORT) {
-		char *buffer = solicitar_memoria(registro(j),sizeof(uint32_t));	//cuantos bytes? 1 o sizeof(uint32_t)?
+		char *buffer = solicitar_memoria(registro(j),1);
 
 		if(buffer != NULL) {
-			memcpy(&registro(i),buffer,sizeof(uint32_t));
+			memcpy(&registro(i),buffer,1);
 			free(buffer);
 		}
 	}
@@ -105,7 +105,7 @@ void modr (void) {
 		registro(A) = registro(i) % registro(j);
 }
 
-void divr (void) { //cambiar id por ZERO_DIV
+void divr (void) {
 
 	uint8_t i = fetch_registro();
 	uint8_t j = fetch_registro();
@@ -113,8 +113,12 @@ void divr (void) { //cambiar id por ZERO_DIV
 	if(Execution_State != CPU_ABORT) {
 		if(registro(j))
 			registro(A) = registro(i) / registro(j);
-		else
+		else {
+			Quantum = 0;
+			KernelMode = false;
 			Execution_State = CPU_ABORT;
+			printf("ERROR: ZERO_DIV");
+		}
 	}
 }
 
@@ -185,7 +189,6 @@ void jpnz (void) {
 void inte (void) {
 
 	Quantum = 0;
-	SystemCall = true;
 	Kernel_Msg = tcb_message(CPU_INTERRUPT,&Hilo,1,fetch_direccion());
 }
 
@@ -198,7 +201,8 @@ void shif (void) {
 		if(n < 0)
 			registro(i) = registro(i) << (n * -1);
 		else if(n > 0)
-			registro(i) = (registro(i) >> n) & ~(((0x1 << MAX_SHIF) >> n) << 1); //REVISAR
+			registro(i) = registro(i) >> n;
+		//según los ayudantes con el >> alcanza, por las dudas guardo la solución correcta: (registro(i) >> n) & ~(((0x1 << MAX_SHIF) >> n) << 1);
 	}
 }
 
@@ -236,6 +240,7 @@ void take (void) {
 void xxxx (void) {
 
 	Quantum = 0;
+	KernelMode = false;
 	Execution_State = FINISHED_THREAD;
 }
 
@@ -251,8 +256,6 @@ void malc (void) {
 		memcpy(aux,&registro(A),sizeof(uint32_t));
 		list_add(alloc_segs,aux);
 	}
-	else
-		free(aux);
 }
 
 void eso_free (void) {
@@ -262,6 +265,11 @@ void eso_free (void) {
 	if(aux) {
 		destruir_segmento(registro(A));
 		free(aux);
+	}
+	else {
+		Quantum = 0;
+		KernelMode = false;
+		Execution_State = CPU_ABORT;
 	}
 }
 
@@ -276,17 +284,14 @@ void innn (void) {
 
 	destroy_message(msg);
 
-	if((msg = recibir_mensaje(Kernel)) == NULL) {
+	if((msg = recibir_mensaje(Kernel)) == NULL || msg->header.id != REPLY_NUMERIC_INPUT) {
 		puts("ERROR: No se pudo solicitar el servicio requerido al Kernel.");
 		exit(EXIT_FAILURE);
 	}
 
-	 if(msg->header.id == REPLY_NUMERIC_INPUT)
-		 registro(A) = msg->argv[0];
-	 else
-		 Execution_State = CPU_ABORT;
+	registro(A) = msg->argv[0];
 
-	 destroy_message(msg);
+	destroy_message(msg);
 }
 
 void innc (void) {
@@ -300,15 +305,12 @@ void innc (void) {
 
 	destroy_message(msg);
 
-	if((msg = recibir_mensaje(Kernel)) == NULL) {
+	if((msg = recibir_mensaje(Kernel)) == NULL || msg->header.id != REPLY_STRING_INPUT) {
 		puts("ERROR: No se pudo solicitar el servicio requerido al Kernel.");
 		exit(EXIT_FAILURE);
 	}
 
-	 if(msg->header.id == REPLY_STRING_INPUT)
-		 escribir_memoria(registro(A),msg->stream,registro(B));
-	 else
-		 Execution_State = CPU_ABORT;
+	escribir_memoria(registro(A),msg->stream,registro(B));
 
 	destroy_message(msg);
 }
@@ -329,7 +331,22 @@ void outc (void) {
 
 	char *buffer = solicitar_memoria(registro(A),registro(B));
 
-	t_msg *msg = string_message(STRING_OUTPUT,buffer,1,PID);
+	if(Execution_State != CPU_ABORT) {
+
+		t_msg *msg = string_message(STRING_OUTPUT,buffer,1,PID);
+
+		if(enviar_mensaje(Kernel,msg) == -1) {
+			puts("ERROR: No se pudo solicitar el servicio requerido al Kernel.");
+			exit(EXIT_FAILURE);
+		}
+
+		destroy_message(msg);
+	}
+}
+
+void crea (void) {
+
+	t_msg *msg = tcb_message(CPU_CREA,&Hilo,0);
 
 	if(enviar_mensaje(Kernel,msg) == -1) {
 		puts("ERROR: No se pudo solicitar el servicio requerido al Kernel.");
@@ -337,11 +354,6 @@ void outc (void) {
 	}
 
 	destroy_message(msg);
-}
-
-void crea (void) {
-
-	Execution_State = CPU_CREA;
 }
 
 void join (void) {
@@ -358,7 +370,14 @@ void join (void) {
 
 void blok (void) {
 
-	Kernel_Msg = tcb_message(CPU_BLOCK,&Hilo,1,registro(B));
+	t_msg *msg = tcb_message(CPU_BLOCK,&Hilo,1,registro(B));
+
+	if(enviar_mensaje(Kernel,msg) == -1) {
+		puts("ERROR: No se pudo solicitar el servicio requerido al Kernel.");
+		exit(EXIT_FAILURE);
+	}
+
+	destroy_message(msg);
 }
 
 void wake (void) {

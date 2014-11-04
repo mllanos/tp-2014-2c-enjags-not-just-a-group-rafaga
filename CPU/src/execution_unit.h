@@ -18,10 +18,10 @@
 #include <panel/cpu_log.h>
 
 #define MAX_SHIF 31
-#define PID Registros.I
 #define OPERATION_CODE_SIZE 4
 #define stack_top Registros.S
 #define stack_size (Registros.S - Registros.X)
+#define PID (KernelMode == false? Registros.I : 0)
 #define program_counter (Registros.M + Registros.P)
 
 typedef enum {A,B,C,D,E} t_registros_programacion;
@@ -31,13 +31,14 @@ typedef enum {REGISTRO,NUMERO,DIRECCION} t_operandos;
 int MSP;
 int Kernel;
 t_hilo Hilo;
-bool SystemCall;
+bool KernelMode;
 uint16_t Quantum;
 t_msg *Kernel_Msg;
 t_list *Parametros;
 t_msg_id Execution_State;
 uint32_t Instruction_size;
 t_registros_cpu Registros;
+void *MapRegistros['X'-'A'+1];
 t_dictionary *SetInstruccionesDeUsuario;
 t_dictionary *SetInstruccionesProtegidas;
 
@@ -45,7 +46,7 @@ void (*Instruccion)(void);
 /*FIN_Variables Globales*/
 
 /* Funciones Macro */
-#define registro(n) Registros.registros_programacion[n]
+#define registro(n) *((int*) MapRegistros[n])
 
 #define fetch_registro() fetch_operand(REGISTRO) - 'A'
 #define fetch_numero() (int32_t) fetch_operand(NUMERO)
