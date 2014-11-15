@@ -250,7 +250,7 @@ void xxxx (void) {
 void malc (void) {
 
 	uint32_t *aux = malloc(sizeof(uint32_t));
-	registro(A) = crear_segmento(registro(A));
+	registro(A) = crear_segmento((uint32_t) registro(A));
 
 	if(Execution_State != CPU_ABORT) {
 		memcpy(aux,&registro(A),sizeof(uint32_t));
@@ -275,7 +275,7 @@ void eso_free (void) {
 
 void innn (void) {
 
-	t_msg *msg = argv_message(NUMERIC_INPUT,1,PID);
+	t_msg *msg = argv_message(NUMERIC_INPUT,1,Registros.I);
 
 	if(enviar_mensaje(Kernel,msg) == -1) {
 		puts("ERROR: No se pudo solicitar el servicio requerido al Kernel.");
@@ -296,7 +296,7 @@ void innn (void) {
 
 void innc (void) {
 
-	t_msg *msg = argv_message(STRING_INPUT,2,PID,registro(B));
+	t_msg *msg = argv_message(STRING_INPUT,2,Registros.I,registro(B));
 
 	if(enviar_mensaje(Kernel,msg) == -1) {
 		puts("ERROR: No se pudo solicitar el servicio requerido al Kernel.");
@@ -317,7 +317,7 @@ void innc (void) {
 
 void outn (void) {
 
-	t_msg *msg = argv_message(NUMERIC_OUTPUT,2,PID,registro(A));
+	t_msg *msg = argv_message(NUMERIC_OUTPUT,2,Registros.I,registro(A));
 
 	if(enviar_mensaje(Kernel,msg) == -1) {
 		puts("ERROR: No se pudo solicitar el servicio requerido al Kernel.");
@@ -333,7 +333,7 @@ void outc (void) {
 
 	if(Execution_State != CPU_ABORT) {
 
-		t_msg *msg = string_message(STRING_OUTPUT,buffer,1,PID);
+		t_msg *msg = string_message(STRING_OUTPUT,buffer,1,Registros.I);
 
 		if(enviar_mensaje(Kernel,msg) == -1) {
 			puts("ERROR: No se pudo solicitar el servicio requerido al Kernel.");
