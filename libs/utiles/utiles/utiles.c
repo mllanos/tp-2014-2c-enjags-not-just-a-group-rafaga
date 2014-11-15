@@ -163,7 +163,9 @@ t_msg *modify_message(t_msg_id new_id, t_msg *old_msg, uint16_t new_count, ...)
 
 	val_old = memcpy(val + new_count, old_msg->argv, old_count * sizeof(uint32_t));
 
-	char *buffer = malloc(old_msg->header.length);
+	char *buffer = NULL;
+	if(old_msg->header.length > 0)
+		buffer = malloc(old_msg->header.length);
 
 	memcpy(buffer, old_msg->stream, old_msg->header.length);
 
@@ -194,7 +196,9 @@ t_msg *remake_message(t_msg_id new_id, t_msg *old_msg, uint16_t new_count, ...)
 		val[i] = va_arg(arguments, uint32_t);
 	}
 
-	char *buffer = malloc(old_msg->header.length);
+	char *buffer = NULL;	
+	if(old_msg->header.length > 0)
+		buffer = malloc(old_msg->header.length);
 
 	memcpy(buffer, old_msg->stream, old_msg->header.length);
 
@@ -322,6 +326,7 @@ t_msg *recibir_mensaje(int sock_fd)
 		
 		msg->stream[msg->header.length] = '\0';
 	}
+
 
 	return msg;
 }

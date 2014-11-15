@@ -4,7 +4,7 @@ int main(int argc, char **argv)
 {
 	initialize(argv[1]);
 	boot_kernel();
-	receive_messages_epoll();
+	receive_messages_select();
 	finalize();
 	return EXIT_SUCCESS;
 }
@@ -31,8 +31,8 @@ void initialize(char *config_path)
 	sem_init(&sem_loader, 0, 0);
 	sem_init(&sem_planificador, 0, 0);
 	inicializar_panel(KERNEL, PANEL_PATH);
-	pthread_create(&loader_th, NULL, loader, NULL);
-	pthread_create(&planificador_th, NULL, planificador, NULL);
+	//pthread_create(&loader_th, NULL, loader, NULL);
+	//pthread_create(&planificador_th, NULL, planificador, NULL);
 
 	msp_fd = client_socket(get_ip_msp(), get_puerto_msp());
 	if (msp_fd < 0) {
@@ -133,10 +133,12 @@ void receive_messages_epoll(void)
 				}
 			} else {
 				/* We have data on the fd waiting to be read. */
-
+				
+				puts("Malloc?1");
 				t_msg *msg = recibir_mensaje(events[i].data.fd);
-
+				puts("MALLOC!2");
 				if (msg == NULL) {
+					puts("ENTRO EN LA ZONA");
 					int status = remove_from_lists(events[i].data.fd);
 
 					/* Closing the descriptor will make epoll remove it from the set of descriptors which are monitored. */
@@ -150,7 +152,8 @@ void receive_messages_epoll(void)
 					}
 				} else {
 					//putmsg(msg);
-					interpret_message(events[i].data.fd, msg);
+					printf("ID: %d, argc:%d, size: %d, %s\n", msg->header.id, msg->header.argc, msg->header.length, msg->stream);
+					//interpret_message(events[i].data.fd, msg);
 				}
 			}
 		}
@@ -215,7 +218,7 @@ void receive_messages_select(void)
 					} else {
 						/* Socket received message. */
 						//putmsg(recibido);
-						interpret_message(i, recibido);
+	//					interpret_message(i, recibido);
 					}	
 				}
 	}
@@ -268,12 +271,20 @@ void finalize(void)
 void interpret_message(int sock_fd, t_msg *recibido)
 {
 	/* Tipos de mensaje: <[stream]; [argv, [argv, ]*]> */
+	
+
+	printf("ID:%d", recibido->header.id);
+	printf("Argc: %d", recibido->header.argc);
 
 	switch (recibido->header.id) {
 		/* Mensaje de conexion de Consola. */
-		case INIT_CONSOLE: 										/* <BESO_STRING;> */
+		case INIT_CONSOLE: 
+										/* <BESO_STRING;> */
 			pthread_mutex_lock(&loader_mutex);
+
+
 			queue_push(loader_queue, modify_message(NO_NEW_ID, recibido, 1, sock_fd));
+			puts("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBB");			
 			pthread_mutex_unlock(&loader_mutex);
 			sem_post(&sem_loader);
 			break;
@@ -345,7 +356,20 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 
 	if(cont) {
 		message[2] = remake_message(WRITE_MEMORY, msg, 2, tcb->pid, status[0]->argv[0]);
+		/*
+		msg->header.id = WRITE_MEMORY;
+		uint32_t *new_argv = malloc(sizeof(*new_argv)*(msg->header.argc +2));
+		memcpy(new_argv, msg->argv, msg->header.argc*4);
 
+		new_argv[msg->header.argc] = tcb->pid;
+		new_argv[msg->header.argc+1] = status[0]->argv[0];
+
+		free(msg->argv);
+
+		msg->argv = new_argv;
+	
+		message[2] = msg;
+		*/
 		enviar_mensaje(msp_fd, message[2]);
 		//putmsg(message[2]);
 

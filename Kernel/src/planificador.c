@@ -20,7 +20,7 @@ void *planificador(void *arg)
 			continue;
 		}
 
-		putmsg(recibido);
+	//	putmsg(recibido);
 
 		switch (recibido->header.id) {	
 			case CPU_CONNECT:
@@ -40,7 +40,7 @@ void *planificador(void *arg)
 				assign_processes();
 				break;
 			case CPU_ABORT:
-				cpu_abort(recibido->argv[0], recibido->argv[1]);
+				cpu_abort(recibido->argv[0], retrieve_tcb(recibido));
 				break;
 			case CPU_INTERRUPT:
 				syscall_start(recibido->argv[0], retrieve_tcb(recibido));
@@ -257,7 +257,7 @@ void assign_processes(void)
 		if (tcb == NULL) 
 			return;
 
-		//print_tcb(tcb);
+
 		tcb->cola = EXEC;
 
 		t_cpu *cpu = queue_pop(request_queue);
@@ -282,6 +282,8 @@ void assign_processes(void)
 
 void return_process(uint32_t sock_fd, t_hilo *tcb)
 {
+	
+	print_tcb(tcb);
 	/* Seteamos la CPU a disponible. */
 	bool _find_by_sock_fd(t_cpu *a_cpu) {
 		return a_cpu->sock_fd == sock_fd;
@@ -314,6 +316,7 @@ void return_process(uint32_t sock_fd, t_hilo *tcb)
 
 void finish_process(uint32_t sock_fd, t_hilo *tcb)
 {
+	print_tcb(tcb);
 	/* Seteamos la CPU a disponible. */
 	bool _find_by_sock_fd(t_cpu *a_cpu) {
 		return a_cpu->sock_fd == sock_fd;
@@ -355,7 +358,7 @@ void finish_process(uint32_t sock_fd, t_hilo *tcb)
 
 		t_hilo *tcb_klt = list_find(process_list, (void *) _find_by_kernel_mode);
 
-		if(queue_is_empty(syscall_queue)) {
+		if(queue_is_empty(syscall_queue) == false) {
 			/* Todavia hay syscalls que atender. Cargar el proximo proceso bloqueado por syscalls. */
 			t_syscall *to_load = queue_peek(syscall_queue);
 			memcpy(tcb_klt->registros, to_load->blocked->registros, sizeof(int32_t) * 5);
@@ -375,7 +378,7 @@ void finish_process(uint32_t sock_fd, t_hilo *tcb)
 }
 
 
-void cpu_abort(uint32_t sock_fd, uint32_t tcb_pid) {
+void cpu_abort(uint32_t sock_fd, t_hilo *tcb) {
 	/* Seteamos la CPU a disponible. */
 	bool _find_by_sock_fd(t_cpu *a_cpu) {
 		return a_cpu->sock_fd == sock_fd;
@@ -385,11 +388,11 @@ void cpu_abort(uint32_t sock_fd, uint32_t tcb_pid) {
 	cpu->disponible = true;
 
 	log_trace(logger, "Liberando CPU %u. Motivo: abortando proceso (PID %u).", 
-		cpu->cpu_id, tcb_pid);
-
+		cpu->cpu_id, tcb->pid);
+	
 	/* Finalizamos la consola del proceso. */
 	bool _find_by_pid(t_console *a_cnsl) {
-		return a_cnsl->pid == tcb_pid;
+		return a_cnsl->pid == tcb->pid;
 	}
 
 	t_console *console = list_find(console_list, (void *) _find_by_pid);

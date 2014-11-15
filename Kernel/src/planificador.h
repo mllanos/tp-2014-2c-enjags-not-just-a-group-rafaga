@@ -61,7 +61,7 @@ void assign_processes(void);
 /*
  * Finalizamos el proceso de la CPU que aborta.
  */
-void cpu_abort(uint32_t sock_fd, uint32_t tcb_pid);
+void cpu_abort(uint32_t sock_fd, t_hilo *tcb);
 
 /*
  * Agregamos el proceso a READY y desalojamos el CPU. 

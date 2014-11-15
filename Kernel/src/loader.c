@@ -4,13 +4,17 @@ void *loader(void *arg)
 {
 	while (1) {
 		sem_wait(&sem_loader);
-
+		puts("AAAAAAAAAAAAAAAAAAAAAAAAAAAA");
 		pthread_mutex_lock(&loader_mutex);
 		t_msg *recibido = queue_pop(loader_queue);
+		puts("aaaaaaaaaaaaaaaaaaaaaaaaaa");
 		pthread_mutex_unlock(&loader_mutex);
 
 		uint32_t sock_fd = recibido->argv[0];
 		uint32_t new_pid = get_unique_id(THREAD_ID);
+
+		puts("ASIGNADO.");
+		sleep(3000);
 
 		/* New console. */
 		t_console *console = new_console(new_pid, sock_fd);
