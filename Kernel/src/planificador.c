@@ -10,7 +10,6 @@ void *planificador(void *arg)
 
 		if (!queue_is_empty(planificador_queue)) {
 			/* Mensaje entrante. */
-			puts("Recibiendo en planificador.");
 			pthread_mutex_lock(&planificador_mutex);
 			recibido = queue_pop(planificador_queue);
 			pthread_mutex_unlock(&planificador_mutex);
@@ -21,7 +20,7 @@ void *planificador(void *arg)
 			continue;
 		}
 
-		//putmsg(recibido);
+		putmsg(recibido);
 
 		switch (recibido->header.id) {	
 			case CPU_CONNECT:
@@ -40,13 +39,23 @@ void *planificador(void *arg)
 				finish_process(recibido->argv[0], retrieve_tcb(recibido));
 				assign_processes();
 				break;
+			case CPU_ABORT:
+				cpu_abort(recibido->argv[0], recibido->argv[1]);
+				break;
 			case CPU_INTERRUPT:
 				syscall_start(recibido->argv[0], retrieve_tcb(recibido));
 				break;
 			case NUMERIC_INPUT:
+				numeric_input(recibido->argv[0], recibido->argv[1]);
+				break;
 			case STRING_INPUT:
+				string_input(recibido->argv[0], recibido->argv[1], recibido->argv[2]);
+				break;
+			case NUMERIC_OUTPUT:
+				numeric_output(recibido->argv[0], recibido->argv[1]);
+				break;
 			case STRING_OUTPUT:
-				standard_io(recibido);
+				string_output(recibido->argv[0], recibido->stream);
 				break;
 			case REPLY_NUMERIC_INPUT:
 				return_numeric_input(recibido->argv[0], recibido->argv[1]);
@@ -114,8 +123,8 @@ void bprr_algorithm(void)
 	char *string_proc = string_new();
 
 	void _log_processes(t_hilo *a_tcb) {
-		string_append_with_format(&string_proc, "%s{ PID: %u, TID: %u, COLA: %s }", string_is_empty(string_proc) ? "" : ", ", 
-			a_tcb->pid, a_tcb->tid, string_cola(a_tcb->cola));
+		string_append_with_format(&string_proc, "%s{ PID: %u, TID: %u, %s, %s }", string_is_empty(string_proc) ? "" : ", ", 
+			a_tcb->pid, a_tcb->tid, string_cola(a_tcb->cola), a_tcb->kernel_mode ? "KLT" : "ULT");
 	}
 
 	list_iterate(process_list, (void *) _log_processes);
@@ -284,21 +293,53 @@ void return_process(uint32_t sock_fd, t_hilo *tcb)
 	log_trace(logger, "Liberando CPU %u. Motivo: fin de quantum hilo (TID %u, %s).", 
 		cpu->cpu_id, tcb->tid, tcb->kernel_mode ? "KLT" : "ULT");
 
+	/* Actualizamos el tcb recibido y lo encolamos a READY si es que existe. */
+	bool _find_by_tid(t_hilo *a_tcb) {
+		return a_tcb->tid == tcb->tid;
+	}
+
+	t_hilo *to_update = list_find(process_list, (void *) _find_by_tid);
+
+	if (to_update != NULL) {
+		log_trace(logger, "Actualizando el TCB del ULT %u.", tcb->tid);
+		memcpy(to_update, tcb, sizeof *tcb);
+		to_update->cola = READY;
+	} else {
+		log_warning(logger, "El ULT %u ya no existe.", tcb->tid);
+	}
+	
+	free(tcb);
+}
+
+
+void finish_process(uint32_t sock_fd, t_hilo *tcb)
+{
+	/* Seteamos la CPU a disponible. */
+	bool _find_by_sock_fd(t_cpu *a_cpu) {
+		return a_cpu->sock_fd == sock_fd;
+	}
+
+	t_cpu *cpu = list_find(cpu_list, (void *) _find_by_sock_fd);
+	cpu->disponible = true;
+
+	log_trace(logger, "Desocupando CPU %u. Motivo: fin de ejecucion hilo (TID %u, %s).", 
+		cpu->cpu_id, tcb->tid, tcb->kernel_mode ? "KLT" : "ULT");
+
+
 	if (tcb->kernel_mode == false) { 
-		/* Recibido hilo comun, actualizamos el tcb recibido y lo encolamos a READY si es que existe. */
+		/* Recibido ULT, actualizamos el tcb recibido y lo encolamos a EXIT si es que existe. */
 		bool _find_by_tid(t_hilo *a_tcb) {
 			return a_tcb->tid == tcb->tid;
 		}
 
-		t_hilo *to_update = list_find(process_list, (void *) _find_by_tid);
-
-		if (to_update != NULL) {
-			log_trace(logger, "Actualizando el TCB del ULT %u.", tcb->tid);
-			memcpy(to_update, tcb, sizeof *tcb);
-			to_update->cola = READY;
-		} else {
-			log_warning(logger, "El ULT %u ya no existe.", tcb->tid);
-		}
+		t_hilo *finished = list_find(process_list, (void *) _find_by_tid);
+		if (finished != NULL) {
+			/* Si existe actualizamos TCB y encolamos a EXIT. */
+			memcpy(finished, tcb, sizeof *tcb);
+			finished->cola = EXIT;
+			log_trace(logger, "Encolando hilo (TID %u) a EXIT.", tcb->pid, tcb->tid);
+		} else 
+			log_warning(logger, "El hilo (TID %u) ya no existe.", tcb->pid, tcb->tid);
 	} else { 
 		/* Recibido KLT, copiamos registros al proceso bloqueado por syscalls y lo encolamos a READY. */
 		t_syscall *syscall = queue_pop(syscall_queue);
@@ -334,8 +375,7 @@ void return_process(uint32_t sock_fd, t_hilo *tcb)
 }
 
 
-void finish_process(uint32_t sock_fd, t_hilo *tcb)
-{
+void cpu_abort(uint32_t sock_fd, uint32_t tcb_pid) {
 	/* Seteamos la CPU a disponible. */
 	bool _find_by_sock_fd(t_cpu *a_cpu) {
 		return a_cpu->sock_fd == sock_fd;
@@ -344,24 +384,21 @@ void finish_process(uint32_t sock_fd, t_hilo *tcb)
 	t_cpu *cpu = list_find(cpu_list, (void *) _find_by_sock_fd);
 	cpu->disponible = true;
 
-	log_trace(logger, "Desocupando CPU %u. Motivo: fin de ejecucion hilo (TID %u, %s).", 
-		cpu->cpu_id, tcb->tid, tcb->kernel_mode ? "KLT" : "ULT");
+	log_trace(logger, "Liberando CPU %u. Motivo: abortando proceso (PID %u).", 
+		cpu->cpu_id, tcb_pid);
 
-	bool _find_by_tid(t_hilo *a_tcb) {
-		return a_tcb->tid == tcb->tid;
+	/* Finalizamos la consola del proceso. */
+	bool _find_by_pid(t_console *a_cnsl) {
+		return a_cnsl->pid == tcb_pid;
 	}
 
-	t_hilo *finished = list_find(process_list, (void *) _find_by_tid);
-	if (finished != NULL) {
-		/* Si existe actualizamos TCB y encolamos a EXIT. */
-		memcpy(finished, tcb, sizeof *tcb);
-		finished->cola = EXIT;
-		log_trace(logger, "Encolando hilo (TID %u) a EXIT.", tcb->pid, tcb->tid);
-	} else 
-		log_warning(logger, "El hilo (TID %u) ya no existe.", tcb->pid, tcb->tid);
+	t_console *console = list_find(console_list, (void *) _find_by_pid);
 
-	free(tcb);
+	t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: abort.", 0);
+	enviar_mensaje(console->sock_fd, msg);
+	destroy_message(msg);
 }
+
 
 void syscall_start(uint32_t call_dir, t_hilo *tcb)
 {
@@ -407,22 +444,63 @@ void syscall_start(uint32_t call_dir, t_hilo *tcb)
 }
 
 
-void standard_io(t_msg *msg)
+void numeric_input(uint32_t cpu_sock_fd, uint32_t tcb_pid)
 {
-	uint32_t console_pid = msg->argv[1];
-
 	bool _find_by_pid(t_console *a_cnsl) {
-		return a_cnsl->pid == console_pid;
+			return a_cnsl->pid == tcb_pid;
 	}
 
 	t_console *console = list_find(console_list, (void *) _find_by_pid);
 
-	/* Nota: msg contiene el sock_fd del CPU para terminar la operacion en return_x_input(). */
+	t_msg *msg = argv_message(NUMERIC_INPUT, 1, cpu_sock_fd);
 	enviar_mensaje(console->sock_fd, msg);
+	destroy_message(msg);
 }
 
 
-void return_numeric_input(uint32_t cpu_sock_fd, int32_t number)
+void string_input(uint32_t cpu_sock_fd, uint32_t tcb_pid, uint32_t length)
+{
+	bool _find_by_pid(t_console *a_cnsl) {
+			return a_cnsl->pid == tcb_pid;
+	}
+
+	t_console *console = list_find(console_list, (void *) _find_by_pid);
+
+	t_msg *msg = argv_message(STRING_INPUT, 2, cpu_sock_fd, length);
+	enviar_mensaje(console->sock_fd, msg);
+	destroy_message(msg);
+}
+
+
+void numeric_output(uint32_t tcb_pid, int output_number)
+{
+	bool _find_by_pid(t_console *a_cnsl) {
+		return a_cnsl->pid == tcb_pid;
+	}
+
+	t_console *console = list_find(console_list, (void *) _find_by_pid);
+
+	t_msg *msg = argv_message(NUMERIC_OUTPUT, 1, output_number);
+	enviar_mensaje(console->sock_fd, msg);
+	destroy_message(msg);
+}
+
+
+void string_output(uint32_t tcb_pid, char *output_stream)
+{
+	bool _find_by_pid(t_console *a_cnsl) {
+			return a_cnsl->pid == tcb_pid;
+	}
+
+	t_console *console = list_find(console_list, (void *) _find_by_pid);
+
+	t_msg *msg = string_message(STRING_OUTPUT, output_stream, 0);
+	enviar_mensaje(console->sock_fd, msg);
+	destroy_message(msg);
+}
+
+
+void return_numeric_input(uint32_t cpu_sock_fd, int number)
 {
 	t_msg *msg = argv_message(REPLY_NUMERIC_INPUT, 1, number);
 	enviar_mensaje(cpu_sock_fd, msg);

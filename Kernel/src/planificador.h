@@ -59,6 +59,11 @@ void cpu_queue(uint32_t sock_fd);
 void assign_processes(void);
 
 /*
+ * Finalizamos el proceso de la CPU que aborta.
+ */
+void cpu_abort(uint32_t sock_fd, uint32_t tcb_pid);
+
+/*
  * Agregamos el proceso a READY y desalojamos el CPU. 
  */
 void return_process(uint32_t sock_fd, t_hilo *tcb);
@@ -74,9 +79,24 @@ void finish_process(uint32_t sock_fd, t_hilo *tcb);
 void syscall_start(uint32_t call_dir, t_hilo *tcb);
 
 /*
- * Envia a Consola un pedido de IO.
+ * Envia a Consola un pedido de entrada numerica.
  */
-void standard_io(t_msg *msg);
+void numeric_input(uint32_t cpu_sock_fd, uint32_t tcb_pid);
+
+/*
+ * Envia a Consola un pedido de entrada de cadena.
+ */
+void string_input(uint32_t cpu_sock_fd, uint32_t tcb_pid, uint32_t length);
+
+/*
+ * Envia a Consola un pedido de salida numerica.
+ */
+void numeric_output(uint32_t tcb_pid, int output_number);
+
+/*
+ * Envia a Consola un pedido de salida de cadena.
+ */
+void string_output(uint32_t tcb_pid, char *output_stream);
 
 /*
  * Envia a CPU el string input de su Consola asignada.

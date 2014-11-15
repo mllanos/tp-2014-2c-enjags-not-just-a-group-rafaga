@@ -269,8 +269,6 @@ void interpret_message(int sock_fd, t_msg *recibido)
 {
 	/* Tipos de mensaje: <[stream]; [argv, [argv, ]*]> */
 
-	putmsg(recibido);
-
 	switch (recibido->header.id) {
 		/* Mensaje de conexion de Consola. */
 		case INIT_CONSOLE: 										/* <BESO_STRING;> */
@@ -285,19 +283,21 @@ void interpret_message(int sock_fd, t_msg *recibido)
 		case RETURN_TCB:										/* <TCB_STRING;> */
 		case FINISHED_THREAD:									/* <TCB_STRING;> */
 		case NUMERIC_INPUT: 									/* <; PID> */
-		case STRING_INPUT: 										/* <; PID> */
-		case STRING_OUTPUT: 									/* <OUT_STRING; PID> */
+		case STRING_INPUT: 										/* <; PID, SIZE> */
 			pthread_mutex_lock(&planificador_mutex);
 			queue_push(planificador_queue, modify_message(NO_NEW_ID, recibido, 1, sock_fd));
 			pthread_mutex_unlock(&planificador_mutex);
 			sem_post(&sem_planificador);
 			break;
 		/* Mensajes de CPU que no necesitan el cpu_sock_fd. */
+		case CPU_ABORT:											/* <; PID> */
 		case CPU_CREA:											/* <TCB_STRING;> */
 		case CPU_INTERRUPT: 									/* <TCB_STRING; MEM_DIR> */
 		case CPU_JOIN:											/* <; CALLER_TID, WAITER_TID> */
 		case CPU_BLOCK:											/* <TCB_STRING; RESOURCE_ID> */
 		case CPU_WAKE:											/* <RESOURCE_ID> */		
+		case NUMERIC_OUTPUT:									/* <; PID, NUMERIC> */
+		case STRING_OUTPUT: 									/* <OUT_STRING; PID> */
 		/* Mensajes de Consola para delegar a CPU. */
 		case REPLY_STRING_INPUT:								/* <REPLY_STRING; CPU_SOCK_FD> */
 		case REPLY_NUMERIC_INPUT:								/* <; CPU_SOCK_FD, REPLY_NUMERIC> */
@@ -317,15 +317,14 @@ void interpret_message(int sock_fd, t_msg *recibido)
 
 t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 {
-	int i;
+	int i, cont = 1;
 	t_msg *message[6];
 	t_msg **status = message + 3;
 
 	message[0] = argv_message(CREATE_SEGMENT, 2, tcb->pid, msg->header.length);
 	message[1] = argv_message(CREATE_SEGMENT, 2, tcb->pid, get_stack_size());
 
-
-	for (i = 0; i < 2; i++) {
+	for (i = 0; i < 2 && cont; i++) {
 		enviar_mensaje(msp_fd, message[i]);
 		//putmsg(message[i]);
 
@@ -334,7 +333,9 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 
 		if (MSP_RESERVE_FAILURE(status[i]->header.id)) {
 			free(tcb);
-			return NULL;
+			tcb = NULL;
+			cont = 0;
+			break;
 		} else if (!MSP_RESERVE_SUCCESS(status[i]->header.id)) {
 			errno = EBADMSG;
 			perror("reservar_memoria");
@@ -342,28 +343,32 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 		}
 	}
 
-	message[2] = remake_message(WRITE_MEMORY, msg, 2, tcb->pid, status[0]->argv[0]);
+	if(cont) {
+		message[2] = remake_message(WRITE_MEMORY, msg, 2, tcb->pid, status[0]->argv[0]);
 
-	enviar_mensaje(msp_fd, message[2]);
-	//putmsg(message[2]);
+		enviar_mensaje(msp_fd, message[2]);
+		//putmsg(message[2]);
 
-	status[2] = recibir_mensaje(msp_fd);
-	//putmsg(status[2]);
+		status[2] = recibir_mensaje(msp_fd);
+		//putmsg(status[2]);
 
-	if (MSP_WRITE_FAILURE(status[2]->header.id)) {
-		free(tcb);
-		return NULL;
-	} else if (!MSP_WRITE_SUCCESS(status[2]->header.id)) {
-		errno = EBADMSG;
-		perror("reservar_memoria");
-		exit(EXIT_FAILURE);
+		if (MSP_WRITE_FAILURE(status[2]->header.id)) {
+			free(tcb);
+			tcb = NULL;
+		} else if (!MSP_WRITE_SUCCESS(status[2]->header.id)) {
+			errno = EBADMSG;
+			perror("reservar_memoria");
+			exit(EXIT_FAILURE);
+		}
+
+		if(tcb != NULL) {
+			tcb->segmento_codigo = status[0]->argv[0];
+			tcb->segmento_codigo_size = msg->header.length;
+			tcb->puntero_instruccion = tcb->segmento_codigo;
+			tcb->base_stack = status[1]->argv[0];
+			tcb->cursor_stack = tcb->base_stack;
+		}
 	}
-
-	tcb->segmento_codigo = status[0]->argv[0];
-	tcb->segmento_codigo_size = msg->header.length;
-	tcb->puntero_instruccion = tcb->segmento_codigo;
-	tcb->base_stack = status[1]->argv[0];
-	tcb->cursor_stack = tcb->base_stack;
 
 	for (i = 0; i < 6; i++)
 		destroy_message(message[i]);
