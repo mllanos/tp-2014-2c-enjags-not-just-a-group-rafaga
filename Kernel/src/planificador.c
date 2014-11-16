@@ -311,8 +311,6 @@ void cpu_abort(uint32_t sock_fd, t_hilo *tcb) {
 			return a_tcb->kernel_mode;
 		}
 
-		puts("ES HILO DE KERNEL!");
-
 		t_hilo *tcb_klt = list_find(process_list, (void *) _find_by_kernel_mode);
 
 		if(queue_is_empty(syscall_queue) == false) {

@@ -271,9 +271,6 @@ void finalize(void)
 void interpret_message(int sock_fd, t_msg *recibido)
 {
 	/* Tipos de mensaje: <[stream]; [argv, [argv, ]*]> */
-
-
-	printf("TAMAÑO LISTA CONSOLASAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA: %d\n", list_size(console_list));
 	
 	switch (recibido->header.id) {
 		/* Mensaje de conexion de Consola. */

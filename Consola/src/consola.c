@@ -68,8 +68,8 @@ int interpret_message(t_msg *recibido)
 		case STRING_INPUT:
 			puts("Ingrese un literal cadena.");
 			/* Adjuntamos el cpu_sock_fd del mensaje recibido. */
-			str_input = malloc(recibido->argv[0] + 1);
-			msg = string_message(REPLY_STRING_INPUT, fgets(str_input, recibido->argv[0], stdin), 1, recibido->argv[1]);
+			str_input = malloc(recibido->argv[1] + 1);
+			msg = string_message(REPLY_STRING_INPUT, fgets(str_input, recibido->argv[0], stdin), 1, recibido->argv[0]);
 			enviar_mensaje(kernel_fd, msg);
 			destroy_message(msg);
 			free(str_input);
