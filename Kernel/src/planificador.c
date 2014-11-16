@@ -20,8 +20,6 @@ void *planificador(void *arg)
 			continue;
 		}
 
-	//	putmsg(recibido);
-
 		switch (recibido->header.id) {	
 			case CPU_CONNECT:
 				cpu_add(recibido->argv[0]);
@@ -80,39 +78,8 @@ void *planificador(void *arg)
 				perror("planificador");
 				break;
 		}
-
 		destroy_message(recibido);
 	}
-}
-
-
-void cpu_add(uint32_t sock_fd)
-{
-	t_cpu *new_cpu = malloc(sizeof *new_cpu);
-
-	new_cpu->cpu_id = get_unique_id(CPU_ID);
-	new_cpu->sock_fd = sock_fd;
-	new_cpu->pid = -1;
-	new_cpu->tid = -1;
-	new_cpu->disponible = true;
-	new_cpu->kernel_mode = false;
-
-	list_add(cpu_list, new_cpu);
-
-	conexion_cpu(new_cpu->cpu_id);
-	log_trace(logger, "Nueva conexion de CPU %u.", new_cpu->cpu_id);
-}
-
-void cpu_queue(uint32_t sock_fd)
-{
-	bool _find_by_sock_fd(t_cpu *a_cpu) {
-		return a_cpu->sock_fd == sock_fd;
-	}
-
-	t_cpu *cpu = list_find(cpu_list, (void *) _find_by_sock_fd);
-
-	queue_push(request_queue, cpu);
-	log_trace(logger, "Encolando pedido de TCB de CPU %u.", cpu->cpu_id);
 }
 
 
@@ -280,6 +247,95 @@ void assign_processes(void)
 }
 
 
+void cpu_add(uint32_t sock_fd)
+{
+	t_cpu *new_cpu = malloc(sizeof *new_cpu);
+
+	new_cpu->cpu_id = get_unique_id(CPU_ID);
+	new_cpu->sock_fd = sock_fd;
+	new_cpu->pid = -1;
+	new_cpu->tid = -1;
+	new_cpu->disponible = true;
+	new_cpu->kernel_mode = false;
+
+	list_add(cpu_list, new_cpu);
+
+	conexion_cpu(new_cpu->cpu_id);
+	log_trace(logger, "Nueva conexion de CPU %u.", new_cpu->cpu_id);
+}
+
+void cpu_queue(uint32_t sock_fd)
+{
+	bool _find_by_sock_fd(t_cpu *a_cpu) {
+		return a_cpu->sock_fd == sock_fd;
+	}
+
+	t_cpu *cpu = list_find(cpu_list, (void *) _find_by_sock_fd);
+
+	queue_push(request_queue, cpu);
+	log_trace(logger, "Encolando pedido de TCB de CPU %u.", cpu->cpu_id);
+}
+
+
+void cpu_abort(uint32_t sock_fd, t_hilo *tcb) {
+	/* Seteamos la CPU a disponible. */
+	bool _find_cpu_by_sock_fd(t_cpu *a_cpu) {
+		return a_cpu->sock_fd == sock_fd;
+	}
+
+	t_cpu *cpu = list_find(cpu_list, (void *) _find_cpu_by_sock_fd);
+	cpu->disponible = true;
+
+	log_trace(logger, "Liberando CPU %u. Motivo: abortando proceso (PID %u).", 
+		cpu->cpu_id, tcb->pid);
+
+	print_tcb(tcb);
+	
+	/* Finalizamos la consola del proceso. */
+	bool _find_console_by_pid(t_console *a_cnsl) {
+		return a_cnsl->pid == tcb->pid;
+	}
+
+	pthread_mutex_lock(&console_list_mutex);
+	t_console *console = list_find(console_list, (void *) _find_console_by_pid);
+	pthread_mutex_unlock(&console_list_mutex);
+
+	t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: abort.", 0);
+	enviar_mensaje(console->sock_fd, msg);
+	destroy_message(msg);
+
+	if(tcb->kernel_mode == true) {
+		/* Abortado hilo de Kernel. */
+
+		bool _find_by_kernel_mode(t_hilo *a_tcb) {
+			return a_tcb->kernel_mode;
+		}
+
+		puts("ES HILO DE KERNEL!");
+
+		t_hilo *tcb_klt = list_find(process_list, (void *) _find_by_kernel_mode);
+
+		if(queue_is_empty(syscall_queue) == false) {
+			/* Todavia hay syscalls que atender. Cargar el proximo proceso bloqueado por syscalls. */
+			t_syscall *to_load = queue_peek(syscall_queue);
+			memcpy(tcb_klt->registros, to_load->blocked->registros, sizeof(int32_t) * 5);
+			tcb_klt->pid = to_load->blocked->pid;
+			tcb_klt->tid = to_load->blocked->tid;
+			tcb_klt->puntero_instruccion = to_load->call_dir;
+			tcb_klt->cola = READY;
+			log_trace(logger, "Cargando KLT. Motivo: atender syscalls (TID %u, puntero instruccion protegida %u).",
+				to_load->blocked->pid, to_load->blocked->tid, to_load->call_dir);
+		} else {
+			/* Ya no hay mas syscalls. Encolar el KLT a BLOCK. */
+			tcb_klt->cola = BLOCK;
+			log_trace(logger, "Bloqueando el KLT.");
+		}
+	}
+
+	free(tcb);
+}
+
+
 void return_process(uint32_t sock_fd, t_hilo *tcb)
 {
 	
@@ -375,31 +431,6 @@ void finish_process(uint32_t sock_fd, t_hilo *tcb)
 	}
 
 	free(tcb);
-}
-
-
-void cpu_abort(uint32_t sock_fd, t_hilo *tcb) {
-	/* Seteamos la CPU a disponible. */
-	bool _find_by_sock_fd(t_cpu *a_cpu) {
-		return a_cpu->sock_fd == sock_fd;
-	}
-
-	t_cpu *cpu = list_find(cpu_list, (void *) _find_by_sock_fd);
-	cpu->disponible = true;
-
-	log_trace(logger, "Liberando CPU %u. Motivo: abortando proceso (PID %u).", 
-		cpu->cpu_id, tcb->pid);
-	
-	/* Finalizamos la consola del proceso. */
-	bool _find_by_pid(t_console *a_cnsl) {
-		return a_cnsl->pid == tcb->pid;
-	}
-
-	t_console *console = list_find(console_list, (void *) _find_by_pid);
-
-	t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: abort.", 0);
-	enviar_mensaje(console->sock_fd, msg);
-	destroy_message(msg);
 }
 
 

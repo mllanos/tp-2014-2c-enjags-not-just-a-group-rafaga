@@ -1,0 +1,12 @@
+#!/bin/bash
+
+if [ $# -ne 1 ]
+	then
+		echo "Modo de uso: ./create_bin <CANTIDAD DE KB>"
+	else
+		echo "Creando un archivo de $1KB..."
+		touch disk.bin
+		cantidad=`expr $1`
+		dd if=/dev/urandom of=file.bin bs=1024 count=$cantidad
+		echo "Listo."
+fi

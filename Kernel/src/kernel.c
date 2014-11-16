@@ -4,7 +4,7 @@ int main(int argc, char **argv)
 {
 	initialize(argv[1]);
 	boot_kernel();
-	receive_messages_select();
+	receive_messages_epoll();
 	finalize();
 	return EXIT_SUCCESS;
 }
@@ -25,14 +25,16 @@ void initialize(char *config_path)
 	request_queue = queue_create();
 	pthread_mutex_init(&loader_mutex, NULL);
 	pthread_mutex_init(&planificador_mutex, NULL);
+	pthread_mutex_init(&console_list_mutex, NULL);
+	pthread_mutex_init(&cpu_list_mutex, NULL);
 	pthread_mutex_init(&unique_id_mutex[THREAD_ID], NULL);
 	pthread_mutex_init(&unique_id_mutex[CONSOLE_ID], NULL);
 	pthread_mutex_init(&unique_id_mutex[CPU_ID], NULL);
 	sem_init(&sem_loader, 0, 0);
 	sem_init(&sem_planificador, 0, 0);
 	inicializar_panel(KERNEL, PANEL_PATH);
-	//pthread_create(&loader_th, NULL, loader, NULL);
-	//pthread_create(&planificador_th, NULL, planificador, NULL);
+	pthread_create(&loader_th, NULL, loader, NULL);
+	pthread_create(&planificador_th, NULL, planificador, NULL);
 
 	msp_fd = client_socket(get_ip_msp(), get_puerto_msp());
 	if (msp_fd < 0) {
@@ -77,6 +79,8 @@ void receive_messages_epoll(void)
 {
 	struct epoll_event event;
 	struct epoll_event *events;
+
+	memset(&event, 0, sizeof(event));
 
 	int sfd = server_socket(get_puerto());
 	if(sfd < 0) {
@@ -134,11 +138,8 @@ void receive_messages_epoll(void)
 			} else {
 				/* We have data on the fd waiting to be read. */
 				
-				puts("Malloc?1");
 				t_msg *msg = recibir_mensaje(events[i].data.fd);
-				puts("MALLOC!2");
 				if (msg == NULL) {
-					puts("ENTRO EN LA ZONA");
 					int status = remove_from_lists(events[i].data.fd);
 
 					/* Closing the descriptor will make epoll remove it from the set of descriptors which are monitored. */
@@ -151,9 +152,8 @@ void receive_messages_epoll(void)
 						return;
 					}
 				} else {
-					//putmsg(msg);
-					printf("ID: %d, argc:%d, size: %d, %s\n", msg->header.id, msg->header.argc, msg->header.length, msg->stream);
-					//interpret_message(events[i].data.fd, msg);
+					putmsg(msg);
+					interpret_message(events[i].data.fd, msg);
 				}
 			}
 		}
@@ -217,8 +217,7 @@ void receive_messages_select(void)
 						}
 					} else {
 						/* Socket received message. */
-						//putmsg(recibido);
-	//					interpret_message(i, recibido);
+						interpret_message(i, recibido);
 					}	
 				}
 	}
@@ -245,6 +244,16 @@ void finalize(void)
 		free(a_tcb);
 	}
 
+	pthread_kill(loader_th, SIGTERM);
+	pthread_kill(planificador_th, SIGTERM);
+	sem_destroy(&sem_loader);
+	sem_destroy(&sem_planificador);
+	pthread_mutex_destroy(&loader_mutex);
+	pthread_mutex_destroy(&planificador_mutex);
+	pthread_mutex_destroy(&unique_id_mutex[THREAD_ID]);
+	pthread_mutex_destroy(&unique_id_mutex[CONSOLE_ID]);
+	pthread_mutex_destroy(&unique_id_mutex[CPU_ID]);
+
 	config_destroy(config);
 	log_destroy(logger);
 	list_destroy_and_destroy_elements(process_list, (void *) _destroy_all_segments_and_free);
@@ -256,41 +265,28 @@ void finalize(void)
 	queue_destroy_and_destroy_elements(planificador_queue, (void *) destroy_message);
 	queue_destroy_and_destroy_elements(syscall_queue, (void *) free);
 	queue_destroy_and_destroy_elements(request_queue, (void *) free);
-	sem_destroy(&sem_loader);
-	sem_destroy(&sem_planificador);
-	pthread_mutex_destroy(&loader_mutex);
-	pthread_mutex_destroy(&planificador_mutex);
-	pthread_mutex_destroy(&unique_id_mutex[THREAD_ID]);
-	pthread_mutex_destroy(&unique_id_mutex[CONSOLE_ID]);
-	pthread_mutex_destroy(&unique_id_mutex[CPU_ID]);
-	pthread_kill(loader_th, SIGTERM);
-	pthread_kill(planificador_th, SIGTERM);
 }
 
 
 void interpret_message(int sock_fd, t_msg *recibido)
 {
 	/* Tipos de mensaje: <[stream]; [argv, [argv, ]*]> */
+
+
+	printf("TAMAÑO LISTA CONSOLASAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA: %d\n", list_size(console_list));
 	
-
-	printf("ID:%d", recibido->header.id);
-	printf("Argc: %d", recibido->header.argc);
-
 	switch (recibido->header.id) {
 		/* Mensaje de conexion de Consola. */
-		case INIT_CONSOLE: 
-										/* <BESO_STRING;> */
+		case INIT_CONSOLE:  									/* <BESO_STRING;> */
 			pthread_mutex_lock(&loader_mutex);
-
-
 			queue_push(loader_queue, modify_message(NO_NEW_ID, recibido, 1, sock_fd));
-			puts("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBB");			
 			pthread_mutex_unlock(&loader_mutex);
 			sem_post(&sem_loader);
 			break;
 		/* Mensajes de CPU que necesitan el cpu_sock_fd. */
 		case CPU_CONNECT:										/* <;> */
 		case CPU_TCB:											/* <;> */
+		case CPU_ABORT:											/* <TCB_STRING;> */
 		case RETURN_TCB:										/* <TCB_STRING;> */
 		case FINISHED_THREAD:									/* <TCB_STRING;> */
 		case NUMERIC_INPUT: 									/* <; PID> */
@@ -301,7 +297,6 @@ void interpret_message(int sock_fd, t_msg *recibido)
 			sem_post(&sem_planificador);
 			break;
 		/* Mensajes de CPU que no necesitan el cpu_sock_fd. */
-		case CPU_ABORT:											/* <; PID> */
 		case CPU_CREA:											/* <TCB_STRING;> */
 		case CPU_INTERRUPT: 									/* <TCB_STRING; MEM_DIR> */
 		case CPU_JOIN:											/* <; CALLER_TID, WAITER_TID> */
@@ -319,7 +314,7 @@ void interpret_message(int sock_fd, t_msg *recibido)
 			break;
 		default: 												/* Nunca deberia pasar. */
 			errno = EBADMSG;
-			log_error(logger, "ID de mensaje desconocido.");
+			log_error(logger, "Recibido ID de mensaje desconocido.");
 			perror("interpret_message");
 			exit(EXIT_FAILURE);
 	}
@@ -337,10 +332,8 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 
 	for (i = 0; i < 2 && cont; i++) {
 		enviar_mensaje(msp_fd, message[i]);
-		//putmsg(message[i]);
 
 		status[i] = recibir_mensaje(msp_fd);
-		//putmsg(status[i]);
 
 		if (MSP_RESERVE_FAILURE(status[i]->header.id)) {
 			free(tcb);
@@ -356,25 +349,10 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 
 	if(cont) {
 		message[2] = remake_message(WRITE_MEMORY, msg, 2, tcb->pid, status[0]->argv[0]);
-		/*
-		msg->header.id = WRITE_MEMORY;
-		uint32_t *new_argv = malloc(sizeof(*new_argv)*(msg->header.argc +2));
-		memcpy(new_argv, msg->argv, msg->header.argc*4);
 
-		new_argv[msg->header.argc] = tcb->pid;
-		new_argv[msg->header.argc+1] = status[0]->argv[0];
-
-		free(msg->argv);
-
-		msg->argv = new_argv;
-	
-		message[2] = msg;
-		*/
 		enviar_mensaje(msp_fd, message[2]);
-		//putmsg(message[2]);
-
+		
 		status[2] = recibir_mensaje(msp_fd);
-		//putmsg(status[2]);
 
 		if (MSP_WRITE_FAILURE(status[2]->header.id)) {
 			free(tcb);
@@ -387,15 +365,20 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 
 		if(tcb != NULL) {
 			tcb->segmento_codigo = status[0]->argv[0];
-			tcb->segmento_codigo_size = msg->header.length;
+			tcb->segmento_codigo_size = message[2]->header.length;
 			tcb->puntero_instruccion = tcb->segmento_codigo;
 			tcb->base_stack = status[1]->argv[0];
 			tcb->cursor_stack = tcb->base_stack;
 		}
+
+		destroy_message(message[2]);
+		destroy_message(status[2]);
 	}
 
-	for (i = 0; i < 6; i++)
+	for (i = 0; i < 2; i++) {
 		destroy_message(message[i]);
+		destroy_message(status[i]);
+	}
 
 	return tcb;
 }
@@ -409,13 +392,18 @@ int remove_from_lists(uint32_t sock_fd)
 		return console->sock_fd == sock_fd; 
 	}
 
+	pthread_mutex_lock(&console_list_mutex);
 	t_console *out_console = list_remove_by_condition(console_list, (void *) _remove_by_sock_fd_cnsl);
+	pthread_mutex_unlock(&console_list_mutex);
+
 
 	bool _remove_by_sock_fd_cpu(t_cpu *cpu) { 
 		return cpu->sock_fd == sock_fd; 
 	}
 
+	pthread_mutex_lock(&cpu_list_mutex);
 	t_cpu *out_cpu = list_remove_by_condition(cpu_list, (void *) _remove_by_sock_fd_cpu);
+	pthread_mutex_unlock(&cpu_list_mutex);
 
 	if (out_console != NULL) { 
 		/* Es una consola, finalizar todos sus procesos. Verificar que ninguno sea el hilo Kernel. */
@@ -447,7 +435,9 @@ int remove_from_lists(uint32_t sock_fd)
 					return a_cnsl->pid == out_cpu->pid;
 				}
 
+				pthread_mutex_lock(&console_list_mutex);
 				t_console *out_cons = list_find(console_list, (void *) _find_by_pid);
+				pthread_mutex_unlock(&console_list_mutex);
 
 				t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: CPU saliente.", 0);
 				enviar_mensaje(out_cons->sock_fd, msg);

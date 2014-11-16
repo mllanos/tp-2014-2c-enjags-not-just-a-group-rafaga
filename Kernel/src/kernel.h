@@ -123,6 +123,8 @@ t_queue *request_queue;
 pthread_mutex_t loader_mutex;
 pthread_mutex_t planificador_mutex;
 pthread_mutex_t unique_id_mutex[3];
+pthread_mutex_t console_list_mutex;
+pthread_mutex_t cpu_list_mutex;
 
 
 /* Semaphores. */

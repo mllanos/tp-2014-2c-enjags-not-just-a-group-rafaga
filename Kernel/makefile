@@ -8,7 +8,7 @@ FLAGS = -g
 all: directories kernel
 
 obj/%.o: src/%.c
-	$(CC) -c -o $@ $<
+	$(CC) $(FLAGS) -c -o $@ $<
 
 kernel: $(OBJ)
 	$(CC) $(FLAGS) $(OBJ) $(LIBS) -o $(OUT)

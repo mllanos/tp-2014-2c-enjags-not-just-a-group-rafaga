@@ -4,17 +4,12 @@ void *loader(void *arg)
 {
 	while (1) {
 		sem_wait(&sem_loader);
-		puts("AAAAAAAAAAAAAAAAAAAAAAAAAAAA");
 		pthread_mutex_lock(&loader_mutex);
 		t_msg *recibido = queue_pop(loader_queue);
-		puts("aaaaaaaaaaaaaaaaaaaaaaaaaa");
 		pthread_mutex_unlock(&loader_mutex);
 
 		uint32_t sock_fd = recibido->argv[0];
 		uint32_t new_pid = get_unique_id(THREAD_ID);
-
-		puts("ASIGNADO.");
-		sleep(3000);
 
 		/* New console. */
 		t_console *console = new_console(new_pid, sock_fd);
@@ -42,7 +37,10 @@ void *loader(void *arg)
 			log_trace(logger, "Encolando el hilo principal (TID %u) de la Consola %u a NEW.", new_tcb->tid, console->console_id);
 
 			/* Add console to list. */
+
+			pthread_mutex_lock(&console_list_mutex);
 			list_add(console_list, console);
+			pthread_mutex_unlock(&console_list_mutex);
 
 			/* Avisamos a planificador que hay una nueva consola. */
 			sem_post(&sem_planificador);

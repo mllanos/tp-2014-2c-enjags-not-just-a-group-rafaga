@@ -25,6 +25,8 @@
 *.hex
 # Temp
 *~
+# Bin files
+*.bin
 #Eclipse Directories
 Consola/Debug
 Consola/release

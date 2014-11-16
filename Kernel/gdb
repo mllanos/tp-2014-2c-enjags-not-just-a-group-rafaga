@@ -1,0 +1,2 @@
+#!/bin/bash
+gdb --args bin/Kernel config/kernel.conf
