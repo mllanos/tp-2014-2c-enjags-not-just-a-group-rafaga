@@ -1,0 +1,46 @@
+CPU:
+1) //si se intenta destruir un segmento con una dirección inválida, también abortamos?
+
+2) void getm (void) //cuantos bytes? 1 o sizeof(uint32_t)?
+
+3) void divr (void) //se tiene que informar por algun lado ZERO_DIV o se aborta como cualquier otro caso?
+loggeo en CPU y aborto.
+4) void shif (void) //revisar shift a derecha
+
+MSP:
+1) *OFFSET = (DIRLOG << 24) >> 24; //creo que no hace falta, asignándolo a un int de menor tamaño elimina los bits de más
+
+Controlar los cálculos de direcciones cuando hago desplazamientos a derecha (no pasa nada porque las direcciones son unsigned no?)
+
+2) //config_destroy(config);//por alguna razon no puedo accede al espacio de memoria de AlgoritmoSustitucion. Pasa lo mismo con el string error en atender consola.
+
+3) error = id_string(msg_id);//free(error); por alguna razon no puedo liberar este espacio de memoria. Pasa lo mismo con el string Algoritmo de config.
+
+4) Preguntar si los comandos de la MSP llevan algún nombre en especial
+
+5) verificar estructuras
+
+6) verificar la creacion de las paginas en swap durante la creacion del segmento.
+
+7) Preguntar que pasa si la memoria no se puede repartir en exactamente n marcos
+
+8) Preguntar si hay que dejar siempre minimo un lugar disponible en SWAP para hacer el intercambio
+
+Otros:
+
+1) Preguntar por el tema de los permisos de las carpetas.
+
+2) Preguntar si el logger deberia limpiar el log o no (el de las commons)
+
+3) Preguntar que onda el panel.
+
+4) Preguntar por los ESO que parecian tener errores (el de segfault y habia otro)
+
+5) Preguntar cuándo finalizan los procesos
+
+
+arreglar el tema de los registros en CPU (que se puedan usar todos, no solo los de programacion, en las instrucciones)
+
+creo que hay un bugg en el beso label.bc, carga mal los valores de las etiquetas al ensamblar
+
+el segfault.bc creo que está pifiando mal (leeria la 'A' y no tiraria segfault)

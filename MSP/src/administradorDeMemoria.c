@@ -223,7 +223,7 @@ t_msg_id destruirSegmento(uint32_t pid, uint32_t baseSegmento) {
 
 		/* Borra todas las páginas swappeadas del segmento */
 		if (cantPagEnMemoria < cantPaginas) {
-			shellInstruction = string_from_format("cd %s\nrm %s-%u-*", SWAP_PATH, stringPID, numeroSegmento);
+			shellInstruction = string_from_format("cd %s\nrm -f %s-%u-*", SWAP_PATH, stringPID, numeroSegmento);
 			system(shellInstruction);
 			free(shellInstruction);
 		}

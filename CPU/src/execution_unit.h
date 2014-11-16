@@ -18,10 +18,11 @@
 #include <panel/cpu_log.h>
 
 #define MAX_SHIF 31
+#define PID Registros.I
 #define OPERATION_CODE_SIZE 4
 #define stack_top Registros.S
 #define stack_size (Registros.S - Registros.X)
-#define PID (KernelMode == false? Registros.I : 0)
+#define PIDKM (KernelMode == false? Registros.I : 0)
 #define program_counter (Registros.M + Registros.P)
 
 typedef enum {A,B,C,D,E} t_registros_programacion;
@@ -52,10 +53,10 @@ void (*Instruccion)(void);
 #define fetch_numero() (int32_t) fetch_operand(NUMERO)
 #define fetch_direccion() (uint32_t) fetch_operand(DIRECCION)
 
-#define msp_memcpy(DEST,SOURCE,SIZE) escribir_memoria(DEST,solicitar_memoria(SOURCE,SIZE),SIZE)
+#define msp_memcpy(DEST,SOURCE,SIZE) escribir_memoria(PID,DEST,solicitar_memoria(PID,SOURCE,SIZE),SIZE)
 
 #define avanzar_puntero_instruccion() (Registros.P += Instruction_size)
-#define eu_fetch_instruccion(OC) OC = solicitar_memoria(program_counter,Instruction_size = OPERATION_CODE_SIZE)
+#define eu_fetch_instruccion(OC) OC = solicitar_memoria(PIDKM,program_counter,Instruction_size = OPERATION_CODE_SIZE)
 /* FIN Funciones Macro */
 
 /*Funciones de la UE (Unidad de Ejecución)*/
@@ -71,8 +72,8 @@ void eu_ejecutar(char *operation_code,uint32_t retardo);
 
 uint32_t crear_segmento(uint32_t size);
 void destruir_segmento(uint32_t baseSegmento);
-char* solicitar_memoria(uint32_t direccionLogica,uint32_t size);
-void escribir_memoria(uint32_t direccionLogica,char *bytesAEscribir,uint32_t size);
+char* solicitar_memoria(uint32_t pid,uint32_t direccionLogica,uint32_t size);
+void escribir_memoria(uint32_t pid,uint32_t direccionLogica,char *bytesAEscribir,uint32_t size);
 /*FIN_Funciones de la UE (Unidad de Ejecución)*/
 
 /* Set de Instrucciones */

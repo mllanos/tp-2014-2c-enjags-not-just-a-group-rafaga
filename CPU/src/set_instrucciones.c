@@ -36,7 +36,7 @@ void getm (void) {
 	uint8_t j = fetch_registro();
 
 	if(Execution_State != CPU_ABORT) {
-		char *buffer = solicitar_memoria(registro(j),1);
+		char *buffer = solicitar_memoria(PIDKM,registro(j),1);
 
 		if(buffer != NULL) {
 			memcpy(&registro(i),buffer,1);
@@ -56,7 +56,7 @@ void setm (void) {
 		memcpy(buffer,&registro(j),size);
 		buffer[size] = '\0';
 
-		escribir_memoria(registro(i),buffer,size);
+		escribir_memoria(PIDKM,registro(i),buffer,size);
 	}
 }
 
@@ -175,7 +175,7 @@ void jmpz (void) {
 	uint8_t dir = fetch_direccion();
 
 	if(registro(A) == 0 && Execution_State != CPU_ABORT)
-		Registros.P = dir;
+		Registros.P = dir - Instruction_size;
 }
 
 void jpnz (void) {
@@ -183,7 +183,7 @@ void jpnz (void) {
 	uint8_t dir = fetch_direccion();
 
 	if(registro(A) && Execution_State != CPU_ABORT)
-		Registros.P = dir;
+		Registros.P = dir - Instruction_size;
 }
 
 void inte (void) {
@@ -219,7 +219,7 @@ void eso_push (void) {
 
 	buffer[size] = '\0';
 
-	escribir_memoria(stack_top,buffer,size);
+	escribir_memoria(PIDKM,stack_top,buffer,size);
 
 	Registros.S += size;
 }
@@ -228,7 +228,7 @@ void take (void) {
 
 	int32_t size = fetch_numero();
 
-	char *buffer = solicitar_memoria(stack_top-size,size);
+	char *buffer = solicitar_memoria(PIDKM,stack_top-size,size);
 
 	if(buffer != NULL) {
 		memcpy(&registro(fetch_registro()),buffer,size);
@@ -310,7 +310,7 @@ void innc (void) {
 		exit(EXIT_FAILURE);
 	}
 
-	escribir_memoria(registro(A),msg->stream,registro(B));
+	escribir_memoria(PID,registro(A),msg->stream,registro(B));
 
 	destroy_message(msg);
 }
@@ -329,7 +329,7 @@ void outn (void) {
 
 void outc (void) {
 
-	char *buffer = solicitar_memoria(registro(A),registro(B));
+	char *buffer = solicitar_memoria(PID,registro(A),registro(B));
 
 	if(Execution_State != CPU_ABORT) {
 

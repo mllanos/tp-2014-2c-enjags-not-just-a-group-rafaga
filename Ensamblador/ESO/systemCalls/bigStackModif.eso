@@ -1,0 +1,29 @@
+LOAD A,#Hola
+ADDR A,M
+MOVR B,A^Donde esta el texto
+LOAD A,5^Loop counter
+:Loop
+GETM C,B^levanta 1 byte
+PUSH 1,C^y pushealo
+INCR B
+DECR A
+JPNZ #Loop^5 veces
+TAKE 4,A
+LOAD B,2
+SETM 4,B,A
+TAKE 1,A
+LOAD B,1
+SETM 1,B,A
+LOAD A,1
+LOAD B,5
+INTE OUTC
+XXXX
+DATA
+:Hola
+"Hola?
+
+^LOAD A,7777
+^INTE MALLOC
+^DATA
+^:texto
+^"hALo JoRGe!

@@ -100,7 +100,7 @@ int fetch_operand(t_operandos tipo_operando) {	//se puede mejorar con un Union
 	int32_t aux = 'A';
 
 	size = tipo_operando == REGISTRO ? sizeof(char) : sizeof(uint32_t);
-	buffer = solicitar_memoria(program_counter + Instruction_size,size);
+	buffer = solicitar_memoria(PIDKM,program_counter + Instruction_size,size);
 	Instruction_size += size;
 
 	if(buffer != NULL) {
@@ -153,11 +153,11 @@ uint32_t crear_segmento(uint32_t size) {
 	return aux;
 }
 
-char* solicitar_memoria(uint32_t direccionLogica,uint32_t size) {
+char* solicitar_memoria(uint32_t pid,uint32_t direccionLogica,uint32_t size) {
 
 	char *buffer = malloc(size);
 
-	t_msg *msg = argv_message(REQUEST_MEMORY,3,PID,direccionLogica,size);
+	t_msg *msg = argv_message(REQUEST_MEMORY,3,pid,direccionLogica,size);
 
 	if(enviar_mensaje(MSP,msg) == -1) {
 		puts("ERROR: Se ha perdido la conexión con la MSP.");
@@ -187,9 +187,9 @@ char* solicitar_memoria(uint32_t direccionLogica,uint32_t size) {
 
 }
 
-void escribir_memoria(uint32_t direccionLogica,char *bytesAEscribir,uint32_t size) {
+void escribir_memoria(uint32_t pid,uint32_t direccionLogica,char *bytesAEscribir,uint32_t size) {
 
-	t_msg *msg = string_message(WRITE_MEMORY,bytesAEscribir,2,PID,direccionLogica);
+	t_msg *msg = string_message(WRITE_MEMORY,bytesAEscribir,2,pid,direccionLogica);
 
 	msg->header.length = size;
 
