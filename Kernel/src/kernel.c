@@ -19,6 +19,7 @@ void initialize(char *config_path)
 	cpu_list = list_create();
 	resource_dict = dictionary_create();
 	join_dict = dictionary_create();
+	father_child_dict = dictionary_create();
 	loader_queue = queue_create();
 	planificador_queue = queue_create();
 	syscall_queue = queue_create();
@@ -28,7 +29,6 @@ void initialize(char *config_path)
 	pthread_mutex_init(&console_list_mutex, NULL);
 	pthread_mutex_init(&cpu_list_mutex, NULL);
 	pthread_mutex_init(&process_list_mutex, NULL);
-	pthread_mutex_init(&unique_id_mutex[THREAD_ID], NULL);
 	pthread_mutex_init(&unique_id_mutex[CONSOLE_ID], NULL);
 	pthread_mutex_init(&unique_id_mutex[CPU_ID], NULL);
 	sem_init(&sem_loader, 0, 0);
@@ -39,7 +39,7 @@ void initialize(char *config_path)
 
 	msp_fd = client_socket(get_ip_msp(), get_puerto_msp());
 	if (msp_fd < 0) {
-		log_error(logger, "Error conectando con MSP.");
+		log_error(logger, "No se pudo conectar con la MSP.");
 		exit(EXIT_FAILURE);
 	}
 
@@ -49,7 +49,7 @@ void initialize(char *config_path)
 
 void boot_kernel(void)
 {
-	log_trace(logger, "Reservando memoria para el KLT y cargando BESO de syscalls.");
+	log_trace(logger, "Reservando memoria para el el hilo de Kernel.");
 
 	klt_tcb = malloc(sizeof *klt_tcb);
 	klt_tcb->pid = 0;
@@ -61,13 +61,13 @@ void boot_kernel(void)
 	klt_tcb = reservar_memoria(klt_tcb, beso_message(INIT_CONSOLE, get_syscalls(), 0));
 	if (klt_tcb == NULL) {
 		/* Couldn't allocate memory. */
-		log_error(logger, "Error reservando memoria para el KLT.");
+		log_error(logger, "No se pudo reservar memoria para el hilo de Kernel.");
 		errno = ENOMEM;
 		perror("boot_kernel");
 		exit(EXIT_FAILURE);
 	}
 
-	log_trace(logger, "Bloqueando el KLT.");
+	log_trace(logger, "Bloqueando el hilo de Kernel.");
 
 	list_add(process_list, klt_tcb);
 }
@@ -250,7 +250,6 @@ void finalize(void)
 	pthread_mutex_destroy(&console_list_mutex);
 	pthread_mutex_destroy(&cpu_list_mutex);
 	pthread_mutex_destroy(&process_list_mutex);
-	pthread_mutex_destroy(&unique_id_mutex[THREAD_ID]);
 	pthread_mutex_destroy(&unique_id_mutex[CONSOLE_ID]);
 	pthread_mutex_destroy(&unique_id_mutex[CPU_ID]);
 	config_destroy(config);
@@ -260,6 +259,7 @@ void finalize(void)
 	list_destroy_and_destroy_elements(cpu_list, (void *) free);
 	dictionary_destroy_and_destroy_elements(resource_dict, (void *) free);
 	dictionary_destroy_and_destroy_elements(join_dict, (void *) free);
+	dictionary_destroy(father_child_dict);
 	queue_destroy_and_destroy_elements(loader_queue, (void *) destroy_message);
 	queue_destroy_and_destroy_elements(planificador_queue, (void *) destroy_message);
 	queue_destroy_and_destroy_elements(syscall_queue, (void *) free);
@@ -297,7 +297,7 @@ void interpret_message(int sock_fd, t_msg *recibido)
 		/* Mensajes de CPU que no necesitan el cpu_sock_fd. */
 		case CPU_CREA:											/* <TCB_STRING;> */
 		case CPU_INTERRUPT: 									/* <TCB_STRING; MEM_DIR> */
-		case CPU_JOIN:											/* <; CALLER_TID, WAITER_TID> */
+		case CPU_JOIN:											/* <; CALLER_TID, WAITER_TID, PROCESS_PID> */
 		case CPU_BLOCK:											/* <TCB_STRING; RESOURCE_ID> */
 		case CPU_WAKE:											/* <RESOURCE_ID> */
 		case NUMERIC_OUTPUT:									/* <; PID, NUMERIC> */
@@ -312,7 +312,7 @@ void interpret_message(int sock_fd, t_msg *recibido)
 			break;
 		default: 												/* Nunca deberia pasar. */
 			errno = EBADMSG;
-			log_error(logger, "Recibido ID de mensaje desconocido.");
+			log_error(logger, "ID desconocido en interpret_message.");
 			perror("interpret_message");
 			exit(EXIT_FAILURE);
 	}
@@ -337,8 +337,8 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 			free(tcb);
 			tcb = NULL;
 			cont = 0;
-			break;
 		} else if (!MSP_RESERVE_SUCCESS(status[i]->header.id)) {
+			log_error(logger, "ID desconocido en reservar_memoria.");
 			errno = EBADMSG;
 			perror("reservar_memoria");
 			exit(EXIT_FAILURE);
@@ -356,6 +356,7 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 			free(tcb);
 			tcb = NULL;
 		} else if (!MSP_WRITE_SUCCESS(status[2]->header.id)) {
+			log_error(logger, "ID desconocido en reservar_memoria.");
 			errno = EBADMSG;
 			perror("reservar_memoria");
 			exit(EXIT_FAILURE);
@@ -393,7 +394,7 @@ int remove_from_lists(uint32_t sock_fd)
 		/* Es una consola, finalizar todos sus procesos. Verificar que ninguno sea el hilo Kernel. */
 		//desconexion_consola(out_console->console_id);
 
-		log_trace(logger, "Desconexion Consola %u.", out_console->console_id);
+		log_trace(logger, "Desconexion Consola %u.", out_console->pid);
 
 		finalize_process_by_pid(out_console->pid);
 
@@ -408,7 +409,7 @@ int remove_from_lists(uint32_t sock_fd)
 			/* La CPU saliente tiene hilos ejecutando. */
 
 			if (out_cpu->kernel_mode == false) {
-				/* Es un ULT, avisar a la Consola para que se desconecte. */
+				/* Es un ULT. Avisar a la Consola para que se desconecte. */
 				t_console *out_cons = find_console_by_pid(out_cpu->pid);
 
 				t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: CPU saliente.", 0);
@@ -416,7 +417,7 @@ int remove_from_lists(uint32_t sock_fd)
 				destroy_message(msg);
 
 			} else 
-				/* Es el KLT, liberar recursos y salir del programa. */
+				/* Es el KLT. Liberar recursos y salir del programa. */
 				result = -1;
 
 			free(out_cpu);
@@ -434,7 +435,7 @@ int remove_from_lists(uint32_t sock_fd)
 
 uint32_t get_unique_id(t_unique_id id)
 {
-	static uint32_t unique_id[3] = {0, 0, 0};
+	static uint32_t unique_id[2] = {0, 0};
 	uint32_t ret;
 
 	pthread_mutex_lock(&unique_id_mutex[id]);

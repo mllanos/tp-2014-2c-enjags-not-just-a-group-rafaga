@@ -44,8 +44,7 @@
 #define get_syscalls() config_get_string_value(config, "SYSCALLS")
 
 
-typedef enum { 
-	THREAD_ID, 
+typedef enum {
 	CONSOLE_ID, 
 	CPU_ID 
 } t_unique_id;
@@ -109,6 +108,7 @@ t_list *cpu_list;
 /* Diccionarios. */
 t_dictionary *join_dict;
 t_dictionary *resource_dict;
+t_dictionary *father_child_dict;
 
 
 /* Colas. */

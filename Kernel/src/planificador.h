@@ -18,18 +18,6 @@ typedef struct {
 	t_hilo *blocked;
 } t_syscall;
 
-/*
-typedef struct {
-	uint32_t id_resource;
-	t_queue *queue;
-} t_resource;
-
-
-typedef struct {
-	uint32_t tid_waiter;
-	uint32_t tid_joined;
-} t_join;
-*/
 
 /* Funciones planificador. */
 
@@ -116,7 +104,7 @@ void create_thread(t_hilo *padre);
 /*
  * Bloquea al TCB caller hasta que el towait termine.
  */
-void join_thread(uint32_t tid_caller, uint32_t tid_towait);
+void join_thread(uint32_t tid_caller, uint32_t tid_towait, uint32_t process_pid);
 
 /*
  * Bloquea un TCB en base a un recurso.
@@ -137,13 +125,13 @@ t_cpu *find_cpu_by_sock_fd(uint32_t sock_fd);
 /* Funciones auxiliares de procesos. */
 void finalize_process_by_pid(uint32_t pid);
 void log_processes(char *message);
-t_hilo *find_process_by_tid(uint32_t tid, bool mutex_lock);
 void unlock_joined_processes(void);
 void kill_child_processes(void);
 void destroy_segments_on_exit(void);
 void remove_processes_on_exit(void);
 void new_processes_to_ready(void);
 void sort_processes_by_bprr(void);
+t_hilo *find_thread_by_pid_tid(uint32_t pid, uint32_t tid, bool mutex_lock);
 t_hilo *find_process_by_ready(void);
 
 

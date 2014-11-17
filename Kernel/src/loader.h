@@ -5,7 +5,6 @@
 
 
 typedef struct {
-	uint32_t console_id;
 	uint32_t pid;
 	uint32_t sock_fd;
 } t_console;
@@ -25,7 +24,7 @@ t_hilo *ult_tcb(uint32_t pid);
 /*
  * Crea una nueva estructura de consola.
  */
-t_console *new_console(uint32_t pid, uint32_t sock_fd);
+t_console *new_console(uint32_t sock_fd);
 
 /*
  * Funciones auxiliares de consola.
