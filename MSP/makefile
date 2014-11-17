@@ -8,7 +8,7 @@ FLAGS = -g
 all: directories msp
 
 obj/%.o: src/%.c
-	$(CC) -c -o $@ $<
+	$(CC) $(FLAGS) -c -o $@ $<
 
 msp: $(OBJ)
 	$(CC) $(FLAGS) $(OBJ) $(LIBS) -o $(OUT)

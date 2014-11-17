@@ -270,6 +270,7 @@ void interpret_message(int sock_fd, t_msg *recibido)
 		case CPU_CONNECT:										/* <;> */
 		case CPU_TCB:											/* <;> */
 		case CPU_ABORT:											/* <TCB_STRING;> */
+		case CPU_CREA:											/* <TCB_STRING;> */
 		case RETURN_TCB:										/* <TCB_STRING;> */
 		case FINISHED_THREAD:									/* <TCB_STRING;> */
 		case NUMERIC_INPUT: 									/* <; PID> */
@@ -280,7 +281,6 @@ void interpret_message(int sock_fd, t_msg *recibido)
 			sem_post(&sem_planificador);
 			break;
 		/* Mensajes de CPU que no necesitan el cpu_sock_fd. */
-		case CPU_CREA:											/* <TCB_STRING;> */
 		case CPU_INTERRUPT: 									/* <TCB_STRING; MEM_DIR> */
 		case CPU_JOIN:											/* <; CALLER_TID, WAITER_TID, PROCESS_PID> */
 		case CPU_BLOCK:											/* <TCB_STRING; RESOURCE_ID> */

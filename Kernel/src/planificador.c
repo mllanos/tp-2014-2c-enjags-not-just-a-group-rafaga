@@ -64,7 +64,7 @@ void *planificador(void *arg)
 				return_string_input(recibido->argv[0], recibido->stream);
 				break;
 			case CPU_CREA:
-				create_thread(retrieve_tcb(recibido));
+				create_thread(recibido->argv[0], retrieve_tcb(recibido));
 				break;
 			case CPU_JOIN:
 				join_thread(recibido->argv[0], recibido->argv[1], recibido->argv[2]);
@@ -372,7 +372,7 @@ void return_string_input(uint32_t cpu_sock_fd, char *stream)
 }
 
 
-void create_thread(t_hilo *padre)
+void create_thread(uint32_t cpu_sock_fd, t_hilo *padre)
 {
 	char *key = string_from_format("%u", padre->pid);
 	uint32_t *counter = dictionary_get(father_child_dict, key);
@@ -391,9 +391,16 @@ void create_thread(t_hilo *padre)
 	enviar_mensaje(msp_fd, create_stack);
 	t_msg *status_stack = recibir_mensaje(msp_fd);
 
+	uint32_t base_stack = status_stack->argv[0];
+
 	if (MSP_RESERVE_SUCCESS(status_stack->header.id)) { 
 		/* Memoria reservada, crear nuevo hilo y encolar a READY. */
 		log_trace(logger, "Reservada memoria para el stack del hilo (PID %u, TID %u). Encolando en READY.", padre->pid, new_tid);
+
+		t_msg *request_stack = argv_message(REQUEST_MEMORY, 3, padre->pid, padre->cursor_stack - padre->base_stack, get_stack_size());
+		enviar_mensaje(msp_fd, request_stack);
+		t_msg *write_stack = remake_message(WRITE_MEMORY, recibir_mensaje(msp_fd), 2, padre->pid, base_stack);
+		destroy_message(recibir_mensaje(msp_fd));
 
 		t_hilo *new_tcb = malloc(sizeof *new_tcb);
 		new_tcb->pid = padre->pid;
@@ -401,15 +408,19 @@ void create_thread(t_hilo *padre)
 		new_tcb->kernel_mode = false;
 		new_tcb->segmento_codigo = padre->segmento_codigo;
 		new_tcb->segmento_codigo_size = padre->segmento_codigo_size;
-		new_tcb->puntero_instruccion = 0;
-		new_tcb->base_stack = status_stack->argv[0];
-		new_tcb->cursor_stack = new_tcb->base_stack;
+		new_tcb->puntero_instruccion = padre->registros[1];
+		new_tcb->base_stack = base_stack;
+		new_tcb->cursor_stack = base_stack + padre->cursor_stack;
 		new_tcb->cola = READY;
 		memset(new_tcb->registros, 0, sizeof new_tcb->registros);
 
-		pthread_mutex_lock(&process_list_mutex);
-		list_add(process_list, new_tcb);
-		pthread_mutex_unlock(&process_list_mutex);
+		t_msg *crea_success = argv_message(CREA_OK, 1, new_tcb->tid);
+		enviar_mensaje(cpu_sock_fd, crea_success);
+
+		destroy_message(request_stack);
+		destroy_message(write_stack);
+		destroy_message(crea_success);
+
 	} else if (MSP_RESERVE_FAILURE(status_stack->header.id)) { 
 		/* No hay suficiente memoria, avisar a Consola. */
 		t_console *console = find_console_by_pid(padre->pid);

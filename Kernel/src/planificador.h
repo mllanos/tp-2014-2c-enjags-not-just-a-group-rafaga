@@ -99,7 +99,7 @@ void return_numeric_input(uint32_t cpu_sock_fd, int32_t number);
 /*
  * Creamos un nuevo TCB de iguall pid que el padre, reservamos el segmento y lo encolamos a READY.
  */
-void create_thread(t_hilo *padre);
+void create_thread(uint32_t cpu_sock_fd, t_hilo *padre);
 
 /*
  * Bloquea al TCB caller hasta que el towait termine.
