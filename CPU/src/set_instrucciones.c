@@ -172,7 +172,7 @@ void eso_goto (void) {
 
 void jmpz (void) {
 
-	uint8_t dir = fetch_direccion();
+	uint32_t dir = fetch_direccion();
 
 	if(registro(A) == 0 && Execution_State != CPU_ABORT)
 		Registros.P = dir - Instruction_size;
@@ -180,7 +180,7 @@ void jmpz (void) {
 
 void jpnz (void) {
 
-	uint8_t dir = fetch_direccion();
+	uint32_t dir = fetch_direccion();
 
 	if(registro(A) && Execution_State != CPU_ABORT)
 		Registros.P = dir - Instruction_size;
@@ -365,7 +365,7 @@ void crea (void) {
 
 void join (void) {
 
-	t_msg *msg = argv_message(CPU_JOIN,2,Hilo.tid,registro(A));
+	t_msg *msg = argv_message(CPU_JOIN,3,Hilo.tid,registro(A),PID);
 
 	if(enviar_mensaje(Kernel,msg) == -1) {
 		puts("ERROR: No se pudo solicitar el servicio requerido al Kernel.");
@@ -439,5 +439,6 @@ void inicializar_tabla_instrucciones(void) {
 	dictionary_put(SetInstruccionesProtegidas,"CREA",crea);
 	dictionary_put(SetInstruccionesProtegidas,"JOIN",join);
 	dictionary_put(SetInstruccionesProtegidas,"BLOK",blok);
+	dictionary_put(SetInstruccionesProtegidas,"WAKE",wake);
 
 }
