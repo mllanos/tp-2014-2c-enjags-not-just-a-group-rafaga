@@ -613,7 +613,7 @@ void kill_child_processes(void)
 void destroy_segments_on_exit_or_condition(bool kill_all)
 {
 	void _destroy_stack_segments_on_exit(t_hilo *a_tcb) {
-		if ((a_tcb->cola == EXIT || kill_all) && a_tcb->tid > 0) {
+		if (a_tcb->cola == EXIT || kill_all) {
 			t_msg *destroy_stack = argv_message(DESTROY_SEGMENT, 2, a_tcb->pid, a_tcb->base_stack);
 			enviar_mensaje(msp_fd, destroy_stack);
 			destroy_message(recibir_mensaje(msp_fd));
