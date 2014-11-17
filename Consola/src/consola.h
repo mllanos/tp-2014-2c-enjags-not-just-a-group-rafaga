@@ -17,6 +17,7 @@
 
 #define CONF_PATH "config/consola.conf"
 #define LOG_PATH "log/consola.log"
+#define A_LINE "%m[^\n]"
 
 #define get_ip_kernel() config_get_string_value(config, "IP_KERNEL")
 #define get_puerto_kernel() config_get_int_value(config, "PUERTO_KERNEL")

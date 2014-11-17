@@ -224,7 +224,7 @@ void eso_push (void) {
 
 	buffer[size] = '\0';
 
-	escribir_memoria(PIDKM,stack_top,buffer,size);
+	escribir_memoria(PID,stack_top,buffer,size);
 
 	Registros.S += size;
 }
@@ -233,7 +233,7 @@ void take (void) {
 
 	int32_t size = fetch_numero();
 
-	char *buffer = solicitar_memoria(PIDKM,stack_top-size,size);
+	char *buffer = solicitar_memoria(PID,stack_top-size,size);
 
 	if(buffer != NULL) {
 		memcpy(&registro(fetch_registro()),buffer,size);

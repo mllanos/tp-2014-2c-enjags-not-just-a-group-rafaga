@@ -1,6 +1,10 @@
 INTE INN
 INTE OUTN
+^LOAD A,#datos
 LOAD B,20
 INTE INC
 INTE OUTC
 XXXX
+DATA
+:datos
+"Cadena de al menos 20 caracteres.

@@ -27,9 +27,8 @@ int main(int argc, char **argv) {
 
 		while(Quantum || KernelMode) {
 
-			eu_fetch_instruccion(operation_code);
-
 			if(Execution_State != CPU_ABORT) {
+				eu_fetch_instruccion(operation_code);
 				eu_decode(operation_code);
 				eu_ejecutar(operation_code,retardo);
 				avanzar_puntero_instruccion();

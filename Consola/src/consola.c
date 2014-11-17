@@ -1,7 +1,5 @@
 #include "consola.h"
 
-char *get_line(char *s, size_t n, FILE *f);
-
 int main(int argc, char **argv)
 {
 
@@ -51,8 +49,8 @@ void receive_messages(void)
 
 int interpret_message(t_msg *recibido)
 {
+	char *aux;
 	char *str_input;
-	char *str_fmt;
 	int32_t num_input;
 	t_msg *msg;
 
@@ -61,7 +59,13 @@ int interpret_message(t_msg *recibido)
 	switch (recibido->header.id) {
 		case NUMERIC_INPUT:
 			puts("Ingrese un valor numerico.");
-			scanf("%d", &num_input);
+
+			while(scanf(A_LINE, &str_input) == 0 || sscanf(str_input, "%d%1s", &num_input, aux) != 1){
+				getchar();
+				puts("Argumentos inválidos, intentelo de nuevo.");
+			}
+			getchar();
+
 			/* Adjuntamos el cpu_sock_fd del mensaje recibido. */
 			msg = argv_message(REPLY_NUMERIC_INPUT, 2, recibido->argv[0], num_input);
 			enviar_mensaje(kernel_fd, msg);
@@ -70,14 +74,20 @@ int interpret_message(t_msg *recibido)
 		case STRING_INPUT:
 			printf("Ingrese un literal cadena de tamaño: %u.\n",recibido->argv[1]);
 			/* Adjuntamos el cpu_sock_fd del mensaje recibido. */
-			str_input = malloc(recibido->argv[1] + 1);
-			str_fmt = string_from_format("%%%ds", recibido->argv[1]);
-			scanf(str_fmt, str_input);
+
+			while(scanf(A_LINE, &str_input) == 0) {
+				getchar();
+				puts("Argumentos inválidos, intentelo de nuevo.");
+			}
+			getchar();
+
+			if(strlen(str_input) > recibido->argv[1])
+				str_input[recibido->argv[1]] = '\0';
+
 			msg = string_message(REPLY_STRING_INPUT, str_input, 1, recibido->argv[0]);
 			enviar_mensaje(kernel_fd, msg);
 			destroy_message(msg);
 			free(str_input);
-			free(str_fmt);
 			break;
 		case NUMERIC_OUTPUT:
 			printf("Número recibido: %d\n", recibido->argv[0]);
@@ -101,12 +111,4 @@ void finalize(void)
 {
 	log_destroy(logger);
 	config_destroy(config);
-}
-
-char *get_line(char *s, size_t n, FILE *f)
-{
-  char *p = fgets(s, n, f);
-
-  if (p != NULL) strtok (s, "\n");
-  return p;
 }
