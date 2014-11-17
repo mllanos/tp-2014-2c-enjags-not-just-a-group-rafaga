@@ -13,7 +13,7 @@ void *planificador(void *arg)
 			recibido = queue_pop(planificador_queue);
 			pthread_mutex_unlock(&planificador_mutex);
 		} else {
-			if(list_is_empty(cpu_list) == false) {
+			if(!list_is_empty(cpu_list)) {
 				bprr_algorithm();
 				assign_processes();
 			}
@@ -180,7 +180,7 @@ void cpu_abort(uint32_t sock_fd, t_hilo *tcb)
 		if(queue_is_empty(syscall_queue) == false) {
 			/* Todavia hay syscalls que atender. Cargar el proximo proceso bloqueado por syscalls. */
 			t_syscall *to_load = queue_peek(syscall_queue);
-			memcpy(klt_tcb->registros, to_load->blocked->registros, sizeof(int32_t) * 5);
+			memcpy(klt_tcb->registros, to_load->blocked->registros, sizeof to_load->blocked->registros);
 			klt_tcb->pid = to_load->blocked->pid;
 			klt_tcb->tid = to_load->blocked->tid;
 			klt_tcb->puntero_instruccion = to_load->call_dir;
@@ -256,7 +256,7 @@ void finish_process(uint32_t sock_fd, t_hilo *tcb)
 	} else { 
 		/* Recibido KLT, copiamos registros al proceso bloqueado por syscalls y lo encolamos a READY. */
 		t_syscall *syscall = queue_pop(syscall_queue);
-		memcpy(syscall->blocked->registros, tcb->registros, sizeof(int32_t) * 5);
+		memcpy(syscall->blocked->registros, tcb->registros, sizeof tcb->registros);
 		syscall->blocked->cola = READY;
 
 		log_trace(logger, "Desbloqueando ULT %u. Motivo: syscall finalizada.", tcb->tid);
@@ -403,7 +403,7 @@ void create_thread(t_hilo *padre)
 
 		log_warning(logger, "Error al reservar memoria para el ULT hijo %u.", new_tid);
 
-		t_msg *msg = string_message(KILL_CONSOLE, "No se pudo reservar memoria en la MSP para un hilo nuevo.", 0);
+		t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: no se pudo reservar memoria en la MSP para un hilo nuevo.", 0);
 		enviar_mensaje(console->sock_fd, msg);
 		destroy_message(msg);
 	} else {

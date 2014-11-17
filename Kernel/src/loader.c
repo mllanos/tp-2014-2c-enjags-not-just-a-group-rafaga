@@ -103,11 +103,11 @@ void inform_consoles_without_active_processes(void)
 {
 	void _inform_consoles_without_active_processes(t_console *a_cnsl) {
 		bool _find_active_by_pid(t_hilo *a_tcb) {
-			return a_tcb->pid == a_cnsl->pid;
+			return a_tcb->pid == a_cnsl->pid && a_tcb->kernel_mode == false;
 		}
 
 		if (list_count_satisfying(process_list, (void *) _find_active_by_pid) == 0) {
-			t_msg *msg = string_message(KILL_CONSOLE, "Finalizando Consola. Motivo: fin de ejecucion.", 0);
+			t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: fin de ejecucion.", 0);
 			enviar_mensaje(a_cnsl->sock_fd, msg);
 			destroy_message(msg);
 		}
