@@ -177,6 +177,9 @@ void cpu_abort(uint32_t sock_fd, t_hilo *tcb)
 
 	if(tcb->kernel_mode == true) {
 		/* Abortado hilo de Kernel. */
+
+		queue_pop(syscall_queue);
+
 		if(queue_is_empty(syscall_queue) == false) {
 			/* Todavia hay syscalls que atender. Cargar el proximo proceso bloqueado por syscalls. */
 			t_syscall *to_load = queue_peek(syscall_queue);
