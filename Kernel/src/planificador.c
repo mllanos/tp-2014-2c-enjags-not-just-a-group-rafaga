@@ -400,6 +400,7 @@ void create_thread(uint32_t cpu_sock_fd, t_hilo *padre)
 		t_msg *request_stack = argv_message(REQUEST_MEMORY, 3, padre->pid, padre->cursor_stack - padre->base_stack, get_stack_size());
 		enviar_mensaje(msp_fd, request_stack);
 		t_msg *write_stack = remake_message(WRITE_MEMORY, recibir_mensaje(msp_fd), 2, padre->pid, base_stack);
+		enviar_mensaje(msp_fd, write_stack);
 		destroy_message(recibir_mensaje(msp_fd));
 
 		t_hilo *new_tcb = malloc(sizeof *new_tcb);
