@@ -92,7 +92,6 @@ int remove_from_lists(uint32_t sock_fd);
 
 /* Funciones auxiliares. */
 uint32_t get_unique_id(t_unique_id id);
-char *string_cola(t_cola cola);
 static int make_socket_non_blocking(int sfd);
 
 
@@ -125,6 +124,7 @@ pthread_mutex_t planificador_mutex;
 pthread_mutex_t unique_id_mutex[3];
 pthread_mutex_t console_list_mutex;
 pthread_mutex_t cpu_list_mutex;
+pthread_mutex_t process_list_mutex;
 
 
 /* Semaphores. */
@@ -139,5 +139,9 @@ pthread_t planificador_th;
 
 /* File descriptors. */
 int msp_fd;
+
+
+/* TCB de hilo de Kernel. */
+t_hilo *klt_tcb;
 
 #endif

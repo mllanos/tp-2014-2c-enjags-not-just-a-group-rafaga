@@ -28,9 +28,7 @@ void *loader(void *arg)
 			destroy_message(msg);
 		} else {
 			/* Add NEW process to list. */
-			int i;
-			for (i = 0; i < 5; i++)
-				new_tcb->registros[i] = 0;
+			memset(new_tcb->registros, 0, sizeof new_tcb->registros);
 			new_tcb->cola = NEW;
 			list_add(process_list, new_tcb);
 
@@ -59,6 +57,7 @@ t_hilo *ult_tcb(uint32_t pid)
 	return new;
 }
 
+
 t_console *new_console(uint32_t pid, uint32_t sock_fd)
 {
 	t_console *new = malloc(sizeof *new);
@@ -67,4 +66,51 @@ t_console *new_console(uint32_t pid, uint32_t sock_fd)
 	new->sock_fd = sock_fd;
 
 	return new;
+}
+
+
+t_console *find_console_by_pid(uint32_t pid)
+{
+	bool _find_by_pid(t_console *a_cnsl) {
+		return a_cnsl->pid == pid;
+	}
+
+	pthread_mutex_lock(&console_list_mutex);
+	t_console *found = list_find(console_list, (void *) _find_by_pid);
+	pthread_mutex_unlock(&console_list_mutex);
+
+	return found;
+}
+
+t_console *remove_console_by_sock_fd(uint32_t sock_fd)
+{
+	bool _remove_console_by_sock_fd(t_console *a_cnsl) { 
+		return a_cnsl->sock_fd == sock_fd; 
+	}
+
+	pthread_mutex_lock(&console_list_mutex);
+	t_console *removed = list_remove_by_condition(console_list, (void *) _remove_console_by_sock_fd);
+	pthread_mutex_unlock(&console_list_mutex);
+
+	return removed;
+}
+
+
+void inform_consoles_without_active_processes(void)
+{
+	void _inform_consoles_without_active_processes(t_console *a_cnsl) {
+		bool _find_active_by_pid(t_hilo *a_tcb) {
+			return a_tcb->pid == a_cnsl->pid;
+		}
+
+		if (list_count_satisfying(process_list, (void *) _find_active_by_pid) == 0) {
+			t_msg *msg = string_message(KILL_CONSOLE, "Finalizando Consola. Motivo: fin de ejecucion.", 0);
+			enviar_mensaje(a_cnsl->sock_fd, msg);
+			destroy_message(msg);
+		}
+	}
+
+	pthread_mutex_lock(&console_list_mutex);
+	list_iterate(console_list, (void *) _inform_consoles_without_active_processes);
+	pthread_mutex_unlock(&console_list_mutex);
 }

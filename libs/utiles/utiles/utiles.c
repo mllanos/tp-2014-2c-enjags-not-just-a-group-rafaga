@@ -542,7 +542,7 @@ void write_file(char *path, char *data, size_t size) {
 }
 
 
-void putmsg(t_msg *msg)
+void print_msg(t_msg *msg)
 {
 	int i;
 	puts("\n==================================================");
@@ -690,4 +690,23 @@ void print_tcb(t_hilo *tcb)
 		printf("Registro %c. Valor:		%8d\n",('A'+i), tcb->registros[i]);
 	printf("Registro COLA:			%8d\n", tcb->cola);
 	puts("\n");
+}
+
+
+char *string_cola(t_cola cola)
+{
+	switch(cola) {
+		case NEW:
+			return "NEW";
+		case READY:
+			return "READY";
+		case BLOCK:
+			return "BLOCK";
+		case EXEC:
+			return "EXEC";
+		case EXIT:
+			return "EXIT";
+		default:
+			return NULL;
+	}
 }

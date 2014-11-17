@@ -262,10 +262,10 @@ void seedgen(void);
 /*
  * Muestra los contenidos y argumentos de un t_msg.
  */
-void putmsg(t_msg *msg);
+void print_msg(t_msg *msg);
 
 /*
- * Funcion auxiliar para putmsg().
+ * Convierte t_msg_id a string.
  */
 char *id_string(t_msg_id id);
 
@@ -273,6 +273,12 @@ char *id_string(t_msg_id id);
  * Recupera los contenidos de un tcb cargado a mensaje.
  */
 t_hilo *retrieve_tcb(t_msg *msg);
+
+/*
+ * Convierte t_cola a string.
+ */
+char *string_cola(t_cola cola);
+
 
 void print_tcb(t_hilo *tcb);
 

@@ -128,4 +128,23 @@ void block_thread(uint32_t resource, t_hilo *tcb);
  */
 void wake_thread(uint32_t resource);
 
+
+/* Funciones auxiliares de CPU. */
+t_cpu *remove_cpu_by_sock_fd(uint32_t sock_fd);
+t_cpu *find_cpu_by_sock_fd(uint32_t sock_fd);
+
+
+/* Funciones auxiliares de procesos. */
+void finalize_process_by_pid(uint32_t pid);
+void log_processes(char *message);
+t_hilo *find_process_by_tid(uint32_t tid, bool mutex_lock);
+void unlock_joined_processes(void);
+void kill_child_processes(void);
+void destroy_segments_on_exit(void);
+void remove_processes_on_exit(void);
+void new_processes_to_ready(void);
+void sort_processes_by_bprr(void);
+t_hilo *find_process_by_ready(void);
+
+
 #endif

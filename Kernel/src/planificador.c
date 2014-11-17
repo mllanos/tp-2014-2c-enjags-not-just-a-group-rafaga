@@ -9,14 +9,14 @@ void *planificador(void *arg)
 		//hilos(process_list);
 
 		if (!queue_is_empty(planificador_queue)) {
-			/* Mensaje entrante. */
 			pthread_mutex_lock(&planificador_mutex);
 			recibido = queue_pop(planificador_queue);
 			pthread_mutex_unlock(&planificador_mutex);
 		} else {
-			/* Aviso de loader por Consola nueva. */
-			bprr_algorithm();
-			assign_processes();
+			if(list_is_empty(cpu_list) == false) {
+				bprr_algorithm();
+				assign_processes();
+			}
 			continue;
 		}
 
@@ -86,129 +86,15 @@ void *planificador(void *arg)
 void bprr_algorithm(void)
 {
 	log_trace(logger, "Ejecutando el algoritmo BPRR.");
-
-	char *string_proc = string_new();
-
-	void _log_processes(t_hilo *a_tcb) {
-		string_append_with_format(&string_proc, "%s{ PID: %u, TID: %u, %s, %s }", string_is_empty(string_proc) ? "" : ", ", 
-			a_tcb->pid, a_tcb->tid, string_cola(a_tcb->cola), a_tcb->kernel_mode ? "KLT" : "ULT");
-	}
-
-	list_iterate(process_list, (void *) _log_processes);
-
-	log_trace(logger, "Antes de algoritmo:\n\t[%s]", string_proc);
-
-	free(string_proc);
-
-	/* Muevo los procesos de NEW a READY. */
-
-	void _new_to_ready(t_hilo *a_tcb) {
-		if (a_tcb->cola == NEW)
-			a_tcb->cola = READY;
-	}
-
-	list_iterate(process_list, (void *) _new_to_ready);
-
-	/* Desbloquear los hilos que se hayan unido a un hilo EXIT. */
-
-	void _desbloquear_join(t_hilo *a_tcb) {
-		if (a_tcb->cola == EXIT) {
-			int *tid_caller = dictionary_get(join_dict, string_from_format("%u", a_tcb->tid));
-			if (tid_caller != NULL) {
-				bool _process_by_tid(t_hilo *b_tcb) {
-					return b_tcb->tid == *tid_caller;
-				}
-
-				t_hilo *desbloqueado = list_find(process_list, (void *) _process_by_tid);
-				desbloqueado->cola = READY;
-
-				log_trace(logger, "Desbloqueando ULT %u. Motivo: fin ULT joined (%u).",
-					desbloqueado->tid, a_tcb->tid);
-			}
-		}
-	}
-
-	list_iterate(process_list, (void *) _desbloquear_join);
-
-	/* Pongo en EXIT a los hijos de un hilo EXIT. */
-
-	void _matar_hijos(t_hilo *a_tcb) {
-		if (a_tcb->pid == a_tcb->tid && a_tcb->cola == EXIT) {
-			/* TCB es padre y esta en EXIT. Buscar a sus hijos que no esten en EXIT. */
-			void _setear_exit(t_hilo *b_tcb) {
-				if (b_tcb->pid == a_tcb->pid && b_tcb->pid != b_tcb->tid && b_tcb->cola != EXIT) {
-					b_tcb->cola = EXIT;
-					log_trace(logger, "Finalizando ULT %u. Motivo: fin ULT padre.", b_tcb->tid);
-				}
-			}
-
-			list_iterate(process_list, (void *) _setear_exit);
-		}
-	}
-
-	list_iterate(process_list, (void *) _matar_hijos);
-
-	/* Liberar los segmentos de los procesos EXIT. */
-
-	void _destroy_segments_on_exit(t_hilo *a_tcb) {
-		if (a_tcb->cola == EXIT) {
-			t_msg *destroy_code = argv_message(DESTROY_SEGMENT, 2, a_tcb->tid, a_tcb->segmento_codigo);
-			t_msg *destroy_stack = argv_message(DESTROY_SEGMENT, 2, a_tcb->tid, a_tcb->base_stack);
-			if (a_tcb->tid == a_tcb->pid) {
-				enviar_mensaje(msp_fd, destroy_code);
-				destroy_message(recibir_mensaje(msp_fd));
-			}
-			enviar_mensaje(msp_fd, destroy_stack);
-			destroy_message(recibir_mensaje(msp_fd));
-
-			destroy_message(destroy_code);
-			destroy_message(destroy_stack);
-		}
-	}
-
-	list_iterate(process_list, (void *) _destroy_segments_on_exit);
-
-	/* Sacar de la lista a los procesos EXIT. */
-
-	bool _on_exit(t_hilo *a_tcb) {
-		return a_tcb->cola == EXIT;
-	}
-
-	list_remove_and_destroy_by_condition(process_list, (void *) _on_exit, (void *) free);
-
-	/* Ordeno los procesos por kernel_mode si son READY, sino por cola. */
-
-	bool _sort_bprr(t_hilo *a_tcb, t_hilo *b_tcb) {
-		if (a_tcb->cola == READY && b_tcb->cola == READY)
-			return a_tcb->kernel_mode > b_tcb->kernel_mode;
-		return a_tcb->cola < b_tcb->cola;
-	}
-
-	list_sort(process_list, (void *) _sort_bprr);
-
-	string_proc = string_new();
-
-	list_iterate(process_list, (void *) _log_processes);
-
-	log_trace(logger, "Despues de algoritmo:\n\t[%s]", string_proc);
-
-	free(string_proc);
-
-	/* Informo a las Consolas sin hilos activos que finalizen. */
-
-	void _inform_console(t_console *a_cnsl) {
-		bool _find_active_by_pid(t_hilo *a_tcb) {
-			return a_tcb->pid == a_cnsl->pid;
-		}
-
-		if (list_count_satisfying(process_list, (void *) _find_active_by_pid) == 0) {
-			t_msg *msg = string_message(KILL_CONSOLE, "Finalizando Consola. Motivo: fin de ejecucion.", 0);
-			enviar_mensaje(a_cnsl->sock_fd, msg);
-			destroy_message(msg);
-		}
-	}
-
-	list_iterate(console_list, (void *) _inform_console);
+	log_processes("Antes del algoritmo");	
+	new_processes_to_ready();
+	unlock_joined_processes();
+	kill_child_processes();
+	destroy_segments_on_exit();
+	remove_processes_on_exit();
+	sort_processes_by_bprr();
+	log_processes("Despues del algoritmo");
+	inform_consoles_without_active_processes();
 }
 
 
@@ -216,14 +102,10 @@ void assign_processes(void)
 {
 	while(!queue_is_empty(request_queue)) {
 		/* Buscamos el primer proceso READY si es que existe. */
-		bool _find_by_ready(t_hilo *a_tcb) {
-			return a_tcb->cola == READY;
-		}
 
-		t_hilo *tcb = list_find(process_list, (void *) _find_by_ready);
+		t_hilo *tcb = find_process_by_ready();
 		if (tcb == NULL) 
 			return;
-
 
 		tcb->cola = EXEC;
 
@@ -250,15 +132,16 @@ void assign_processes(void)
 void cpu_add(uint32_t sock_fd)
 {
 	t_cpu *new_cpu = malloc(sizeof *new_cpu);
-
 	new_cpu->cpu_id = get_unique_id(CPU_ID);
 	new_cpu->sock_fd = sock_fd;
-	new_cpu->pid = -1;
-	new_cpu->tid = -1;
+	new_cpu->pid = 0;
+	new_cpu->tid = 0;
 	new_cpu->disponible = true;
 	new_cpu->kernel_mode = false;
 
+	pthread_mutex_lock(&cpu_list_mutex);
 	list_add(cpu_list, new_cpu);
+	pthread_mutex_unlock(&cpu_list_mutex);
 
 	conexion_cpu(new_cpu->cpu_id);
 	log_trace(logger, "Nueva conexion de CPU %u.", new_cpu->cpu_id);
@@ -266,39 +149,24 @@ void cpu_add(uint32_t sock_fd)
 
 void cpu_queue(uint32_t sock_fd)
 {
-	bool _find_by_sock_fd(t_cpu *a_cpu) {
-		return a_cpu->sock_fd == sock_fd;
-	}
-
-	t_cpu *cpu = list_find(cpu_list, (void *) _find_by_sock_fd);
-
+	t_cpu *cpu = find_cpu_by_sock_fd(sock_fd);
 	queue_push(request_queue, cpu);
 	log_trace(logger, "Encolando pedido de TCB de CPU %u.", cpu->cpu_id);
 }
 
 
-void cpu_abort(uint32_t sock_fd, t_hilo *tcb) {
-	/* Seteamos la CPU a disponible. */
-	bool _find_cpu_by_sock_fd(t_cpu *a_cpu) {
-		return a_cpu->sock_fd == sock_fd;
-	}
-
-	t_cpu *cpu = list_find(cpu_list, (void *) _find_cpu_by_sock_fd);
+void cpu_abort(uint32_t sock_fd, t_hilo *tcb)
+{
+	t_cpu *cpu = find_cpu_by_sock_fd(sock_fd);
 	cpu->disponible = true;
 
-	log_trace(logger, "Liberando CPU %u. Motivo: abortando proceso (PID %u).", 
-		cpu->cpu_id, tcb->pid);
+	log_trace(logger, "Liberando CPU %u. Motivo: abortando proceso (PID %u).", cpu->cpu_id, tcb->pid);
 
 	print_tcb(tcb);
 	
 	/* Finalizamos la consola del proceso. */
-	bool _find_console_by_pid(t_console *a_cnsl) {
-		return a_cnsl->pid == tcb->pid;
-	}
 
-	pthread_mutex_lock(&console_list_mutex);
-	t_console *console = list_find(console_list, (void *) _find_console_by_pid);
-	pthread_mutex_unlock(&console_list_mutex);
+	t_console *console = find_console_by_pid(tcb->pid);
 
 	t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: abort.", 0);
 	enviar_mensaje(console->sock_fd, msg);
@@ -306,26 +174,19 @@ void cpu_abort(uint32_t sock_fd, t_hilo *tcb) {
 
 	if(tcb->kernel_mode == true) {
 		/* Abortado hilo de Kernel. */
-
-		bool _find_by_kernel_mode(t_hilo *a_tcb) {
-			return a_tcb->kernel_mode;
-		}
-
-		t_hilo *tcb_klt = list_find(process_list, (void *) _find_by_kernel_mode);
-
 		if(queue_is_empty(syscall_queue) == false) {
 			/* Todavia hay syscalls que atender. Cargar el proximo proceso bloqueado por syscalls. */
 			t_syscall *to_load = queue_peek(syscall_queue);
-			memcpy(tcb_klt->registros, to_load->blocked->registros, sizeof(int32_t) * 5);
-			tcb_klt->pid = to_load->blocked->pid;
-			tcb_klt->tid = to_load->blocked->tid;
-			tcb_klt->puntero_instruccion = to_load->call_dir;
-			tcb_klt->cola = READY;
+			memcpy(klt_tcb->registros, to_load->blocked->registros, sizeof(int32_t) * 5);
+			klt_tcb->pid = to_load->blocked->pid;
+			klt_tcb->tid = to_load->blocked->tid;
+			klt_tcb->puntero_instruccion = to_load->call_dir;
+			klt_tcb->cola = READY;
 			log_trace(logger, "Cargando KLT. Motivo: atender syscalls (TID %u, puntero instruccion protegida %u).",
 				to_load->blocked->pid, to_load->blocked->tid, to_load->call_dir);
 		} else {
 			/* Ya no hay mas syscalls. Encolar el KLT a BLOCK. */
-			tcb_klt->cola = BLOCK;
+			klt_tcb->cola = BLOCK;
 			log_trace(logger, "Bloqueando el KLT.");
 		}
 	}
@@ -350,11 +211,7 @@ void return_process(uint32_t sock_fd, t_hilo *tcb)
 		cpu->cpu_id, tcb->tid, tcb->kernel_mode ? "KLT" : "ULT");
 
 	/* Actualizamos el tcb recibido y lo encolamos a READY si es que existe. */
-	bool _find_by_tid(t_hilo *a_tcb) {
-		return a_tcb->tid == tcb->tid;
-	}
-
-	t_hilo *to_update = list_find(process_list, (void *) _find_by_tid);
+	t_hilo *to_update = find_process_by_tid(tcb->tid, true);
 
 	if (to_update != NULL) {
 		log_trace(logger, "Actualizando el TCB del ULT %u.", tcb->tid);
@@ -371,12 +228,9 @@ void return_process(uint32_t sock_fd, t_hilo *tcb)
 void finish_process(uint32_t sock_fd, t_hilo *tcb)
 {
 	print_tcb(tcb);
-	/* Seteamos la CPU a disponible. */
-	bool _find_by_sock_fd(t_cpu *a_cpu) {
-		return a_cpu->sock_fd == sock_fd;
-	}
 
-	t_cpu *cpu = list_find(cpu_list, (void *) _find_by_sock_fd);
+	/* Seteamos la CPU a disponible. */
+	t_cpu *cpu = find_cpu_by_sock_fd(sock_fd);
 	cpu->disponible = true;
 
 	log_trace(logger, "Desocupando CPU %u. Motivo: fin de ejecucion hilo (TID %u, %s).", 
@@ -385,15 +239,14 @@ void finish_process(uint32_t sock_fd, t_hilo *tcb)
 
 	if (tcb->kernel_mode == false) { 
 		/* Recibido ULT, actualizamos el tcb recibido y lo encolamos a EXIT si es que existe. */
-		bool _find_by_tid(t_hilo *a_tcb) {
-			return a_tcb->tid == tcb->tid;
-		}
 
-		t_hilo *finished = list_find(process_list, (void *) _find_by_tid);
+		t_hilo *finished = find_process_by_tid(tcb->tid, true);
+
 		if (finished != NULL) {
 			/* Si existe actualizamos TCB y encolamos a EXIT. */
 			memcpy(finished, tcb, sizeof *tcb);
 			finished->cola = EXIT;
+
 			log_trace(logger, "Encolando hilo (TID %u) a EXIT.", tcb->pid, tcb->tid);
 		} else 
 			log_warning(logger, "El hilo (TID %u) ya no existe.", tcb->pid, tcb->tid);
@@ -402,28 +255,23 @@ void finish_process(uint32_t sock_fd, t_hilo *tcb)
 		t_syscall *syscall = queue_pop(syscall_queue);
 		memcpy(syscall->blocked->registros, tcb->registros, sizeof(int32_t) * 5);
 		syscall->blocked->cola = READY;
+
 		log_trace(logger, "Desbloqueando ULT %u. Motivo: syscall finalizada.", tcb->tid);
-
-		/* Buscamos el KLT. */
-
-		bool _find_by_kernel_mode(t_hilo *a_tcb) {
-			return a_tcb->kernel_mode;
-		}
-
-		t_hilo *tcb_klt = list_find(process_list, (void *) _find_by_kernel_mode);
 
 		if(queue_is_empty(syscall_queue) == false) {
 			/* Todavia hay syscalls que atender. Cargar el proximo proceso bloqueado por syscalls. */
 			t_syscall *to_load = queue_peek(syscall_queue);
-			memcpy(tcb_klt->registros, to_load->blocked->registros, sizeof(int32_t) * 5);
-			tcb_klt->pid = to_load->blocked->pid;
-			tcb_klt->tid = to_load->blocked->tid;
-			tcb_klt->puntero_instruccion = to_load->call_dir;
+			memcpy(klt_tcb->registros, to_load->blocked->registros, sizeof(int32_t) * 5);
+			klt_tcb->pid = to_load->blocked->pid;
+			klt_tcb->tid = to_load->blocked->tid;
+			klt_tcb->puntero_instruccion = to_load->call_dir;
+
 			log_trace(logger, "Cargando KLT. Motivo: atender syscalls (TID %u, puntero instruccion protegida %u).",
 				to_load->blocked->pid, to_load->blocked->tid, to_load->call_dir);
 		} else {
 			/* Ya no hay mas syscalls. Encolar el KLT a BLOCK. */
-			tcb_klt->cola = BLOCK;
+			klt_tcb->cola = BLOCK;
+
 			log_trace(logger, "Bloqueando el KLT.");
 		}
 	}
@@ -436,11 +284,7 @@ void syscall_start(uint32_t call_dir, t_hilo *tcb)
 {
 	/* Seteamos TCB a BLOCK y lo encolamos en la cola de syscalls. */
 
-	bool _find_by_tid(t_hilo *a_tcb) {
-		return a_tcb->tid == tcb->tid;
-	}
-
-	t_hilo *blocked = list_find(process_list, (void *) _find_by_tid);
+	t_hilo *blocked = find_process_by_tid(tcb->tid, true);
 	memcpy(blocked, tcb, sizeof *tcb);
 	blocked->cola = BLOCK;
 
@@ -450,23 +294,15 @@ void syscall_start(uint32_t call_dir, t_hilo *tcb)
 	new_syscall->call_dir = call_dir;
 	new_syscall->blocked = blocked;
 
-	queue_push(syscall_queue, new_syscall);
+	queue_push(syscall_queue, new_syscall);;
 
-	/* Buscamos el KLT. */
-
-	bool _find_kernel_tcb(t_hilo *a_tcb) {
-		return a_tcb->kernel_mode;
-	}
-
-	t_hilo *tcb_klt = list_find(process_list, (void *) _find_kernel_tcb);
-
-	if(tcb_klt->cola == BLOCK) {
+	if(klt_tcb->cola == BLOCK) {
 		/* KLT libre, cargar datos de tcb y encolar a READY. */
-		memcpy(tcb_klt->registros, tcb->registros, sizeof(int32_t) * 5);
-		tcb_klt->pid = tcb->pid;
-		tcb_klt->tid = tcb->tid;
-		tcb_klt->puntero_instruccion = call_dir;
-		tcb_klt->cola = READY;
+		memcpy(klt_tcb->registros, tcb->registros, sizeof(int32_t) * 5);
+		klt_tcb->pid = tcb->pid;
+		klt_tcb->tid = tcb->tid;
+		klt_tcb->puntero_instruccion = call_dir;
+		klt_tcb->cola = READY;
 
 		log_trace(logger, "Desbloqueando y cargando KLT. Motivo: atender syscalls (TID %u, puntero instruccion protegida %u).",
 			blocked->pid, blocked->tid, call_dir);
@@ -478,12 +314,7 @@ void syscall_start(uint32_t call_dir, t_hilo *tcb)
 
 void numeric_input(uint32_t cpu_sock_fd, uint32_t tcb_pid)
 {
-	bool _find_by_pid(t_console *a_cnsl) {
-			return a_cnsl->pid == tcb_pid;
-	}
-
-	t_console *console = list_find(console_list, (void *) _find_by_pid);
-
+	t_console *console = find_console_by_pid(tcb_pid);
 	t_msg *msg = argv_message(NUMERIC_INPUT, 1, cpu_sock_fd);
 	enviar_mensaje(console->sock_fd, msg);
 	destroy_message(msg);
@@ -492,12 +323,7 @@ void numeric_input(uint32_t cpu_sock_fd, uint32_t tcb_pid)
 
 void string_input(uint32_t cpu_sock_fd, uint32_t tcb_pid, uint32_t length)
 {
-	bool _find_by_pid(t_console *a_cnsl) {
-			return a_cnsl->pid == tcb_pid;
-	}
-
-	t_console *console = list_find(console_list, (void *) _find_by_pid);
-
+	t_console *console = find_console_by_pid(tcb_pid);
 	t_msg *msg = argv_message(STRING_INPUT, 2, cpu_sock_fd, length);
 	enviar_mensaje(console->sock_fd, msg);
 	destroy_message(msg);
@@ -506,12 +332,7 @@ void string_input(uint32_t cpu_sock_fd, uint32_t tcb_pid, uint32_t length)
 
 void numeric_output(uint32_t tcb_pid, int output_number)
 {
-	bool _find_by_pid(t_console *a_cnsl) {
-		return a_cnsl->pid == tcb_pid;
-	}
-
-	t_console *console = list_find(console_list, (void *) _find_by_pid);
-
+	t_console *console = find_console_by_pid(tcb_pid);
 	t_msg *msg = argv_message(NUMERIC_OUTPUT, 1, output_number);
 	enviar_mensaje(console->sock_fd, msg);
 	destroy_message(msg);
@@ -520,12 +341,7 @@ void numeric_output(uint32_t tcb_pid, int output_number)
 
 void string_output(uint32_t tcb_pid, char *output_stream)
 {
-	bool _find_by_pid(t_console *a_cnsl) {
-			return a_cnsl->pid == tcb_pid;
-	}
-
-	t_console *console = list_find(console_list, (void *) _find_by_pid);
-
+	t_console *console = find_console_by_pid(tcb_pid);
 	t_msg *msg = string_message(STRING_OUTPUT, output_stream, 0);
 	enviar_mensaje(console->sock_fd, msg);
 	destroy_message(msg);
@@ -575,19 +391,12 @@ void create_thread(t_hilo *padre)
 		new_tcb->base_stack = status_stack->argv[0];
 		new_tcb->cursor_stack = new_tcb->base_stack;
 		new_tcb->cola = READY;
-		int i;
-		for(i = 0; i < 5; i++)
-			new_tcb->registros[i] = 0;
+		memset(new_tcb->registros, 0, sizeof new_tcb->registros);
 
 		list_add(process_list, new_tcb);
 	} else if (MSP_RESERVE_FAILURE(status_stack->header.id)) { 
 		/* No hay suficiente memoria, avisar a Consola. */
-
-		bool _find_by_pid(t_console *a_cnsl) {
-			return a_cnsl->pid == padre->pid;
-		}
-
-		t_console *console = list_find(console_list, (void *) _find_by_pid);
+		t_console *console = find_console_by_pid(padre->pid);
 
 		log_warning(logger, "Error al reservar memoria para el ULT hijo %u.", new_tid);
 
@@ -612,12 +421,8 @@ void join_thread(uint32_t tid_caller, uint32_t tid_towait)
 	*caller = tid_caller;
 	dictionary_put(join_dict, string_from_format("%u", tid_towait), caller);
 
-	bool _find_by_tid(t_hilo *a_tcb) {
-		return a_tcb->tid == tid_caller;
-	}
 
-	t_hilo *tcb_caller = list_find(process_list, (void *)_find_by_tid);
-
+	t_hilo *tcb_caller = find_process_by_tid(tid_caller, true);
 	tcb_caller->cola = BLOCK;
 
 	log_trace(logger, "Bloqueando ULT %u. Motivo: join ULT %u.", tid_caller, tid_towait);
@@ -635,13 +440,9 @@ void block_thread(uint32_t resource, t_hilo *tcb)
 		dictionary_put(resource_dict, resource_id, rsc_queue);
 	}
 
-	bool _find_by_tid(t_hilo *a_tcb) {
-		return a_tcb->tid == tcb->tid;
-	}
-
 	/* Actualizar y encolar TCB a BLOCK. */
 
-	t_hilo *to_block = list_find(process_list, (void *) _find_by_tid);
+	t_hilo *to_block = find_process_by_tid(tcb->tid, true);
 	memcpy(to_block, tcb, sizeof *tcb);
 	to_block->cola = BLOCK;
 	queue_push(rsc_queue, to_block);
@@ -662,4 +463,199 @@ void wake_thread(uint32_t resource)
 	woken->cola = READY;
 
 	log_trace(logger, "Desbloqueando ULT %u. Motivo: liberar recurso (ID %u).", woken->tid, resource);
+}
+
+
+t_cpu *remove_cpu_by_sock_fd(uint32_t sock_fd)
+{
+	bool _remove_cpu_by_sock_fd(t_cpu *a_cpu) { 
+		return a_cpu->sock_fd == sock_fd; 
+	}
+
+	pthread_mutex_lock(&cpu_list_mutex);
+	t_cpu *removed = list_remove_by_condition(cpu_list, (void *) _remove_cpu_by_sock_fd);
+	pthread_mutex_unlock(&cpu_list_mutex);
+
+	return removed;
+}
+
+
+t_cpu *find_cpu_by_sock_fd(uint32_t sock_fd)
+{
+	bool _find_cpu_by_sock_fd(t_cpu *a_cpu) {
+		return a_cpu->sock_fd == sock_fd;
+	}
+
+	pthread_mutex_lock(&cpu_list_mutex);
+	t_cpu *found = list_find(cpu_list, (void *) _find_cpu_by_sock_fd);
+	pthread_mutex_unlock(&cpu_list_mutex);
+
+	return found;
+}
+
+
+void finalize_process_by_pid(uint32_t pid)
+{
+	void _finalize_process_by_pid(t_hilo *a_tcb) {
+		if (a_tcb->pid == pid && a_tcb->kernel_mode == false) 
+			a_tcb->cola = EXIT;
+	}
+
+	pthread_mutex_lock(&process_list_mutex);
+	list_iterate(process_list, (void *) _finalize_process_by_pid);
+	pthread_mutex_unlock(&process_list_mutex);
+}
+
+
+void log_processes(char *message)
+{
+	char *string_proc = string_new();
+
+	void _log_processes(t_hilo *a_tcb) {
+		string_append_with_format(&string_proc, "%s{ PID: %u, TID: %u, %s, %s }", string_is_empty(string_proc) ? "" : ", ", 
+			a_tcb->pid, a_tcb->tid, string_cola(a_tcb->cola), a_tcb->kernel_mode ? "KLT" : "ULT");
+	}
+
+	pthread_mutex_lock(&process_list_mutex);
+	list_iterate(process_list, (void *) _log_processes);
+	pthread_mutex_unlock(&process_list_mutex);
+
+	log_trace(logger, "%s:\n\t[%s]", message, string_proc);
+
+	free(string_proc);
+}
+
+
+t_hilo *find_process_by_tid(uint32_t tid, bool mutex_lock)
+{
+	bool _find_process_by_tid(t_hilo *b_tcb) {
+		return b_tcb->tid == tid;
+	}
+
+	if (mutex_lock)
+		pthread_mutex_lock(&process_list_mutex);
+	t_hilo *found = list_find(process_list, (void *) _find_process_by_tid);
+	if (mutex_lock)
+		pthread_mutex_unlock(&process_list_mutex);
+
+	return found;
+}
+
+
+void unlock_joined_processes(void)
+{
+	void _unlock_joined_processes(t_hilo *a_tcb) {
+		if (a_tcb->cola == EXIT) {
+			int *tid_caller = dictionary_get(join_dict, string_from_format("%u", a_tcb->tid));
+			if (tid_caller != NULL) {
+				t_hilo *desbloqueado = find_process_by_tid(*tid_caller, false);
+				desbloqueado->cola = READY;
+
+				log_trace(logger, "Desbloqueando ULT %u. Motivo: fin ULT joined (%u).",
+					desbloqueado->tid, a_tcb->tid);
+			}
+		}
+	}
+
+	pthread_mutex_lock(&process_list_mutex);
+	list_iterate(process_list, (void *) _unlock_joined_processes);
+	pthread_mutex_unlock(&process_list_mutex);
+}
+
+
+void kill_child_processes(void)
+{
+	void _kill_child_processes(t_hilo *a_tcb) {
+		if (a_tcb->pid == a_tcb->tid && a_tcb->cola == EXIT) {
+			void _set_child_to_exit(t_hilo *b_tcb) {
+				if (b_tcb->pid == a_tcb->pid && b_tcb->pid != b_tcb->tid && b_tcb->cola != EXIT) {
+					b_tcb->cola = EXIT;
+					log_trace(logger, "Finalizando ULT %u. Motivo: fin ULT padre.", b_tcb->tid);
+				}
+			}
+
+			list_iterate(process_list, (void *) _set_child_to_exit);
+		}
+	}
+
+	pthread_mutex_lock(&process_list_mutex);
+	list_iterate(process_list, (void *) _kill_child_processes);
+	pthread_mutex_unlock(&process_list_mutex);
+}
+
+
+void destroy_segments_on_exit(void)
+{
+	void _destroy_segments_on_exit(t_hilo *a_tcb) {
+		if (a_tcb->cola == EXIT) {
+			t_msg *destroy_code = argv_message(DESTROY_SEGMENT, 2, a_tcb->tid, a_tcb->segmento_codigo);
+			t_msg *destroy_stack = argv_message(DESTROY_SEGMENT, 2, a_tcb->tid, a_tcb->base_stack);
+			if (a_tcb->tid == a_tcb->pid) {
+				enviar_mensaje(msp_fd, destroy_code);
+				destroy_message(recibir_mensaje(msp_fd));
+			}
+			enviar_mensaje(msp_fd, destroy_stack);
+			destroy_message(recibir_mensaje(msp_fd));
+
+			destroy_message(destroy_code);
+			destroy_message(destroy_stack);
+		}
+	}
+
+	pthread_mutex_lock(&process_list_mutex);
+	list_iterate(process_list, (void *) _destroy_segments_on_exit);
+	pthread_mutex_unlock(&process_list_mutex);
+}
+
+
+void remove_processes_on_exit(void)
+{
+	bool _on_exit(t_hilo *a_tcb) {
+		return a_tcb->cola == EXIT;
+	}
+
+	pthread_mutex_lock(&process_list_mutex);
+	list_remove_and_destroy_by_condition(process_list, (void *) _on_exit, (void *) free);
+	pthread_mutex_unlock(&process_list_mutex);
+}
+
+
+void new_processes_to_ready(void)
+{
+	void _new_processes_to_ready(t_hilo *a_tcb) {
+		if (a_tcb->cola == NEW)
+			a_tcb->cola = READY;
+	}
+
+	pthread_mutex_lock(&process_list_mutex);
+	list_iterate(process_list, (void *) _new_processes_to_ready);
+	pthread_mutex_unlock(&process_list_mutex);
+}
+
+
+void sort_processes_by_bprr(void)
+{
+	bool _sort_bprr(t_hilo *a_tcb, t_hilo *b_tcb) {
+		if (a_tcb->cola == READY && b_tcb->cola == READY)
+			return a_tcb->kernel_mode > b_tcb->kernel_mode;
+		return a_tcb->cola < b_tcb->cola;
+	}
+
+	pthread_mutex_lock(&process_list_mutex);
+	list_sort(process_list, (void *) _sort_bprr);
+	pthread_mutex_unlock(&process_list_mutex);
+}
+
+
+t_hilo *find_process_by_ready(void)
+{
+	bool _find_process_by_ready(t_hilo *a_tcb) {
+			return a_tcb->cola == READY;
+	}
+
+	pthread_mutex_lock(&process_list_mutex);
+	t_hilo *found = list_find(process_list, (void *) _find_process_by_ready);
+	pthread_mutex_unlock(&process_list_mutex);
+
+	return found;
 }

@@ -27,6 +27,7 @@ void initialize(char *config_path)
 	pthread_mutex_init(&planificador_mutex, NULL);
 	pthread_mutex_init(&console_list_mutex, NULL);
 	pthread_mutex_init(&cpu_list_mutex, NULL);
+	pthread_mutex_init(&process_list_mutex, NULL);
 	pthread_mutex_init(&unique_id_mutex[THREAD_ID], NULL);
 	pthread_mutex_init(&unique_id_mutex[CONSOLE_ID], NULL);
 	pthread_mutex_init(&unique_id_mutex[CPU_ID], NULL);
@@ -50,13 +51,15 @@ void boot_kernel(void)
 {
 	log_trace(logger, "Reservando memoria para el KLT y cargando BESO de syscalls.");
 
-	t_hilo *tcb_klt = malloc(sizeof *tcb_klt);
-	tcb_klt->pid = 0;
-	tcb_klt->tid = 0;
-	tcb_klt->kernel_mode = true;
+	klt_tcb = malloc(sizeof *klt_tcb);
+	klt_tcb->pid = 0;
+	klt_tcb->tid = 0;
+	klt_tcb->kernel_mode = true;
+	klt_tcb->cola = BLOCK;
+	memset(klt_tcb->registros, 0, sizeof klt_tcb->registros);
 
-	tcb_klt = reservar_memoria(tcb_klt, beso_message(INIT_CONSOLE, get_syscalls(), 0));
-	if (tcb_klt == NULL) {
+	klt_tcb = reservar_memoria(klt_tcb, beso_message(INIT_CONSOLE, get_syscalls(), 0));
+	if (klt_tcb == NULL) {
 		/* Couldn't allocate memory. */
 		log_error(logger, "Error reservando memoria para el KLT.");
 		errno = ENOMEM;
@@ -64,14 +67,9 @@ void boot_kernel(void)
 		exit(EXIT_FAILURE);
 	}
 
-	int i;
-	for (i = 0; i < 5; i++)
-		tcb_klt->registros[i] = 0;
-	tcb_klt->cola = BLOCK;
-
 	log_trace(logger, "Bloqueando el KLT.");
 
-	list_add(process_list, tcb_klt);
+	list_add(process_list, klt_tcb);
 }
 
 
@@ -151,10 +149,8 @@ void receive_messages_epoll(void)
 						close(sfd);
 						return;
 					}
-				} else {
-					putmsg(msg);
+				} else
 					interpret_message(events[i].data.fd, msg);
-				}
 			}
 		}
 	}
@@ -250,10 +246,12 @@ void finalize(void)
 	sem_destroy(&sem_planificador);
 	pthread_mutex_destroy(&loader_mutex);
 	pthread_mutex_destroy(&planificador_mutex);
+	pthread_mutex_destroy(&console_list_mutex);
+	pthread_mutex_destroy(&cpu_list_mutex);
+	pthread_mutex_destroy(&process_list_mutex);
 	pthread_mutex_destroy(&unique_id_mutex[THREAD_ID]);
 	pthread_mutex_destroy(&unique_id_mutex[CONSOLE_ID]);
 	pthread_mutex_destroy(&unique_id_mutex[CPU_ID]);
-
 	config_destroy(config);
 	log_destroy(logger);
 	list_destroy_and_destroy_elements(process_list, (void *) _destroy_all_segments_and_free);
@@ -383,24 +381,10 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 
 int remove_from_lists(uint32_t sock_fd)
 {
-	int res = 0;
-
-	bool _remove_by_sock_fd_cnsl(t_console *console) { 
-		return console->sock_fd == sock_fd; 
-	}
-
-	pthread_mutex_lock(&console_list_mutex);
-	t_console *out_console = list_remove_by_condition(console_list, (void *) _remove_by_sock_fd_cnsl);
-	pthread_mutex_unlock(&console_list_mutex);
-
-
-	bool _remove_by_sock_fd_cpu(t_cpu *cpu) { 
-		return cpu->sock_fd == sock_fd; 
-	}
-
-	pthread_mutex_lock(&cpu_list_mutex);
-	t_cpu *out_cpu = list_remove_by_condition(cpu_list, (void *) _remove_by_sock_fd_cpu);
-	pthread_mutex_unlock(&cpu_list_mutex);
+	int result = 0;
+	
+	t_console *out_console = remove_console_by_sock_fd(sock_fd);
+	t_cpu *out_cpu = remove_cpu_by_sock_fd(sock_fd);
 
 	if (out_console != NULL) { 
 		/* Es una consola, finalizar todos sus procesos. Verificar que ninguno sea el hilo Kernel. */
@@ -408,12 +392,7 @@ int remove_from_lists(uint32_t sock_fd)
 
 		log_trace(logger, "Desconexion Consola %u.", out_console->console_id);
 
-		void _finalize_process_from_pid(t_hilo *a_tcb) {
-			if (a_tcb->pid == out_console->pid && a_tcb->kernel_mode == false) 
-				a_tcb->cola = EXIT;
-		}
-
-		list_iterate(process_list, (void *) _finalize_process_from_pid);
+		finalize_process_by_pid(out_console->pid);
 
 		free(out_console);
 	} else if (out_cpu != NULL) { 
@@ -425,25 +404,16 @@ int remove_from_lists(uint32_t sock_fd)
 		if (out_cpu->disponible == false) { 
 			/* La CPU saliente tiene hilos ejecutando. */
 
-			if (out_cpu->kernel_mode == false) { 
+			if (out_cpu->kernel_mode == false) {
 				/* Es un ULT, avisar a la Consola para que se desconecte. */
-
-				bool _find_by_pid(t_console *a_cnsl) {
-					return a_cnsl->pid == out_cpu->pid;
-				}
-
-				pthread_mutex_lock(&console_list_mutex);
-				t_console *out_cons = list_find(console_list, (void *) _find_by_pid);
-				pthread_mutex_unlock(&console_list_mutex);
+				t_console *out_cons = find_console_by_pid(out_cpu->pid);
 
 				t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: CPU saliente.", 0);
 				enviar_mensaje(out_cons->sock_fd, msg);
 				destroy_message(msg);
-			} else { 
+			} else 
 				/* Es el KLT, liberar recursos y salir del programa. */
-				
-				res = -1;
-			} 
+				result = -1;
 
 			free(out_cpu);
 		}
@@ -454,7 +424,7 @@ int remove_from_lists(uint32_t sock_fd)
 		exit(EXIT_FAILURE);
 	}
 
-	return res;
+	return result;
 }
 
 
@@ -468,25 +438,6 @@ uint32_t get_unique_id(t_unique_id id)
 	pthread_mutex_unlock(&unique_id_mutex[id]);
 	
 	return ret;
-}
-
-
-char *string_cola(t_cola cola)
-{
-	switch(cola) {
-		case NEW:
-			return "NEW";
-		case READY:
-			return "READY";
-		case BLOCK:
-			return "BLOCK";
-		case EXEC:
-			return "EXEC";
-		case EXIT:
-			return "EXIT";
-		default:
-			return NULL;
-	}
 }
 
 

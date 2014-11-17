@@ -102,7 +102,7 @@ int main(int argc, char **argv)
 					} else {
 
 						/* Socket received message. */
-						putmsg(recibido);
+						print_msg(recibido);
 
 						interpret_message(i, recibido);
 
