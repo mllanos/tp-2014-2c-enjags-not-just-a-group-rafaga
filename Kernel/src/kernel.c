@@ -135,7 +135,7 @@ void receive_messages_epoll(void)
 				}
 			} else {
 				/* We have data on the fd waiting to be read. */
-				
+
 				t_msg *msg = recibir_mensaje(events[i].data.fd);
 				if (msg == NULL) {
 					int status = remove_from_lists(events[i].data.fd);
@@ -186,7 +186,7 @@ void receive_messages_select(void)
 		/* Service all the sockets with input pending. */
 		int i;
 		for (i = 0; i <= fdmax; i++)
-			if (FD_ISSET(i, &read_fds))
+			if (FD_ISSET(i, &read_fds)) {
 				if (i == listener) {
 					/* Connection request on original socket. */
 					int newfd = accept_connection(listener);
@@ -214,8 +214,9 @@ void receive_messages_select(void)
 					} else {
 						/* Socket received message. */
 						interpret_message(i, recibido);
-					}	
+					}
 				}
+			}
 	}
 }
 
@@ -269,7 +270,7 @@ void finalize(void)
 void interpret_message(int sock_fd, t_msg *recibido)
 {
 	/* Tipos de mensaje: <[stream]; [argv, [argv, ]*]> */
-	
+
 	switch (recibido->header.id) {
 		/* Mensaje de conexion de Consola. */
 		case INIT_CONSOLE:  									/* <BESO_STRING;> */
@@ -296,7 +297,7 @@ void interpret_message(int sock_fd, t_msg *recibido)
 		case CPU_INTERRUPT: 									/* <TCB_STRING; MEM_DIR> */
 		case CPU_JOIN:											/* <; CALLER_TID, WAITER_TID> */
 		case CPU_BLOCK:											/* <TCB_STRING; RESOURCE_ID> */
-		case CPU_WAKE:											/* <RESOURCE_ID> */		
+		case CPU_WAKE:											/* <RESOURCE_ID> */
 		case NUMERIC_OUTPUT:									/* <; PID, NUMERIC> */
 		case STRING_OUTPUT: 									/* <OUT_STRING; PID> */
 		/* Mensajes de Consola para delegar a CPU. */
@@ -346,7 +347,7 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 		message[2] = remake_message(WRITE_MEMORY, msg, 2, tcb->pid, status[0]->argv[0]);
 
 		enviar_mensaje(msp_fd, message[2]);
-		
+
 		status[2] = recibir_mensaje(msp_fd);
 
 		if (MSP_WRITE_FAILURE(status[2]->header.id)) {
@@ -386,7 +387,7 @@ int remove_from_lists(uint32_t sock_fd)
 	t_console *out_console = remove_console_by_sock_fd(sock_fd);
 	t_cpu *out_cpu = remove_cpu_by_sock_fd(sock_fd);
 
-	if (out_console != NULL) { 
+	if (out_console != NULL) {
 		/* Es una consola, finalizar todos sus procesos. Verificar que ninguno sea el hilo Kernel. */
 		//desconexion_consola(out_console->console_id);
 
@@ -395,13 +396,13 @@ int remove_from_lists(uint32_t sock_fd)
 		finalize_process_by_pid(out_console->pid);
 
 		free(out_console);
-	} else if (out_cpu != NULL) { 
+	} else if (out_cpu != NULL) {
 		/* Es una CPU. Verificar si tiene hilos ejecutando. */
 		//desconexion_cpu(out_cpu->cpu_id);
 
 		log_trace(logger, "Desconexion CPU %u.", out_cpu->cpu_id);
 
-		if (out_cpu->disponible == false) { 
+		if (out_cpu->disponible == false) {
 			/* La CPU saliente tiene hilos ejecutando. */
 
 			if (out_cpu->kernel_mode == false) {
@@ -411,6 +412,7 @@ int remove_from_lists(uint32_t sock_fd)
 				t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: CPU saliente.", 0);
 				enviar_mensaje(out_cons->sock_fd, msg);
 				destroy_message(msg);
+
 			} else 
 				/* Es el KLT, liberar recursos y salir del programa. */
 				result = -1;
@@ -436,7 +438,7 @@ uint32_t get_unique_id(t_unique_id id)
 	pthread_mutex_lock(&unique_id_mutex[id]);
 	ret = ++unique_id[id];
 	pthread_mutex_unlock(&unique_id_mutex[id]);
-	
+
 	return ret;
 }
 

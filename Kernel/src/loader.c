@@ -44,6 +44,9 @@ void *loader(void *arg)
 			sem_post(&sem_planificador);
 		}
 	}
+
+	return NULL;
+
 }
 
 

@@ -188,8 +188,13 @@ void jpnz (void) {
 
 void inte (void) {
 
+	uint32_t sc_dir;
+
 	Quantum = 0;
-	Kernel_Msg = tcb_message(CPU_INTERRUPT,&Hilo,1,fetch_direccion());
+	sc_dir = fetch_direccion();
+	avanzar_puntero_instruccion();
+	eu_actualizar_registros();
+	Kernel_Msg = tcb_message(CPU_INTERRUPT,&Hilo,1,sc_dir);
 }
 
 void shif (void) {
@@ -311,6 +316,8 @@ void innc (void) {
 	}
 
 	escribir_memoria(PID,registro(A),msg->stream,registro(B));
+
+	msg->stream = NULL;
 
 	destroy_message(msg);
 }

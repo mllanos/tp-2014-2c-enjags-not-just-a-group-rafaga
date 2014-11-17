@@ -1,6 +1,6 @@
 #include "panel.h"
 
-void inicializar_panel(t_tipo_proceso tipo_proceso, char* path){
+void inicializar_panel(t_tipo_proceso tipo_proceso, char* path) {
 	char* tipo_proceso_str;
 
 	if (tipo_proceso == KERNEL)

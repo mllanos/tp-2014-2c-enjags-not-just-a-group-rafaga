@@ -80,6 +80,9 @@ void *planificador(void *arg)
 		}
 		destroy_message(recibido);
 	}
+
+	return NULL;
+
 }
 
 
