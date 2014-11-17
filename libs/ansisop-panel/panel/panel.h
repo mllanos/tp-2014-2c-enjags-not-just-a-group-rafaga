@@ -25,4 +25,6 @@ typedef struct {
 	t_cola cola;
 } __attribute__ ((__packed__)) t_hilo;
 
+void inicializar_panel(t_tipo_proceso tipo_proceso, char* path);
+
 #endif
