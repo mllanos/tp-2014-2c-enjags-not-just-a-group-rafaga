@@ -165,7 +165,7 @@ void cpu_abort(uint32_t sock_fd, t_hilo *tcb)
 
 	log_trace(logger, "Liberando CPU %u. Motivo: abortando proceso (PID %u).", cpu->cpu_id, tcb->pid);
 
-	print_tcb(tcb);
+	//print_tcb(tcb);
 	
 	/* Finalizamos la consola del proceso. */
 
@@ -201,7 +201,7 @@ void cpu_abort(uint32_t sock_fd, t_hilo *tcb)
 void return_process(uint32_t sock_fd, t_hilo *tcb)
 {
 	
-	print_tcb(tcb);
+	//print_tcb(tcb);
 	/* Seteamos la CPU a disponible. */
 	bool _find_by_sock_fd(t_cpu *a_cpu) {
 		return a_cpu->sock_fd == sock_fd;
@@ -230,7 +230,7 @@ void return_process(uint32_t sock_fd, t_hilo *tcb)
 
 void finish_process(uint32_t sock_fd, t_hilo *tcb)
 {
-	print_tcb(tcb);
+	//print_tcb(tcb);
 
 	/* Seteamos la CPU a disponible. */
 	t_cpu *cpu = find_cpu_by_sock_fd(sock_fd);
@@ -318,36 +318,48 @@ void syscall_start(uint32_t call_dir, t_hilo *tcb)
 void numeric_input(uint32_t cpu_sock_fd, uint32_t tcb_pid)
 {
 	t_console *console = find_console_by_pid(tcb_pid);
-	t_msg *msg = argv_message(NUMERIC_INPUT, 1, cpu_sock_fd);
-	enviar_mensaje(console->sock_fd, msg);
-	destroy_message(msg);
+	if(console != NULL) {
+		t_msg *msg = argv_message(NUMERIC_INPUT, 1, cpu_sock_fd);
+		enviar_mensaje(console->sock_fd, msg);
+		destroy_message(msg);
+	} else
+		log_warning(logger, "Error: la consola del proceso %d ya no existe.", tcb_pid);
 }
 
 
 void string_input(uint32_t cpu_sock_fd, uint32_t tcb_pid, uint32_t length)
 {
 	t_console *console = find_console_by_pid(tcb_pid);
-	t_msg *msg = argv_message(STRING_INPUT, 2, cpu_sock_fd, length);
-	enviar_mensaje(console->sock_fd, msg);
-	destroy_message(msg);
+	if(console != NULL) {
+		t_msg *msg = argv_message(STRING_INPUT, 2, cpu_sock_fd, length);
+		enviar_mensaje(console->sock_fd, msg);
+		destroy_message(msg);
+	} else
+		log_warning(logger, "Error: la consola del proceso %d ya no existe.", tcb_pid);
 }
 
 
 void numeric_output(uint32_t tcb_pid, int output_number)
 {
 	t_console *console = find_console_by_pid(tcb_pid);
-	t_msg *msg = argv_message(NUMERIC_OUTPUT, 1, output_number);
-	enviar_mensaje(console->sock_fd, msg);
-	destroy_message(msg);
+	if(console != NULL) {
+		t_msg *msg = argv_message(NUMERIC_OUTPUT, 1, output_number);
+		enviar_mensaje(console->sock_fd, msg);
+		destroy_message(msg);
+	} else
+		log_warning(logger, "Error: la consola del proceso %d ya no existe.", tcb_pid);
 }
 
 
 void string_output(uint32_t tcb_pid, char *output_stream)
 {
 	t_console *console = find_console_by_pid(tcb_pid);
-	t_msg *msg = string_message(STRING_OUTPUT, output_stream, 0);
-	enviar_mensaje(console->sock_fd, msg);
-	destroy_message(msg);
+	if(console != NULL) {
+		t_msg *msg = string_message(STRING_OUTPUT, output_stream, 0);
+		enviar_mensaje(console->sock_fd, msg);
+		destroy_message(msg);
+	} else
+		log_warning(logger, "Error: la consola del proceso %d ya no existe.", tcb_pid);
 }
 
 

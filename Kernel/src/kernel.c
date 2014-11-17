@@ -271,6 +271,8 @@ void interpret_message(int sock_fd, t_msg *recibido)
 {
 	/* Tipos de mensaje: <[stream]; [argv, [argv, ]*]> */
 
+	print_msg(recibido);
+
 	switch (recibido->header.id) {
 		/* Mensaje de conexion de Consola. */
 		case INIT_CONSOLE:  									/* <BESO_STRING;> */
