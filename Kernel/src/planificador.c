@@ -1,5 +1,7 @@
 #include "planificador.h"
 
+bool blocked_by_join = false;
+
 void *planificador(void *arg)
 {
 	while (1) {
@@ -180,26 +182,38 @@ void cpu_abort(uint32_t sock_fd, t_hilo *tcb)
 
 		queue_pop(syscall_queue);
 
-		if (queue_is_empty(syscall_queue) == false) {
-			/* Todavia hay syscalls que atender. Cargar el proximo proceso bloqueado por syscalls. */
-			t_syscall *to_load = queue_peek(syscall_queue);
-			memcpy(klt_tcb->registros, to_load->blocked->registros, sizeof to_load->blocked->registros);
-			klt_tcb->pid = to_load->blocked->pid;
-			klt_tcb->tid = to_load->blocked->tid;
-			klt_tcb->puntero_instruccion = to_load->call_dir;
-			klt_tcb->cola = READY;
-			log_trace(logger, "Cargando KLT. Motivo: atender syscalls (TID %u, puntero instruccion protegida %u).",
-				to_load->blocked->pid, to_load->blocked->tid, to_load->call_dir);
-		} else {
-			/* Ya no hay mas syscalls. Encolar el KLT a BLOCK. */
-			klt_tcb->cola = BLOCK;
-			log_trace(logger, "Bloqueando el KLT.");
-		}
+		attend_next_syscall_request();
 	}
 
 	free(tcb);
 }
 
+
+void attend_next_syscall_request(void)
+{
+	if(blocked_by_join == true) {
+		/* Hilo encolado en syscalls fue bloqueado por join. */
+		queue_pop(syscall_queue);
+		blocked_by_join = false;
+	}
+
+	if (queue_is_empty(syscall_queue) == false) {
+
+		/* Todavia hay syscalls que atender. Cargar el proximo proceso bloqueado por syscalls. */
+		t_syscall *to_load = queue_peek(syscall_queue);
+		memcpy(klt_tcb->registros, to_load->blocked->registros, sizeof to_load->blocked->registros);
+		klt_tcb->pid = to_load->blocked->pid;
+		klt_tcb->tid = to_load->blocked->tid;
+		klt_tcb->puntero_instruccion = to_load->call_dir;
+		klt_tcb->cola = READY;
+		log_trace(logger, "Cargando KLT. Motivo: atender syscalls (TID %u, puntero instruccion protegida %u).",
+			to_load->blocked->pid, to_load->blocked->tid, to_load->call_dir);
+	} else {
+		/* Ya no hay mas syscalls. Encolar el KLT a BLOCK. */
+		klt_tcb->cola = BLOCK;
+		log_trace(logger, "Bloqueando el KLT.");
+	}
+}
 
 void return_process(uint32_t sock_fd, t_hilo *tcb)
 {
@@ -259,22 +273,7 @@ void finish_process(uint32_t sock_fd, t_hilo *tcb)
 
 			log_trace(logger, "Desbloqueando hilo (PID %u, TID %u). Motivo: syscall finalizada.", tcb->pid, tcb->tid);
 
-			if (queue_is_empty(syscall_queue) == false) {
-				/* Todavia hay syscalls que atender. Cargar el proximo proceso bloqueado por syscalls. */
-				t_syscall *to_load = queue_peek(syscall_queue);
-				memcpy(klt_tcb->registros, to_load->blocked->registros, sizeof to_load->blocked->registros);
-				klt_tcb->pid = to_load->blocked->pid;
-				klt_tcb->tid = to_load->blocked->tid;
-				klt_tcb->puntero_instruccion = to_load->call_dir;
-
-				log_trace(logger, "Cargando KLT. Motivo: atender syscalls (PID %u, TID %u, puntero instruccion protegida %u).",
-					to_load->blocked->pid, to_load->blocked->tid, to_load->call_dir);
-			} else {
-				/* Ya no hay mas syscalls. Encolar el KLT a BLOCK. */
-				klt_tcb->cola = BLOCK;
-
-				log_trace(logger, "Bloqueando el KLT.");
-			}
+			attend_next_syscall_request();
 		}
 	} else
 		log_warning(logger, "El CPU de sock_fd %u ya no existe.", sock_fd);
@@ -300,17 +299,8 @@ void syscall_start(uint32_t call_dir, t_hilo *tcb)
 
 		queue_push(syscall_queue, new_syscall);
 
-		if (klt_tcb->cola == BLOCK) {
-			/* KLT libre, cargar datos de tcb y encolar a READY. */
-			memcpy(klt_tcb->registros, tcb->registros, sizeof tcb->registros);
-			klt_tcb->pid = tcb->pid;
-			klt_tcb->tid = tcb->tid;
-			klt_tcb->puntero_instruccion = call_dir;
-			klt_tcb->cola = READY;
-
-			log_trace(logger, "Desbloqueando y cargando KLT. Motivo: atender syscalls (PID %u, TID %u, puntero instruccion protegida %u).",
-				blocked->pid, blocked->tid, call_dir);
-		}
+		if (klt_tcb->cola == BLOCK) 
+			attend_next_syscall_request();
 	} else
 		log_warning(logger, "El hilo (PID %u, TID %u) ya no existe.", tcb->pid, tcb->tid);
 
@@ -444,7 +434,7 @@ void create_thread(t_hilo *padre)
 void join_thread(uint32_t tid_caller, uint32_t tid_towait, uint32_t process_pid)
 {
 	t_hilo *tcb_caller = find_thread_by_pid_tid(process_pid, tid_caller, true);
-	tcb_caller->cola = BLOCK;
+	blocked_by_join = true;
 
 	char *key = string_from_format("%u:%u", process_pid, tid_towait);
 	dictionary_put(join_dict, key, tcb_caller);

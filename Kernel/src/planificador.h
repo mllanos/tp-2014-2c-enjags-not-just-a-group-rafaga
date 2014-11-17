@@ -117,6 +117,10 @@ void block_thread(uint32_t resource, t_hilo *tcb);
 void wake_thread(uint32_t resource);
 
 
+/* Funciones auxiliares. */
+void attend_next_syscall_request(void);
+
+
 /* Funciones auxiliares de CPU. */
 t_cpu *remove_cpu_by_sock_fd(uint32_t sock_fd);
 t_cpu *find_cpu_by_sock_fd(uint32_t sock_fd);
@@ -133,6 +137,5 @@ void new_processes_to_ready(void);
 void sort_processes_by_bprr(void);
 t_hilo *find_thread_by_pid_tid(uint32_t pid, uint32_t tid, bool mutex_lock);
 t_hilo *find_process_by_ready(void);
-
 
 #endif
