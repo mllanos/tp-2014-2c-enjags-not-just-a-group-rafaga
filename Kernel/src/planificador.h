@@ -131,7 +131,7 @@ void finalize_process_by_pid(uint32_t pid);
 void log_processes(char *message);
 void unlock_joined_processes(void);
 void kill_child_processes(void);
-void destroy_segments_on_exit(void);
+void destroy_segments_on_exit_or_condition(bool kill_all);
 void remove_processes_on_exit(void);
 void new_processes_to_ready(void);
 void sort_processes_by_bprr(void);

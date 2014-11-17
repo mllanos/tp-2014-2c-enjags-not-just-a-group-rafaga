@@ -95,7 +95,7 @@ void bprr_algorithm(void)
 	new_processes_to_ready();
 	unlock_joined_processes();
 	kill_child_processes();
-	destroy_segments_on_exit();
+	destroy_segments_on_exit_or_condition(false);
 	remove_processes_on_exit();
 	sort_processes_by_bprr();
 	log_processes("Despues del algoritmo");
@@ -393,7 +393,7 @@ void create_thread(t_hilo *padre)
 
 	if (MSP_RESERVE_SUCCESS(status_stack->header.id)) { 
 		/* Memoria reservada, crear nuevo hilo y encolar a READY. */
-		log_trace(logger, "Exito al reservar memoria para el hilo (PID %u, TID %u). Encolando en READY.", padre->pid, new_tid);
+		log_trace(logger, "Reservada memoria para el stack del hilo (PID %u, TID %u). Encolando en READY.", padre->pid, new_tid);
 
 		t_hilo *new_tcb = malloc(sizeof *new_tcb);
 		new_tcb->pid = padre->pid;
@@ -610,26 +610,29 @@ void kill_child_processes(void)
 }
 
 
-void destroy_segments_on_exit(void)
+void destroy_segments_on_exit_or_condition(bool kill_all)
 {
-	void _destroy_segments_on_exit(t_hilo *a_tcb) {
-		if (a_tcb->cola == EXIT) {
-			t_msg *destroy_code = argv_message(DESTROY_SEGMENT, 2, a_tcb->tid, a_tcb->segmento_codigo);
-			t_msg *destroy_stack = argv_message(DESTROY_SEGMENT, 2, a_tcb->tid, a_tcb->base_stack);
-			if (a_tcb->tid == a_tcb->pid) {
-				enviar_mensaje(msp_fd, destroy_code);
-				destroy_message(recibir_mensaje(msp_fd));
-			}
+	void _destroy_stack_segments_on_exit(t_hilo *a_tcb) {
+		if (a_tcb->cola == EXIT || kill_all) {
+			t_msg *destroy_stack = argv_message(DESTROY_SEGMENT, 2, a_tcb->pid, a_tcb->base_stack);
 			enviar_mensaje(msp_fd, destroy_stack);
 			destroy_message(recibir_mensaje(msp_fd));
-
-			destroy_message(destroy_code);
 			destroy_message(destroy_stack);
 		}
 	}
 
+	void _destroy_code_segments_on_exit(t_hilo *a_tcb) {
+		if((a_tcb->cola == EXIT || kill_all) && a_tcb->tid == 0) {
+			t_msg *destroy_code = argv_message(DESTROY_SEGMENT, 2, a_tcb->pid, a_tcb->segmento_codigo);
+			enviar_mensaje(msp_fd, destroy_code);
+			destroy_message(recibir_mensaje(msp_fd));
+			destroy_message(destroy_code);
+		}
+	}
+
 	pthread_mutex_lock(&process_list_mutex);
-	list_iterate(process_list, (void *) _destroy_segments_on_exit);
+	list_iterate(process_list, (void *) _destroy_stack_segments_on_exit);
+	list_iterate(process_list, (void *) _destroy_code_segments_on_exit);
 	pthread_mutex_unlock(&process_list_mutex);
 }
 
