@@ -318,11 +318,11 @@ void *atenderProceso(void *parametro) {
 
 					pthread_mutex_lock(&LogMutex);
 					if (msg->header.id == OK_DESTROY) {
-						log_trace(Logger, "Segmento %u del proceso %u destruido correctamente.", pid, segmento(baseSegmento));
+						log_trace(Logger, "Segmento %u del proceso %u destruido correctamente.", segmento(baseSegmento), pid);
 						pthread_mutex_unlock(&LogMutex);
 					}
 					else {
-						log_error(Logger, "No se pudo destruir el segmento %u del proceso %u.", pid, segmento(baseSegmento));
+						log_error(Logger, "No se pudo destruir el segmento %u del proceso %u.", segmento(baseSegmento), pid);
 						pthread_mutex_unlock(&LogMutex);
 					}
 
