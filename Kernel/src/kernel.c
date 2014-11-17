@@ -223,26 +223,11 @@ void receive_messages_select(void)
 
 void finalize(void)
 {
-	void _destroy_all_segments_and_free(t_hilo *a_tcb) {
-		t_msg *destroy_code = argv_message(DESTROY_SEGMENT, 2, a_tcb->tid, a_tcb->segmento_codigo);
-		t_msg *destroy_stack = argv_message(DESTROY_SEGMENT, 2, a_tcb->tid, a_tcb->base_stack);
-
-		enviar_mensaje(msp_fd, destroy_stack);
-		destroy_message(recibir_mensaje(msp_fd));
-
-		if (a_tcb->tid == a_tcb->pid) {
-			enviar_mensaje(msp_fd, destroy_code);
-			destroy_message(recibir_mensaje(msp_fd));
-		}
-
-		destroy_message(destroy_code);
-		destroy_message(destroy_stack);
-
-		free(a_tcb);
-	}
-
 	pthread_kill(loader_th, SIGTERM);
 	pthread_kill(planificador_th, SIGTERM);
+
+	destroy_segments_on_exit_or_condition(true);
+
 	sem_destroy(&sem_loader);
 	sem_destroy(&sem_planificador);
 	pthread_mutex_destroy(&loader_mutex);
@@ -254,7 +239,7 @@ void finalize(void)
 	pthread_mutex_destroy(&unique_id_mutex[CPU_ID]);
 	config_destroy(config);
 	log_destroy(logger);
-	list_destroy_and_destroy_elements(process_list, (void *) _destroy_all_segments_and_free);
+	list_destroy_and_destroy_elements(process_list, (void *) free);
 	list_destroy_and_destroy_elements(console_list, (void *) free);
 	list_destroy_and_destroy_elements(cpu_list, (void *) free);
 	dictionary_destroy_and_destroy_elements(resource_dict, (void *) free);
