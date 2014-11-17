@@ -387,7 +387,7 @@ void create_thread(t_hilo *padre)
 
 	log_trace(logger, "Creando hilo (PID %u, TID %u).", padre->pid, new_tid);
 
-	t_msg *create_stack = argv_message(CREATE_SEGMENT, 2, new_tid, get_stack_size());
+	t_msg *create_stack = argv_message(CREATE_SEGMENT, 2, padre->pid, get_stack_size());
 	enviar_mensaje(msp_fd, create_stack);
 	t_msg *status_stack = recibir_mensaje(msp_fd);
 
@@ -401,7 +401,7 @@ void create_thread(t_hilo *padre)
 		new_tcb->kernel_mode = false;
 		new_tcb->segmento_codigo = padre->segmento_codigo;
 		new_tcb->segmento_codigo_size = padre->segmento_codigo_size;
-		new_tcb->puntero_instruccion = 0;
+		new_tcb->puntero_instruccion = padre->registros[1];
 		new_tcb->base_stack = status_stack->argv[0];
 		new_tcb->cursor_stack = new_tcb->base_stack;
 		new_tcb->cola = READY;
