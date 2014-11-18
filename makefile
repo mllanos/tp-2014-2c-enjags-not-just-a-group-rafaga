@@ -19,6 +19,7 @@ compile-procs:
 	cd Consola && make
 	cd Ensamblador && make
 	cd Ensamblador && ./massAssemble
+	chmod -R a+rw Kernel CPU MSP Consola Ensamblador
 
 clean-procs:
 	cd Kernel && make clean
