@@ -18,7 +18,7 @@ compile-procs:
 	cd MSP && make
 	cd Consola && make
 	cd Ensamblador && make
-	cd Ensamblador && sh ./massAssemble
+	cd Ensamblador && ./massAssemble
 
 clean-procs:
 	cd Kernel && make clean
@@ -34,3 +34,4 @@ clean-libs:
 
 clean-tempfiles:
 	find . -name "*~" -type f -delete
+	find . -name "*Console" -type f -delete
