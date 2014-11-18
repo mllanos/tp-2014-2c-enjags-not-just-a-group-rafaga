@@ -191,13 +191,6 @@ void cpu_abort(uint32_t sock_fd, t_hilo *tcb)
 
 void attend_next_syscall_request(void)
 {
-	if(blocked_by_join == true) {
-		/* Hilo encolado en syscalls fue bloqueado por join. */
-		t_hilo *on_join = queue_pop(syscall_queue);
-		log_trace(logger, "El hilo (PID %u, TID %u) no se desbloqueo por fin de syscalls. Motivo: esta en join.", on_join->pid, on_join->tid);
-		blocked_by_join = false;
-	}
-
 	if (queue_is_empty(syscall_queue) == false) {
 
 		/* Todavia hay syscalls que atender. Cargar el proximo proceso bloqueado por syscalls. */
@@ -266,14 +259,22 @@ void finish_process(uint32_t sock_fd, t_hilo *tcb)
 				log_trace(logger, "Finalizando hilo (PID %u, TID %u).", tcb->pid, tcb->tid);
 			} else 
 				log_warning(logger, "El hilo (PID %u, TID %u) ya no existe.", tcb->pid, tcb->tid);
-		} else { 
+		} else {
 			/* Recibido KLT, copiamos registros al proceso bloqueado por syscalls y lo encolamos a READY. */
+
 			t_syscall *syscall = queue_pop(syscall_queue);
-			memcpy(syscall->blocked->registros, tcb->registros, sizeof tcb->registros);
-			syscall->blocked->cola = READY;
 
-			log_trace(logger, "Desbloqueando hilo (PID %u, TID %u). Motivo: syscall finalizada.", tcb->pid, tcb->tid);
+			if(blocked_by_join == true) {
+				/* Hilo encolado en syscalls fue bloqueado por join. */
+				log_trace(logger, "El hilo (PID %u, TID %u) no se desbloqueo por fin de syscalls. Motivo: esta en join.", 
+					syscall->blocked->pid, syscall->blocked->tid);
+				blocked_by_join = false;
+			} else {
+				memcpy(syscall->blocked->registros, tcb->registros, sizeof tcb->registros);
+				syscall->blocked->cola = READY;
 
+				log_trace(logger, "Desbloqueando hilo (PID %u, TID %u). Motivo: syscall finalizada.", tcb->pid, tcb->tid);
+			}
 			attend_next_syscall_request();
 		}
 	} else
@@ -452,12 +453,6 @@ void create_thread(uint32_t cpu_sock_fd, t_hilo *padre)
 void join_thread(uint32_t tid_caller, uint32_t tid_towait, uint32_t process_pid)
 {
 	t_hilo *tcb_caller = find_thread_by_pid_tid(process_pid, tid_caller, true);
-	if(tcb_caller->cola == BLOCK)
-		puts("EL HILO A JOINEAR YA ESTABA BLOQUEADO.");
-	else {
-		puts("EL HILO A JOINEAR NO ESTABA BLOQUEADO...");
-		tcb_caller->cola = BLOCK;
-	}
 	blocked_by_join = true;
 
 	char *key = string_from_format("%u:%u", process_pid, tid_towait);
