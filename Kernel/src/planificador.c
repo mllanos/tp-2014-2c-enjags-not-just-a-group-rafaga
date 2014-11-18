@@ -392,14 +392,15 @@ void create_thread(uint32_t cpu_sock_fd, t_hilo *padre)
 	t_msg *status_stack = recibir_mensaje(msp_fd);
 
 	uint32_t base_stack = status_stack->argv[0];
+	uint32_t bytes_ocupados_stack = padre->cursor_stack - padre->base_stack;
 
 	if (MSP_RESERVE_SUCCESS(status_stack->header.id)) { 
 		/* Memoria reservada, crear nuevo hilo y encolar a READY. */
 		log_trace(logger, "Reservada memoria para el stack del hilo (PID %u, TID %u). Encolando en READY.", padre->pid, new_tid);
 
-		t_msg *request_stack = argv_message(REQUEST_MEMORY, 3, padre->pid, padre->cursor_stack - padre->base_stack, get_stack_size());
+		t_msg *request_stack = argv_message(REQUEST_MEMORY, 3, padre->pid, padre->base_stack, bytes_ocupados_stack);
 		enviar_mensaje(msp_fd, request_stack);
-		t_msg *write_stack = remake_message(WRITE_MEMORY, recibir_mensaje(msp_fd), 2, padre->pid, base_stack);
+		t_msg *write_stack = remake_message(WRITE_MEMORY, recibir_mensaje(msp_fd), 3, padre->pid, base_stack, bytes_ocupados_stack);
 		enviar_mensaje(msp_fd, write_stack);
 		destroy_message(recibir_mensaje(msp_fd));
 
@@ -411,7 +412,7 @@ void create_thread(uint32_t cpu_sock_fd, t_hilo *padre)
 		new_tcb->segmento_codigo_size = padre->segmento_codigo_size;
 		new_tcb->puntero_instruccion = padre->registros[1];
 		new_tcb->base_stack = base_stack;
-		new_tcb->cursor_stack = base_stack + padre->cursor_stack;
+		new_tcb->cursor_stack = base_stack + bytes_ocupados_stack;
 		new_tcb->cola = READY;
 		memset(new_tcb->registros, 0, sizeof new_tcb->registros);
 

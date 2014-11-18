@@ -337,10 +337,15 @@ void outn (void) {
 void outc (void) {
 
 	char *buffer = solicitar_memoria(PID,registro(A),registro(B));
+	char *string = malloc(registro(B) + 1);
+
+	memcpy(string,buffer,registro(B));
+	string[registro(B)] = '\0';
+	free(buffer);
 
 	if(Execution_State != CPU_ABORT) {
 
-		t_msg *msg = string_message(STRING_OUTPUT,buffer,1,Registros.I);
+		t_msg *msg = string_message(STRING_OUTPUT,string,1,PID);
 
 		if(enviar_mensaje(Kernel,msg) == -1) {
 			puts("ERROR: No se pudo solicitar el servicio requerido al Kernel.");
@@ -353,12 +358,22 @@ void outc (void) {
 
 void crea (void) {
 
+	eu_actualizar_registros();
 	t_msg *msg = tcb_message(CPU_CREA,&Hilo,0);
 
 	if(enviar_mensaje(Kernel,msg) == -1) {
 		puts("ERROR: No se pudo solicitar el servicio requerido al Kernel.");
 		exit(EXIT_FAILURE);
 	}
+
+	destroy_message(msg);
+
+	if((msg = recibir_mensaje(Kernel)) == NULL || msg->header.id != CREA_OK) {
+		puts("ERROR: No se pudo solicitar el servicio requerido al Kernel.");
+		exit(EXIT_FAILURE);
+	}
+
+	registro(A) = msg->argv[0];
 
 	destroy_message(msg);
 }
@@ -377,6 +392,7 @@ void join (void) {
 
 void blok (void) {
 
+	eu_actualizar_registros();
 	t_msg *msg = tcb_message(CPU_BLOCK,&Hilo,1,registro(B));
 
 	if(enviar_mensaje(Kernel,msg) == -1) {
