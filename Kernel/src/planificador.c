@@ -452,6 +452,12 @@ void create_thread(uint32_t cpu_sock_fd, t_hilo *padre)
 
 void join_thread(uint32_t tid_caller, uint32_t tid_towait, uint32_t process_pid)
 {
+	t_hilo *tcb_towait = find_thread_by_pid_tid(process_pid, tid_towait, true);
+	if(tcb_towait == NULL) {
+		log_warning(logger, "El hilo a unirse (PID %u, TID %u) ya no existe.", process_pid, tid_towait);
+		return;
+	}
+
 	t_hilo *tcb_caller = find_thread_by_pid_tid(process_pid, tid_caller, true);
 	blocked_by_join = true;
 
