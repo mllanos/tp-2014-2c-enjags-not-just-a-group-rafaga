@@ -193,7 +193,8 @@ void attend_next_syscall_request(void)
 {
 	if(blocked_by_join == true) {
 		/* Hilo encolado en syscalls fue bloqueado por join. */
-		queue_pop(syscall_queue);
+		t_hilo *on_join = queue_pop(syscall_queue);
+		log_trace(logger, "El hilo (PID %u, TID %u) no se desbloqueo por fin de syscalls. Motivo: esta en join.", on_join->pid, on_join->tid);
 		blocked_by_join = false;
 	}
 
@@ -416,6 +417,10 @@ void create_thread(uint32_t cpu_sock_fd, t_hilo *padre)
 		new_tcb->cola = READY;
 		memset(new_tcb->registros, 0, sizeof new_tcb->registros);
 
+		pthread_mutex_lock(&process_list_mutex);
+		list_add(process_list, new_tcb);
+		pthread_mutex_unlock(&process_list_mutex);
+
 		t_msg *crea_success = argv_message(CREA_OK, 1, new_tcb->tid);
 		enviar_mensaje(cpu_sock_fd, crea_success);
 
@@ -447,6 +452,12 @@ void create_thread(uint32_t cpu_sock_fd, t_hilo *padre)
 void join_thread(uint32_t tid_caller, uint32_t tid_towait, uint32_t process_pid)
 {
 	t_hilo *tcb_caller = find_thread_by_pid_tid(process_pid, tid_caller, true);
+	if(tcb_caller->cola == BLOCK)
+		puts("EL HILO A JOINEAR YA ESTABA BLOQUEADO.");
+	else {
+		puts("EL HILO A JOINEAR NO ESTABA BLOQUEADO...");
+		tcb_caller->cola = BLOCK;
+	}
 	blocked_by_join = true;
 
 	char *key = string_from_format("%u:%u", process_pid, tid_towait);
