@@ -3,7 +3,7 @@ LIBS = -lcommons -lutiles -lpthread
 OBJ = obj/Clock.o obj/LRU.o obj/administradorDeConexionesYConfig.o obj/administradorDeMemoria.o obj/msp.o
 DIRS = bin/ obj/ log/ swap/
 OUT = bin/MSP
-FLAGS = -g
+FLAGS = -g -Wall
 
 all: directories msp
 

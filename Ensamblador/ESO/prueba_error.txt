@@ -1,0 +1,7 @@
+^**************************************************************
+^Objetivo: Generar un error en el TCB KM
+^Resultado: undefined
+^**************************************************************
+LOAD B,-1
+INTE SETSEM^intenta aceder a un espacio de memoria fuera del stack.
+XXXX

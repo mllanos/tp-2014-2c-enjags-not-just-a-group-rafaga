@@ -3,14 +3,15 @@ LIBS = -lcommons -lutiles
 OBJ = obj/consola.o 
 DIRS = bin/ obj/ log/ BESO/
 OUT = bin/Consola
+FLAGS = -g -Wall
 
 all: directories consola
 
 obj/%.o: src/%.c
-	$(CC) -c -o $@ $<
+	$(CC) $(FLAGS) -c -o $@ $<
 
 consola: $(OBJ)
-	$(CC) $(OBJ) $(LIBS) -o $(OUT)
+	$(CC) $(FLAGS) $(OBJ) $(LIBS) -o $(OUT)
 
 directories:
 	mkdir -p $(DIRS)

@@ -1,0 +1,17 @@
+^**************************************************************
+^Objetivo: Ejemplo de Productor Consumidor
+^Modo de ejecucion: Ejecutar una instancia del `Productor` e inmediatamente despues ejecutar N instancias de `Consumidor`, que quedaran trabadas.
+^					Se destrabaran una por una, imprimiendo un mensaje.
+^Resultado: Finalizan secuencialmente las instancias de `Consumidor`. El `Productor` cicla infinitamente.
+^**************************************************************
+LOAD B,47^Semaforo 47
+INTE WAIT
+^
+LOAD B,10
+LOAD A,#IMPRIMIR
+ADDR A,M
+INTE OUTC
+XXXX
+DATA
+:IMPRIMIR
+"Soy libre!

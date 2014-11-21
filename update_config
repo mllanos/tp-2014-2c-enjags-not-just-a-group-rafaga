@@ -1,0 +1,40 @@
+#!/bin/bash
+
+if [ $# -eq 1 ] && [ $1 = 'default' ]
+	then
+	default='127.0.0.1'
+	echo 'Seteando las IPs de los archivos de configuracion a default...'
+	for f in $(find ./Kernel/config* -name '*.conf' -print)
+	do
+		sed -i '2s/.*/IP_MSP='$default'/' $f 
+	done
+	for f in $(find ./CPU* -name '*.conf' -print)
+	do
+		sed -i '1s/.*/IP_KERNEL='$default'/' $f 
+		sed -i '3s/.*/IP_MSP='$default'/' $f 
+	done
+	for f in $(find ./Consola* -name '*.conf' -print)
+	do
+		sed -i '1s/.*/IP_KERNEL='$default'/' $f
+	done
+	echo 'Listo.'
+elif [ $# -eq 2 ]
+	then
+	echo 'Actualizando las IPs de los archivos de configuracion...'
+	for f in $(find ./Kernel* -name '*.conf' -print)
+	do
+		sed -i '2s/.*/IP_MSP='$2'/' $f 
+	done
+	for f in $(find ./CPU* -name '*.conf' -print)
+	do
+		sed -i '1s/.*/IP_KERNEL='$1'/' $f 
+		sed -i '3s/.*/IP_MSP='$2'/' $f 
+	done
+	for f in $(find ./Consola* -name '*.conf' -print)
+	do
+		sed -i '1s/.*/IP_KERNEL='$1'/' $f
+	done
+	echo 'Listo.'
+else 
+	echo 'Modo de uso: ./update_config <IP_KERNEL> <IP_MSP>'
+fi

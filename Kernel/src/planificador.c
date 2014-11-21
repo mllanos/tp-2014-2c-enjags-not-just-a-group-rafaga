@@ -6,7 +6,10 @@ void *planificador(void *arg)
 {
 	while (1) {
 		t_msg *recibido;
-		sem_wait(&sem_planificador);
+		if(sem_wait(&sem_planificador) == -1) {
+			perror("planificador");
+			exit(EXIT_FAILURE);
+		}
 
 		//hilos(process_list);
 
@@ -116,7 +119,12 @@ void assign_processes(void)
 		t_cpu *cpu = queue_pop(request_queue);
 
 		t_msg *msg = tcb_message(NEXT_TCB, tcb, 1, get_quantum());
-		enviar_mensaje(cpu->sock_fd, msg);
+		if(enviar_mensaje(cpu->sock_fd, msg) == -1) {
+			log_warning(logger, "Se perdio la conexion con la CPU %u.", cpu->cpu_id);
+			tcb->cola = READY;
+			remove_cpu_by_sock_fd(cpu->sock_fd);
+			continue;
+		}
 		destroy_message(msg);
 
 		/* Seteamos CPU a ocupada y actualizamos sus datos. */
@@ -156,34 +164,40 @@ void cpu_queue(uint32_t sock_fd)
 		queue_push(request_queue, cpu);
 		log_trace(logger, "Encolando pedido de TCB de CPU %u.", cpu->cpu_id);
 	} else
-		log_warning(logger, "El CPU de sock_fd %u ya no existe.", sock_fd);
+		log_warning(logger, "El CPU de socket %u ya no existe.", sock_fd);
 }
 
 
 void cpu_abort(uint32_t sock_fd, t_hilo *tcb)
 {
 	t_cpu *cpu = find_cpu_by_sock_fd(sock_fd);
-	cpu->disponible = true;
+	if(cpu != NULL) {
+		cpu->disponible = true;
 
-	log_trace(logger, "Liberando CPU %u. Motivo: abortando proceso (PID %u).", cpu->cpu_id, tcb->pid);
+		log_trace(logger, "Liberando CPU %u. Motivo: abortando proceso (PID %u).", cpu->cpu_id, tcb->pid);
 
-	//print_tcb(tcb);
-	
-	/* Finalizamos la consola del proceso. */
+		//print_tcb(tcb);
+		
+		/* Finalizamos la consola del proceso. */
 
-	t_console *console = find_console_by_pid(tcb->pid);
+		t_console *console = find_console_by_pid(tcb->pid);
+		if(console != NULL) {
+			t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: abort.", 0);
+			if(enviar_mensaje(console->sock_fd, msg) == -1) {
+				log_warning(logger, "Se perdio la conexion con la Consola %u.", console->pid);
+				remove_console_by_sock_fd(console->sock_fd);
+			}
+			destroy_message(msg);
 
-	t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: abort.", 0);
-	enviar_mensaje(console->sock_fd, msg);
-	destroy_message(msg);
-
-	if (tcb->kernel_mode == true) {
-		/* Abortado hilo de Kernel. */
-
-		queue_pop(syscall_queue);
-
-		attend_next_syscall_request();
-	}
+			if (tcb->kernel_mode == true) {
+				/* Abortado hilo de Kernel. */
+				queue_pop(syscall_queue);
+				attend_next_syscall_request();
+			}
+		} else
+			log_warning(logger, "La consola del hilo (PID %u, TID %u) ya no existe.", tcb->pid, tcb->tid);
+	} else
+		log_warning(logger, "El CPU del hilo (PID %u, TID %u) ya no existe.", tcb->pid, tcb->tid);
 
 	free(tcb);
 }
@@ -229,7 +243,7 @@ void return_process(uint32_t sock_fd, t_hilo *tcb)
 		} else
 			log_warning(logger, "El hilo (PID %u, TID %u) ya no existe.", tcb->pid, tcb->tid);
 	} else
-		log_warning(logger, "El CPU de sock_fd %u ya no existe.", sock_fd);
+		log_warning(logger, "El CPU del hilo (PID %u, TID %u) ya no existe.", tcb->pid, tcb->tid);
 
 	free(tcb);
 }
@@ -315,7 +329,10 @@ void numeric_input(uint32_t cpu_sock_fd, uint32_t tcb_pid)
 	t_console *console = find_console_by_pid(tcb_pid);
 	if (console != NULL) {
 		t_msg *msg = argv_message(NUMERIC_INPUT, 1, cpu_sock_fd);
-		enviar_mensaje(console->sock_fd, msg);
+		if(enviar_mensaje(console->sock_fd, msg) == -1) {
+			log_warning(logger, "Se perdio la conexion con la Consola %u.", console->pid);
+			remove_console_by_sock_fd(console->sock_fd);
+		}
 		destroy_message(msg);
 	} else
 		log_warning(logger, "La consola del proceso (PID %d) ya no existe.", tcb_pid);
@@ -327,7 +344,10 @@ void string_input(uint32_t cpu_sock_fd, uint32_t tcb_pid, uint32_t length)
 	t_console *console = find_console_by_pid(tcb_pid);
 	if (console != NULL) {
 		t_msg *msg = argv_message(STRING_INPUT, 2, cpu_sock_fd, length);
-		enviar_mensaje(console->sock_fd, msg);
+		if(enviar_mensaje(console->sock_fd, msg) == -1) {
+			log_warning(logger, "Se perdio la conexion con la Consola %u.", console->pid);
+			remove_console_by_sock_fd(console->sock_fd);
+		}
 		destroy_message(msg);
 	} else
 		log_warning(logger, "La consola del proceso (PID %d) ya no existe.", tcb_pid);
@@ -339,7 +359,10 @@ void numeric_output(uint32_t tcb_pid, int output_number)
 	t_console *console = find_console_by_pid(tcb_pid);
 	if (console != NULL) {
 		t_msg *msg = argv_message(NUMERIC_OUTPUT, 1, output_number);
-		enviar_mensaje(console->sock_fd, msg);
+		if(enviar_mensaje(console->sock_fd, msg) == -1) {
+			log_warning(logger, "Se perdio la conexion con la Consola %u.", console->pid);
+			remove_console_by_sock_fd(console->sock_fd);
+		}
 		destroy_message(msg);
 	} else
 		log_warning(logger, "La consola del proceso (PID %d) ya no existe.", tcb_pid);
@@ -351,7 +374,10 @@ void string_output(uint32_t tcb_pid, char *output_stream)
 	t_console *console = find_console_by_pid(tcb_pid);
 	if (console != NULL) {
 		t_msg *msg = string_message(STRING_OUTPUT, output_stream, 0);
-		enviar_mensaje(console->sock_fd, msg);
+		if(enviar_mensaje(console->sock_fd, msg) == -1) {
+			log_warning(logger, "Se perdio la conexion con la Consola %u.", console->pid);
+			remove_console_by_sock_fd(console->sock_fd);
+		}
 		destroy_message(msg);
 	} else
 		log_warning(logger, "La consola del proceso (PID %d) ya no existe.", tcb_pid);
@@ -361,7 +387,10 @@ void string_output(uint32_t tcb_pid, char *output_stream)
 void return_numeric_input(uint32_t cpu_sock_fd, int number)
 {
 	t_msg *msg = argv_message(REPLY_NUMERIC_INPUT, 1, number);
-	enviar_mensaje(cpu_sock_fd, msg);
+	if(enviar_mensaje(cpu_sock_fd, msg) == -1) {
+		t_cpu *cpu = remove_cpu_by_sock_fd(cpu_sock_fd);
+		log_warning(logger, "Se perdio la conexion con el CPU %u.", cpu->cpu_id);
+	}
 	destroy_message(msg);
 }
 
@@ -369,7 +398,10 @@ void return_numeric_input(uint32_t cpu_sock_fd, int number)
 void return_string_input(uint32_t cpu_sock_fd, char *stream)
 {
 	t_msg *msg = string_message(REPLY_STRING_INPUT, stream, 0);
-	enviar_mensaje(cpu_sock_fd, msg);
+	if(enviar_mensaje(cpu_sock_fd, msg) == -1) {
+		t_cpu *cpu = remove_cpu_by_sock_fd(cpu_sock_fd);
+		log_warning(logger, "Se perdio la conexion con el CPU %u.", cpu->cpu_id);
+	}
 	destroy_message(msg);
 }
 
@@ -423,7 +455,10 @@ void create_thread(uint32_t cpu_sock_fd, t_hilo *padre)
 		pthread_mutex_unlock(&process_list_mutex);
 
 		t_msg *crea_success = argv_message(CREA_OK, 1, new_tcb->tid);
-		enviar_mensaje(cpu_sock_fd, crea_success);
+		if (enviar_mensaje(cpu_sock_fd, crea_success) == -1) {
+			t_cpu *cpu = remove_cpu_by_sock_fd(cpu_sock_fd);
+			log_warning(logger, "Se perdio la conexion con el CPU %u.", cpu->cpu_id);
+		}
 
 		destroy_message(request_stack);
 		destroy_message(write_stack);
@@ -432,12 +467,17 @@ void create_thread(uint32_t cpu_sock_fd, t_hilo *padre)
 	} else if (MSP_RESERVE_FAILURE(status_stack->header.id)) { 
 		/* No hay suficiente memoria, avisar a Consola. */
 		t_console *console = find_console_by_pid(padre->pid);
+		if(console != NULL) {
+			log_warning(logger, "Error al reservar memoria para el hilo (PID %u, TID %u).", padre->pid, new_tid);
 
-		log_warning(logger, "Error al reservar memoria para el hilo (PID %u, TID %u).", padre->pid, new_tid);
-
-		t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: no se pudo reservar memoria en la MSP para un hilo nuevo.", 0);
-		enviar_mensaje(console->sock_fd, msg);
-		destroy_message(msg);
+			t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: no se pudo reservar memoria en la MSP para un hilo nuevo.", 0);
+			if (enviar_mensaje(console->sock_fd, msg) == -1) {
+				log_warning(logger, "Se perdio la conexion con la Consola %u.", console->pid);
+				remove_console_by_sock_fd(console->sock_fd);
+			}
+			destroy_message(msg);
+		} else
+			log_warning(logger, "La consola del hilo (PID %u, TID %u) ya no existe.", padre->pid, padre->tid);
 	} else {
 		errno = EBADMSG;
 		perror("create_thread");

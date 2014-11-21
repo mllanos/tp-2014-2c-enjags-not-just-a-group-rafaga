@@ -91,7 +91,7 @@ int remove_from_lists(uint32_t sock_fd);
 
 /* Funciones auxiliares. */
 uint32_t get_unique_id(t_unique_id id);
-static int make_socket_non_blocking(int sfd);
+int make_socket_non_blocking(int sfd);
 
 
 /* Archivos de configuracion y log. */

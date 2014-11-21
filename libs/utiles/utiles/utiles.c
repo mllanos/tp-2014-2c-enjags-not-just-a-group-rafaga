@@ -101,7 +101,7 @@ t_msg *argv_message(t_msg_id id, uint16_t count, ...)
 	va_list arguments;
 	va_start(arguments, count);
 
-	uint32_t *val = malloc(count * sizeof *val);
+	int32_t *val = malloc(count * sizeof *val);
 
 	int i;
 	for (i = 0; i < count; i++) {
@@ -126,7 +126,7 @@ t_msg *string_message(t_msg_id id, char *message, uint16_t count, ...)
 	va_list arguments;
 	va_start(arguments, count);
 
-	uint32_t *val = NULL;
+	int32_t *val = NULL;
 	if(count > 0) 
 		val = malloc(count * sizeof *val);
 
@@ -155,15 +155,13 @@ t_msg *modify_message(t_msg_id new_id, t_msg *old_msg, uint16_t new_count, ...)
 
 	uint16_t old_count = old_msg->header.argc;
 
-	uint32_t *val = malloc((new_count + old_count) * sizeof *val);
-	uint32_t *val_old = val + new_count;
+	int32_t *val = malloc((new_count + old_count) * sizeof *val);
 
 	int i;
 	for (i = 0; i < new_count; i++) {
 		val[i] = va_arg(arguments, uint32_t);
 	}
 
-	val_old = memcpy(val + new_count, old_msg->argv, old_count * sizeof(uint32_t));
 
 	char *buffer = NULL;
 	if(old_msg->header.length > 0)
@@ -191,7 +189,7 @@ t_msg *remake_message(t_msg_id new_id, t_msg *old_msg, uint16_t new_count, ...)
 	va_list arguments;
 	va_start(arguments, new_count);
 
-	uint32_t *val = NULL;
+	int32_t *val = NULL;
 	if(new_count > 0)
 		val = malloc(new_count * sizeof *val);
 
@@ -227,7 +225,7 @@ t_msg *beso_message(t_msg_id id, char *beso_path, uint16_t count, ...)
 	va_list arguments;
 	va_start(arguments, count);
 
-	uint32_t *val = malloc(count * sizeof *val);
+	int32_t *val = malloc(count * sizeof *val);
 
 	int i;
 	for (i = 0; i < count; i++) {
@@ -268,7 +266,7 @@ t_msg *tcb_message(t_msg_id id, t_hilo *tcb, uint16_t count, ...)
 	va_list arguments;
 	va_start(arguments, count);
 
-	uint32_t *val = malloc(count * sizeof *val);
+	int32_t *val = malloc(count * sizeof *val);
 
 	int i;
 	for (i = 0; i < count; i++) {

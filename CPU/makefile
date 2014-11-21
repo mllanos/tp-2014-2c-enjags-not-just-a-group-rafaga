@@ -3,7 +3,7 @@ LIBS = -lcommons -lutiles -lansisop-panel
 OBJ = obj/cpu.o obj/execution_unit.o obj/set_instrucciones.o
 DIRS = bin/ obj/
 OUT = bin/CPU
-FLAGS = -g
+FLAGS = -g -Wall
 
 all: directories cpu
 

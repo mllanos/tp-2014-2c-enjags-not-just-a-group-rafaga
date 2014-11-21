@@ -264,7 +264,10 @@ void interpret_message(int sock_fd, t_msg *recibido)
 			pthread_mutex_lock(&loader_mutex);
 			queue_push(loader_queue, modify_message(NO_NEW_ID, recibido, 1, sock_fd));
 			pthread_mutex_unlock(&loader_mutex);
-			sem_post(&sem_loader);
+			if(sem_post(&sem_loader) == -1) {
+				perror("interpret_message");
+				exit(EXIT_FAILURE);
+			}
 			break;
 		/* Mensajes de CPU que necesitan el cpu_sock_fd. */
 		case CPU_CONNECT:										/* <;> */
@@ -278,7 +281,10 @@ void interpret_message(int sock_fd, t_msg *recibido)
 			pthread_mutex_lock(&planificador_mutex);
 			queue_push(planificador_queue, modify_message(NO_NEW_ID, recibido, 1, sock_fd));
 			pthread_mutex_unlock(&planificador_mutex);
-			sem_post(&sem_planificador);
+			if(sem_post(&sem_planificador) == -1) {
+				perror("interpret_message");
+				exit(EXIT_FAILURE);
+			}
 			break;
 		/* Mensajes de CPU que no necesitan el cpu_sock_fd. */
 		case CPU_INTERRUPT: 									/* <TCB_STRING; MEM_DIR> */
@@ -293,7 +299,10 @@ void interpret_message(int sock_fd, t_msg *recibido)
 			pthread_mutex_lock(&planificador_mutex);
 			queue_push(planificador_queue, recibido);
 			pthread_mutex_unlock(&planificador_mutex);
-			sem_post(&sem_planificador);
+			if(sem_post(&sem_planificador) == -1) {
+				perror("interpret_message");
+				exit(EXIT_FAILURE);
+			}
 			break;
 		default: 												/* Nunca deberia pasar. */
 			errno = EBADMSG;
@@ -404,9 +413,9 @@ int remove_from_lists(uint32_t sock_fd)
 			} else 
 				/* Es el KLT. Liberar recursos y salir del programa. */
 				result = -1;
-
-			free(out_cpu);
 		}
+
+		free(out_cpu);
 	} else {
 		/* No es ni CPU ni Consola. */
 		errno = EBADF;
@@ -431,7 +440,7 @@ uint32_t get_unique_id(t_unique_id id)
 }
 
 
-static int make_socket_non_blocking(int sfd)
+int make_socket_non_blocking(int sfd)
 {
 	int flags, s;
 

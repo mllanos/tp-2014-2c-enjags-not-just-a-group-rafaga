@@ -1,0 +1,19 @@
+^**************************************************************
+^Objetivo: Saturar el uso del TCB KM
+^Modo de ejecucion: Simple. Ejecutarlo.
+^Resultado: Imprimir numeros del 1 al 20 de a uno. Termina exitosamente.
+^**************************************************************
+LOAD C,20^Cantidad de vueltas
+LOAD B,0^Valor inicial
+LOAD D,#FOR^Lugar de retorno
+^
+:FOR
+INCR B^Incrementa el iterador
+MOVR A,B
+INTE OUTN^Imprime el valor
+COMP B,C
+JPNZ #FIN^break
+GOTO D^Loopback
+^
+:FIN
+XXXX

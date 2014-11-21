@@ -2,12 +2,13 @@ UTILES=libutiles.so
 LIB_DIR=/usr/lib
 INCLUDE_DIR=/usr/include
 LIBS= -lcommons
+FLAGS= -shared -fPIC -g -Wall
 
 C_SRCS = $(shell find . -iname "*.c" | tr '\n' ' ')
 H_SRCS = $(shell find . -iname "*.h" | tr '\n' ' ')
 
 compile:
-	gcc -shared -fPIC $(C_SRCS) $(H_SRCS) -o $(UTILES) $(LIBS)
+	gcc $(FLAGS) $(C_SRCS) $(H_SRCS) -o $(UTILES) $(LIBS)
 
 install: compile
 	cp -u $(UTILES) $(LIB_DIR)

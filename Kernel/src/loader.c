@@ -3,7 +3,10 @@
 void *loader(void *arg)
 {
 	while (1) {
-		sem_wait(&sem_loader);
+		if(sem_wait(&sem_loader) == -1) {
+			perror("loader");
+			exit(EXIT_FAILURE);
+		}
 
 		pthread_mutex_lock(&loader_mutex);
 		t_msg *recibido = queue_pop(loader_queue);
@@ -19,7 +22,10 @@ void *loader(void *arg)
 			log_warning(logger, "No se pudo cargar a memoria el hilo principal de la Consola %u.", console->pid);
 
 			t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: no hay espacio suficiente en MSP.", 0);
-			enviar_mensaje(console->sock_fd, msg);
+			if(enviar_mensaje(console->sock_fd, msg) == -1) {
+				log_warning(logger, "Se perdio la conexion con la consola %u.", console->pid);
+				remove_console_by_sock_fd(console->sock_fd);
+			}
 			destroy_message(msg);
 		} else {
 			pthread_mutex_lock(&process_list_mutex);
@@ -99,7 +105,8 @@ void inform_consoles_without_active_processes(void)
 
 		if (list_count_satisfying(process_list, (void *) _find_active_by_pid) == 0) {
 			t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: fin de ejecucion.", 0);
-			enviar_mensaje(a_cnsl->sock_fd, msg);
+			if(enviar_mensaje(a_cnsl->sock_fd, msg) == -1)
+				log_warning(logger, "Se perdio la conexion con la consola %u.", a_cnsl->pid);
 			destroy_message(msg);
 		}
 	}

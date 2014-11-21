@@ -49,10 +49,10 @@ void receive_messages(void)
 
 int interpret_message(t_msg *recibido)
 {
-	char *aux;
-	char *str_input;
+	char *aux = NULL;
+	char *str_input = NULL;
 	int32_t num_input;
-	t_msg *msg;
+	t_msg *msg = NULL;
 
 	log_trace(logger, "RECIBIDO: %s", recibido->stream);
 
@@ -60,7 +60,7 @@ int interpret_message(t_msg *recibido)
 		case NUMERIC_INPUT:
 			puts("Ingrese un valor numerico.");
 
-			while(scanf(A_LINE, &str_input) == 0 || sscanf(str_input, "%d%1s", &num_input, aux) != 1){
+			while(scanf(A_LINE, &str_input) == 0 || sscanf(str_input, "%d%1s", &num_input, aux) != 1) {
 				getchar();
 				puts("Argumentos inválidos, intentelo de nuevo.");
 			}

@@ -1,0 +1,28 @@
+^**************************************************************
+^Objetivo: Evaluar el uso de OUTN y OUTC
+^Modo de ejecucion: Simple. Ejecutarlo. El valor -1 senializa el final de el ingreso
+^Resultado: Imprimir los numeros ingresados (el orden alrevez) y la suma.
+^**************************************************************
+LOAD C, -1^Sentinela
+LOAD D,0^Valor inicial= 0
+LOAD E,#LOOP
+^
+:LOOP
+INTE INN
+MOVR B,A^Almacena el valor
+COMP A,C^Compara sentinela
+JPNZ #IMPRIMIR^Si es 1, terminar
+^
+ADDR D,B^Suma el input
+MOVR D,A^Almacena la suma
+PUSH 4,B^Almacena el valor
+GOTO E^Cicla
+^
+:IMPRIMIR
+TAKE 4,A^Desapila
+INTE OUTN^e imprime
+COMP S,X^Comparar si termino la lista de numeros
+JMPZ #IMPRIMIR^Si son diferentes, ciclar
+MOVR A,D
+INTE OUTN^Imprime la suma
+XXXX

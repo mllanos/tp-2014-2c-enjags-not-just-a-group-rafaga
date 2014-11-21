@@ -1,0 +1,39 @@
+^**************************************************************
+^Objetivo: Probar que la creacion de hilos no comparte el Stack pero si el codigo.
+^Modo de ejecucion: Simple. Ejecutarlo.
+^Resultado esperado: Imprime el numero 5, 7 y 15. Termina exitosamente.
+^**************************************************************
+LOAD B,#HILO^El apuntador a la rutina
+^
+LOAD A,5
+PUSH 4,A^Argumento del hilo: 5
+INTE CREATE_THREAD
+MOVR C,A^Guardar el TID
+TAKE 4,A^Desapilar
+^
+LOAD A,7
+PUSH 4,A^Argumento del hilo: 7
+INTE CREATE_THREAD
+MOVR D,A^Guarda el TID del segundo hijo
+TAKE 4,A^Desapilar
+^Esperar a los dos hilos
+MOVR A,D
+INTE JOIN_THREAD^esperar al hilo(7)
+MOVR A,C
+INTE JOIN_THREAD^esperar al hilo(5)
+:Alterar
+LOAD A,8^despues de ejecutar los hilos, este valor 8 deberia cambiar a 15
+INTE OUTN
+XXXX
+^
+^
+:HILO
+TAKE 4,A^Desapilar el argumento
+INTE OUTN^e imprimirlo
+LOAD B,15^Valor a editar
+LOAD A,#Alterar^el ultimo load
+ADDR A,M
+LOAD E,5
+ADDR A,E^Offset del numero
+SETM 4,A,B
+XXXX^Terminar hilo
