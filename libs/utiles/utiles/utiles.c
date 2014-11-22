@@ -162,6 +162,8 @@ t_msg *modify_message(t_msg_id new_id, t_msg *old_msg, uint16_t new_count, ...)
 		val[i] = va_arg(arguments, uint32_t);
 	}
 
+	memcpy(val + new_count, old_msg->argv, old_count * sizeof(uint32_t));
+
 
 	char *buffer = NULL;
 	if(old_msg->header.length > 0)
