@@ -15,7 +15,7 @@ void *loader(void *arg)
 		t_console *console = new_console(recibido->argv[0]);
 
 		//conexion_consola(console->console_id);
-		log_trace(logger, "Nueva conexion de Consola %u.", console->pid);
+		log_trace(logger, "[NEW_CONNECTION @ LOADER]: (CONSOLE_ID %u).", console->pid);
 
 		t_hilo *new_tcb = reservar_memoria(ult_tcb(console->pid), recibido);
 		if (new_tcb == NULL) {
@@ -32,7 +32,7 @@ void *loader(void *arg)
 			list_add(process_list, new_tcb);
 			pthread_mutex_unlock(&process_list_mutex);
 
-			log_trace(logger, "Encolando el hilo principal de la Consola %u a NEW.", console->pid);
+			log_trace(logger, "[LOADER]: (PID %u, TID %u) => NEW.", new_tcb->pid, new_tcb->tid);
 
 			pthread_mutex_lock(&console_list_mutex);
 			list_add(console_list, console);
@@ -85,7 +85,11 @@ t_console *find_console_by_pid(uint32_t pid)
 t_console *remove_console_by_sock_fd(uint32_t sock_fd)
 {
 	bool _remove_console_by_sock_fd(t_console *a_cnsl) { 
-		return a_cnsl->sock_fd == sock_fd; 
+		bool result = a_cnsl->sock_fd == sock_fd;
+		if(result)
+			log_trace(logger, "[REMOVED]: (CONSOLE_ID %u).", a_cnsl->pid);
+
+		return result;
 	}
 
 	pthread_mutex_lock(&console_list_mutex);
@@ -106,7 +110,7 @@ void inform_consoles_without_active_processes(void)
 		if (list_count_satisfying(process_list, (void *) _find_active_by_pid) == 0) {
 			t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: fin de ejecucion.", 0);
 			if(enviar_mensaje(a_cnsl->sock_fd, msg) == -1)
-				log_warning(logger, "Se perdio la conexion con la consola %u.", a_cnsl->pid);
+				log_warning(logger, "Se perdio la conexion con la Consola %u.", a_cnsl->pid);
 			destroy_message(msg);
 		}
 	}

@@ -2,6 +2,7 @@
 
 int main(int argc, char **argv)
 {
+	signal(SIGINT, kill_kernel);
 	initialize(argv[1]);
 	boot_kernel();
 	receive_messages_epoll();
@@ -67,7 +68,7 @@ void boot_kernel(void)
 		exit(EXIT_FAILURE);
 	}
 
-	log_trace(logger, "Bloqueando el hilo de Kernel.");
+	log_trace(logger, "[BOOT]: (PID %u, TID %u, %s) => BLOCK.", klt_tcb->pid, klt_tcb->tid, km_string(klt_tcb));
 
 	list_add(process_list, klt_tcb);
 }
@@ -223,8 +224,8 @@ void receive_messages_select(void)
 
 void finalize(void)
 {
-	pthread_kill(loader_th, SIGTERM);
-	pthread_kill(planificador_th, SIGTERM);
+	pthread_cancel(loader_th);
+	pthread_cancel(planificador_th);
 
 	destroy_segments_on_exit_or_condition(true);
 
@@ -256,7 +257,7 @@ void interpret_message(int sock_fd, t_msg *recibido)
 {
 	/* Tipos de mensaje: <[stream]; [argv, [argv, ]*]> */
 
-	print_msg(recibido);
+	//print_msg(recibido);
 
 	switch (recibido->header.id) {
 		/* Mensaje de conexion de Consola. */
@@ -306,7 +307,6 @@ void interpret_message(int sock_fd, t_msg *recibido)
 			break;
 		default: 												/* Nunca deberia pasar. */
 			errno = EBADMSG;
-			log_error(logger, "ID desconocido en interpret_message.");
 			perror("interpret_message");
 			exit(EXIT_FAILURE);
 	}
@@ -332,7 +332,6 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 			tcb = NULL;
 			cont = 0;
 		} else if (!MSP_RESERVE_SUCCESS(status[i]->header.id)) {
-			log_error(logger, "ID desconocido en reservar_memoria.");
 			errno = EBADMSG;
 			perror("reservar_memoria");
 			exit(EXIT_FAILURE);
@@ -350,7 +349,6 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 			free(tcb);
 			tcb = NULL;
 		} else if (!MSP_WRITE_SUCCESS(status[2]->header.id)) {
-			log_error(logger, "ID desconocido en reservar_memoria.");
 			errno = EBADMSG;
 			perror("reservar_memoria");
 			exit(EXIT_FAILURE);
@@ -388,7 +386,7 @@ int remove_from_lists(uint32_t sock_fd)
 		/* Es una consola, finalizar todos sus procesos. Verificar que ninguno sea el hilo Kernel. */
 		//desconexion_consola(out_console->console_id);
 
-		log_trace(logger, "Desconexion Consola %u.", out_console->pid);
+		log_trace(logger, "[DISCONNECTION @ REMOVE_FROM_LISTS]: (CONSOLE_ID %u).", out_console->pid);
 
 		finalize_process_by_pid(out_console->pid);
 
@@ -397,7 +395,7 @@ int remove_from_lists(uint32_t sock_fd)
 		/* Es una CPU. Verificar si tiene hilos ejecutando. */
 		//desconexion_cpu(out_cpu->cpu_id);
 
-		log_trace(logger, "Desconexion CPU %u.", out_cpu->cpu_id);
+		log_trace(logger, "[DISCONNECTION @ REMOVE_FROM_LISTS]: (CPU_ID %u).", out_cpu->cpu_id);
 
 		if (out_cpu->disponible == false) {
 			/* La CPU saliente tiene hilos ejecutando. */
@@ -405,7 +403,7 @@ int remove_from_lists(uint32_t sock_fd)
 			if (out_cpu->kernel_mode == false) {
 				/* Es un ULT. Avisar a la Consola para que se desconecte. */
 				t_console *out_cons = find_console_by_pid(out_cpu->pid);
-
+				log_trace(logger, "[CPU_QUIT @ REMOVE_FROM_LISTS]: (CONSOLE_ID %u).", out_cons->pid);
 				t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: CPU saliente.", 0);
 				enviar_mensaje(out_cons->sock_fd, msg);
 				destroy_message(msg);
@@ -458,4 +456,17 @@ int make_socket_non_blocking(int sfd)
 	}
 
 	return 0;
+}
+
+
+void kill_kernel(int signo)
+{
+	switch(signo) {
+		case SIGINT:
+			log_trace(logger, "Finalizando Kernel por SIGINT.");
+			finalize();
+			exit(EXIT_SUCCESS);
+		default:
+			break;
+	}
 }

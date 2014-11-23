@@ -22,6 +22,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <sys/epoll.h>
+#include <signal.h>
 #include "loader.h"
 #include "planificador.h"
 
@@ -42,6 +43,9 @@
 #define get_quantum() config_get_int_value(config, "QUANTUM")
 #define get_stack_size() config_get_int_value(config, "TAMANIO_STACK")
 #define get_syscalls() config_get_string_value(config, "SYSCALLS")
+
+/* Otros. */
+#define km_string(tcb) tcb->kernel_mode ? "KLT" : "ULT"
 
 
 typedef enum {
@@ -92,6 +96,7 @@ int remove_from_lists(uint32_t sock_fd);
 /* Funciones auxiliares. */
 uint32_t get_unique_id(t_unique_id id);
 int make_socket_non_blocking(int sfd);
+void kill_kernel(int signo);
 
 
 /* Archivos de configuracion y log. */

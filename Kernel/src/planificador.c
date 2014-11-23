@@ -93,15 +93,15 @@ void *planificador(void *arg)
 
 void bprr_algorithm(void)
 {
-	log_trace(logger, "Ejecutando el algoritmo BPRR.");
-	log_processes("Antes del algoritmo");	
+	log_trace(logger, "[EXECUTING @ BPRR_ALGORITHM].");
+	log_processes("[BEFORE @ BPRR_ALGORITHM]");	
 	new_processes_to_ready();
 	unlock_joined_processes();
 	kill_child_processes();
 	destroy_segments_on_exit_or_condition(false);
 	remove_processes_on_exit();
 	sort_processes_by_bprr();
-	log_processes("Despues del algoritmo");
+	log_processes("[AFTER @ BPRR_ALGORITHM]");
 	inform_consoles_without_active_processes();
 }
 
@@ -120,7 +120,7 @@ void assign_processes(void)
 
 		t_msg *msg = tcb_message(NEXT_TCB, tcb, 1, get_quantum());
 		if(enviar_mensaje(cpu->sock_fd, msg) == -1) {
-			log_warning(logger, "Se perdio la conexion con la CPU %u.", cpu->cpu_id);
+			log_warning(logger, "[LOST_CONNECTION @ ASSIGN_PROCESS]: (CPU_ID %u).", cpu->cpu_id);
 			tcb->cola = READY;
 			remove_cpu_by_sock_fd(cpu->sock_fd);
 			continue;
@@ -133,8 +133,7 @@ void assign_processes(void)
 		cpu->disponible = false;
 		cpu->kernel_mode = tcb->kernel_mode;
 
-		log_trace(logger, "Ocupando CPU %u. Motivo: asignando hilo (PID %u, TID %u, %s).", cpu->cpu_id, tcb->pid, 
-			tcb->tid, tcb->kernel_mode ? "KLT" : "ULT");
+		log_trace(logger, "[ASSIGN_PROCESS]: (CPU_ID %u) => BUSY [(PID %u, TID %u, %s)].", cpu->cpu_id, tcb->pid, tcb->tid, km_string(tcb));
 	}
 }
 
@@ -154,7 +153,7 @@ void cpu_add(uint32_t sock_fd)
 	pthread_mutex_unlock(&cpu_list_mutex);
 
 	//conexion_cpu(new_cpu->cpu_id);
-	log_trace(logger, "Nueva conexion de CPU %u.", new_cpu->cpu_id);
+	log_trace(logger, "[NEW_CONNECTION @ CPU_ADD]: (CPU_ID %u).", new_cpu->cpu_id);
 }
 
 void cpu_queue(uint32_t sock_fd)
@@ -162,9 +161,9 @@ void cpu_queue(uint32_t sock_fd)
 	t_cpu *cpu = find_cpu_by_sock_fd(sock_fd);
 	if(cpu != NULL) {
 		queue_push(request_queue, cpu);
-		log_trace(logger, "Encolando pedido de TCB de CPU %u.", cpu->cpu_id);
+		log_trace(logger, "[PUSHING_REQUEST @ CPU_QUEUE]: (CPU_ID %u).", cpu->cpu_id);
 	} else
-		log_warning(logger, "El CPU de socket %u ya no existe.", sock_fd);
+		log_warning(logger, "[NOT_FOUND @ CPU_QUEUE]: (CPU_SOCK %u).", sock_fd);
 }
 
 
@@ -174,7 +173,7 @@ void cpu_abort(uint32_t sock_fd, t_hilo *tcb)
 	if(cpu != NULL) {
 		cpu->disponible = true;
 
-		log_trace(logger, "Liberando CPU %u. Motivo: abortando proceso (PID %u).", cpu->cpu_id, tcb->pid);
+		log_trace(logger, "[CPU_ABORT]: (CPU_ID %u) => FREE [(PID %u, TID %u)].", cpu->cpu_id, tcb->pid, tcb->tid);
 
 		//print_tcb(tcb);
 		
@@ -182,9 +181,9 @@ void cpu_abort(uint32_t sock_fd, t_hilo *tcb)
 
 		t_console *console = find_console_by_pid(tcb->pid);
 		if(console != NULL) {
-			t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: abort.", 0);
+			t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: CPU_ABORT.", 0);
 			if(enviar_mensaje(console->sock_fd, msg) == -1) {
-				log_warning(logger, "Se perdio la conexion con la Consola %u.", console->pid);
+				log_warning(logger, "[LOST_CONNECTION @ CPU_ABORT]: (CONSOLE_ID %u).", console->pid);
 				remove_console_by_sock_fd(console->sock_fd);
 			}
 			destroy_message(msg);
@@ -195,9 +194,9 @@ void cpu_abort(uint32_t sock_fd, t_hilo *tcb)
 				attend_next_syscall_request();
 			}
 		} else
-			log_warning(logger, "La consola del hilo (PID %u, TID %u) ya no existe.", tcb->pid, tcb->tid);
+			log_warning(logger, "[NOT_FOUND @ CPU_ABORT]: (PID %u, TID %u).", tcb->pid, tcb->tid);
 	} else
-		log_warning(logger, "El CPU del hilo (PID %u, TID %u) ya no existe.", tcb->pid, tcb->tid);
+		log_warning(logger, "[NOT_FOUND @ CPU_ABORT]: (CPU_SOCK %u).", sock_fd);
 
 	free(tcb);
 }
@@ -214,12 +213,12 @@ void attend_next_syscall_request(void)
 		klt_tcb->tid = to_load->blocked->tid;
 		klt_tcb->puntero_instruccion = to_load->call_dir;
 		klt_tcb->cola = READY;
-		log_trace(logger, "Cargando KLT. Motivo: atender syscalls (TID %u, puntero instruccion protegida %u).",
+		log_trace(logger, "[ATTEND_SYSCALL]: KLT => READY [(PID %u, TID %u, PTR %u)].",
 			to_load->blocked->pid, to_load->blocked->tid, to_load->call_dir);
 	} else {
 		/* Ya no hay mas syscalls. Encolar el KLT a BLOCK. */
 		klt_tcb->cola = BLOCK;
-		log_trace(logger, "Bloqueando el KLT.");
+		log_trace(logger, "[ATTEND_SYSCALL]: KLT => BLOCK.");
 	}
 }
 
@@ -231,19 +230,18 @@ void return_process(uint32_t sock_fd, t_hilo *tcb)
 	if(cpu != NULL) {
 		cpu->disponible = true;
 
-		log_trace(logger, "Liberando CPU %u. Motivo: fin de quantum hilo (PID %u, TID %u, %s).", 
-			cpu->cpu_id, tcb->pid, tcb->tid, tcb->kernel_mode ? "KLT" : "ULT");
+		log_trace(logger, "[QUANTUM_END @ RETURN_PROCESS]: (CPU_ID %u) => FREE [(PID %u, TID %u)].", cpu->cpu_id, tcb->pid, tcb->tid);
 
 		/* Actualizamos el tcb recibido y lo encolamos a READY si es que existe. */
 		t_hilo *to_update = find_thread_by_pid_tid(tcb->pid, tcb->tid, true);
 		if (to_update != NULL) {
-			log_trace(logger, "Actualizando el TCB del hilo (PID %u, TID %u).", tcb->pid, tcb->tid);
+			log_trace(logger, "[UPDATING @ RETURN_PROCESS]: (PID %u, TID %u).", tcb->pid, tcb->tid);
 			memcpy(to_update, tcb, sizeof *tcb);
 			to_update->cola = READY;
 		} else
-			log_warning(logger, "El hilo (PID %u, TID %u) ya no existe.", tcb->pid, tcb->tid);
+			log_warning(logger, "[NOT_FOUND @ RETURN_PROCESS]: (PID %u, TID %u).", tcb->pid, tcb->tid);
 	} else
-		log_warning(logger, "El CPU del hilo (PID %u, TID %u) ya no existe.", tcb->pid, tcb->tid);
+		log_warning(logger, "[NOT_FOUND @ RETURN_PROCESS]: (CPU_SOCK %u).", sock_fd);
 
 	free(tcb);
 }
@@ -258,8 +256,7 @@ void finish_process(uint32_t sock_fd, t_hilo *tcb)
 	if(cpu != NULL) {
 		cpu->disponible = true;
 
-		log_trace(logger, "Desocupando CPU %u. Motivo: fin de ejecucion hilo (PID %u, TID %u, %s).", 
-			cpu->cpu_id, tcb->pid, tcb->tid, tcb->kernel_mode ? "KLT" : "ULT");
+		log_trace(logger, "[FINISH_PROCESS]: (CPU_ID %u) => FREE [(PID %u, TID %u)].", cpu->cpu_id, tcb->pid, tcb->tid);
 
 		if (tcb->kernel_mode == false) { 
 			/* Recibido ULT, actualizamos el tcb recibido y lo encolamos a EXIT si es que existe. */
@@ -270,9 +267,9 @@ void finish_process(uint32_t sock_fd, t_hilo *tcb)
 				memcpy(finished, tcb, sizeof *tcb);
 				finished->cola = EXIT;
 
-				log_trace(logger, "Finalizando hilo (PID %u, TID %u).", tcb->pid, tcb->tid);
+				log_trace(logger, "[THREAD_END @ FINISH_PROCESS]: (PID %u, TID %u) => EXIT.", tcb->pid, tcb->tid);
 			} else 
-				log_warning(logger, "El hilo (PID %u, TID %u) ya no existe.", tcb->pid, tcb->tid);
+				log_warning(logger, "[NOT_FOUND @ FINISH_PROCESS]: (PID %u, TID %u).", tcb->pid, tcb->tid);
 		} else {
 			/* Recibido KLT, copiamos registros al proceso bloqueado por syscalls y lo encolamos a READY. */
 
@@ -280,19 +277,23 @@ void finish_process(uint32_t sock_fd, t_hilo *tcb)
 
 			if(blocked_by_join == true) {
 				/* Hilo encolado en syscalls fue bloqueado por join. */
-				log_trace(logger, "El hilo (PID %u, TID %u) no se desbloqueo por fin de syscalls. Motivo: esta en join.", 
-					syscall->blocked->pid, syscall->blocked->tid);
 				blocked_by_join = false;
 			} else {
 				memcpy(syscall->blocked->registros, tcb->registros, sizeof tcb->registros);
-				syscall->blocked->cola = READY;
 
-				log_trace(logger, "Desbloqueando hilo (PID %u, TID %u). Motivo: syscall finalizada.", tcb->pid, tcb->tid);
+				if(find_console_by_pid(syscall->blocked->pid) != NULL) {
+					syscall->blocked->cola = READY;
+					log_trace(logger, "[SYSCALL_END @ FINISH_PROCESS]: (PID %u, TID %u) => READY.", tcb->pid, tcb->tid);
+				} else {
+					syscall->blocked->cola = EXIT;
+					log_warning(logger, "[NOT_FOUND @ FINISH_PROCESS]: (CONSOLE_ID %u).", syscall->blocked->pid);
+				}
 			}
+
 			attend_next_syscall_request();
 		}
 	} else
-		log_warning(logger, "El CPU de sock_fd %u ya no existe.", sock_fd);
+		log_warning(logger, "[NOT_FOUND @ FINISH_PROCESS]: (CPU_SOCK %u).", sock_fd);
 
 	free(tcb);
 }
@@ -307,7 +308,7 @@ void syscall_start(uint32_t call_dir, t_hilo *tcb)
 		memcpy(blocked, tcb, sizeof *tcb);
 		blocked->cola = BLOCK;
 
-		log_trace(logger, "Bloqueando hilo (PID %u, TID %u). Motivo: system call.", blocked->pid, blocked->tid);
+		log_trace(logger, "[SYSCALL_START]: (PID %u, TID %u) => BLOCK.", blocked->pid, blocked->tid);
 
 		t_syscall *new_syscall = malloc(sizeof *new_syscall);
 		new_syscall->call_dir = call_dir;
@@ -318,7 +319,7 @@ void syscall_start(uint32_t call_dir, t_hilo *tcb)
 		if (klt_tcb->cola == BLOCK) 
 			attend_next_syscall_request();
 	} else
-		log_warning(logger, "El hilo (PID %u, TID %u) ya no existe.", tcb->pid, tcb->tid);
+		log_warning(logger, "[NOT_FOUND @ SYSCALL_START]: (PID %u, TID %u).", tcb->pid, tcb->tid);
 
 	free(tcb);
 }
@@ -330,12 +331,12 @@ void numeric_input(uint32_t cpu_sock_fd, uint32_t tcb_pid)
 	if (console != NULL) {
 		t_msg *msg = argv_message(NUMERIC_INPUT, 1, cpu_sock_fd);
 		if(enviar_mensaje(console->sock_fd, msg) == -1) {
-			log_warning(logger, "Se perdio la conexion con la Consola %u.", console->pid);
 			remove_console_by_sock_fd(console->sock_fd);
+			log_warning(logger, "[LOST_CONNECTION @ NUMERIC_INPUT]: (CONSOLE_ID %u).", console->pid);
 		}
 		destroy_message(msg);
 	} else
-		log_warning(logger, "La consola del proceso (PID %d) ya no existe.", tcb_pid);
+		log_warning(logger, "[NOT_FOUND @ NUMERIC_INPUT]: (CONSOLE_ID %u).", tcb_pid);
 }
 
 
@@ -345,12 +346,12 @@ void string_input(uint32_t cpu_sock_fd, uint32_t tcb_pid, uint32_t length)
 	if (console != NULL) {
 		t_msg *msg = argv_message(STRING_INPUT, 2, cpu_sock_fd, length);
 		if(enviar_mensaje(console->sock_fd, msg) == -1) {
-			log_warning(logger, "Se perdio la conexion con la Consola %u.", console->pid);
 			remove_console_by_sock_fd(console->sock_fd);
+			log_warning(logger, "[LOST_CONNECTION @ STRING_INPUT]: (CONSOLE_ID %u).", console->pid);
 		}
 		destroy_message(msg);
 	} else
-		log_warning(logger, "La consola del proceso (PID %d) ya no existe.", tcb_pid);
+		log_warning(logger, "[NOT_FOUND @ STRING_INPUT]: (CONSOLE_ID %u).", tcb_pid);
 }
 
 
@@ -360,12 +361,12 @@ void numeric_output(uint32_t tcb_pid, int output_number)
 	if (console != NULL) {
 		t_msg *msg = argv_message(NUMERIC_OUTPUT, 1, output_number);
 		if(enviar_mensaje(console->sock_fd, msg) == -1) {
-			log_warning(logger, "Se perdio la conexion con la Consola %u.", console->pid);
 			remove_console_by_sock_fd(console->sock_fd);
+			log_warning(logger, "[LOST_CONNECTION @ NUMERIC_OUTPUT]: (CONSOLE_ID %u).", console->pid);
 		}
 		destroy_message(msg);
 	} else
-		log_warning(logger, "La consola del proceso (PID %d) ya no existe.", tcb_pid);
+		log_warning(logger, "[NUMERIC_OUTPUT]: (CONSOLE_ID %u): no existe.", tcb_pid);
 }
 
 
@@ -375,12 +376,12 @@ void string_output(uint32_t tcb_pid, char *output_stream)
 	if (console != NULL) {
 		t_msg *msg = string_message(STRING_OUTPUT, output_stream, 0);
 		if(enviar_mensaje(console->sock_fd, msg) == -1) {
-			log_warning(logger, "Se perdio la conexion con la Consola %u.", console->pid);
 			remove_console_by_sock_fd(console->sock_fd);
+			log_warning(logger, "[LOST_CONNECTION @ STRING_INPUT]: (CONSOLE_ID %u).", console->pid);
 		}
 		destroy_message(msg);
 	} else
-		log_warning(logger, "La consola del proceso (PID %d) ya no existe.", tcb_pid);
+		log_warning(logger, "[NOT_FOUND @ STRING_OUTPUT]: (CONSOLE_ID %u).", tcb_pid);
 }
 
 
@@ -389,7 +390,7 @@ void return_numeric_input(uint32_t cpu_sock_fd, int number)
 	t_msg *msg = argv_message(REPLY_NUMERIC_INPUT, 1, number);
 	if(enviar_mensaje(cpu_sock_fd, msg) == -1) {
 		t_cpu *cpu = remove_cpu_by_sock_fd(cpu_sock_fd);
-		log_warning(logger, "Se perdio la conexion con el CPU %u.", cpu->cpu_id);
+		log_warning(logger, "[LOST_CONNECTION @ RETURN_NUMERIC_INPUT]: (CPU_ID %u).", cpu->cpu_id);
 	}
 	destroy_message(msg);
 }
@@ -400,7 +401,7 @@ void return_string_input(uint32_t cpu_sock_fd, char *stream)
 	t_msg *msg = string_message(REPLY_STRING_INPUT, stream, 0);
 	if(enviar_mensaje(cpu_sock_fd, msg) == -1) {
 		t_cpu *cpu = remove_cpu_by_sock_fd(cpu_sock_fd);
-		log_warning(logger, "Se perdio la conexion con el CPU %u.", cpu->cpu_id);
+		log_warning(logger, "[LOST_CONNECTION @ RETURN_NUMERIC_INPUT]: (CPU_ID %u).", cpu->cpu_id);
 	}
 	destroy_message(msg);
 }
@@ -419,7 +420,7 @@ void create_thread(uint32_t cpu_sock_fd, t_hilo *padre)
 
 	uint32_t new_tid = ++*counter;
 
-	log_trace(logger, "Creando hilo (PID %u, TID %u).", padre->pid, new_tid);
+	log_trace(logger, "[NEW @ CREATE_THREAD]: (PID %u) [(PID %u, TID %u)].", padre->pid, padre->pid, new_tid);
 
 	t_msg *create_stack = argv_message(CREATE_SEGMENT, 2, padre->pid, get_stack_size());
 	enviar_mensaje(msp_fd, create_stack);
@@ -430,7 +431,7 @@ void create_thread(uint32_t cpu_sock_fd, t_hilo *padre)
 
 	if (MSP_RESERVE_SUCCESS(status_stack->header.id)) { 
 		/* Memoria reservada, crear nuevo hilo y encolar a READY. */
-		log_trace(logger, "Reservada memoria para el stack del hilo (PID %u, TID %u). Encolando en READY.", padre->pid, new_tid);
+		log_trace(logger, "[CREATE_THREAD]: (PID %u, TID %u) => READY.", padre->pid, new_tid);
 
 		t_msg *request_stack = argv_message(REQUEST_MEMORY, 3, padre->pid, padre->base_stack, bytes_ocupados_stack);
 		enviar_mensaje(msp_fd, request_stack);
@@ -457,7 +458,7 @@ void create_thread(uint32_t cpu_sock_fd, t_hilo *padre)
 		t_msg *crea_success = argv_message(CREA_OK, 1, new_tcb->tid);
 		if (enviar_mensaje(cpu_sock_fd, crea_success) == -1) {
 			t_cpu *cpu = remove_cpu_by_sock_fd(cpu_sock_fd);
-			log_warning(logger, "Se perdio la conexion con el CPU %u.", cpu->cpu_id);
+			log_warning(logger, "[LOST_CONNECTION @ CREATE_THREAD]: (CPU_ID %u).", cpu->cpu_id);
 		}
 
 		destroy_message(request_stack);
@@ -468,16 +469,14 @@ void create_thread(uint32_t cpu_sock_fd, t_hilo *padre)
 		/* No hay suficiente memoria, avisar a Consola. */
 		t_console *console = find_console_by_pid(padre->pid);
 		if(console != NULL) {
-			log_warning(logger, "Error al reservar memoria para el hilo (PID %u, TID %u).", padre->pid, new_tid);
-
 			t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: no se pudo reservar memoria en la MSP para un hilo nuevo.", 0);
 			if (enviar_mensaje(console->sock_fd, msg) == -1) {
-				log_warning(logger, "Se perdio la conexion con la Consola %u.", console->pid);
 				remove_console_by_sock_fd(console->sock_fd);
+				log_warning(logger, "[LOST_CONNECTION @ CREATE_THREAD]: (CONSOLE_ID %u).", console->pid);
 			}
 			destroy_message(msg);
 		} else
-			log_warning(logger, "La consola del hilo (PID %u, TID %u) ya no existe.", padre->pid, padre->tid);
+			log_warning(logger, "[NOT_FOUND @ CREATE_THREAD]: (PID %u, TID %u).", padre->pid, padre->tid);
 	} else {
 		errno = EBADMSG;
 		perror("create_thread");
@@ -494,7 +493,7 @@ void join_thread(uint32_t tid_caller, uint32_t tid_towait, uint32_t process_pid)
 {
 	t_hilo *tcb_towait = find_thread_by_pid_tid(process_pid, tid_towait, true);
 	if(tcb_towait == NULL) {
-		log_warning(logger, "El hilo a unirse (PID %u, TID %u) ya no existe.", process_pid, tid_towait);
+		log_warning(logger, "[NOT_FOUND @ JOIN_THREAD]: (PID %u, TID %u).", process_pid, tid_towait);
 		return;
 	}
 
@@ -504,7 +503,7 @@ void join_thread(uint32_t tid_caller, uint32_t tid_towait, uint32_t process_pid)
 	char *key = string_from_format("%u:%u", process_pid, tid_towait);
 	dictionary_put(join_dict, key, tcb_caller);
 
-	log_trace(logger, "Bloqueando hilo (PID %u, TID %u). Motivo: join hilo (PID %u, TID %u).", 
+	log_trace(logger, "[JOIN_THREAD]: (PID %u, TID %u) => BLOCK [(PID %u, TID %u)].", 
 		process_pid, tid_caller, process_pid, tid_towait);
 }
 
@@ -528,9 +527,9 @@ void block_thread(uint32_t resource, t_hilo *tcb)
 		to_block->cola = BLOCK;
 		queue_push(rsc_queue, to_block);
 
-		log_trace(logger, "Bloqueando hilo (PID %u, TID %u). Motivo: pedido de recurso (ID %u).", tcb->pid, tcb->tid, resource);
+		log_trace(logger, "[BLOCK_THREAD]: (PID %u, TID %u) => BLOCK [(RESOURCE_ID %u)].", tcb->pid, tcb->tid, resource);
 	} else
-		log_warning(logger, "El hilo a bloquear (PID %u, TID %u) no existe.", tcb->pid, tcb->tid);
+		log_warning(logger, "[NOT_FOUND @ BLOCK_THREAD]: (PID %u, TID %u).", tcb->pid, tcb->tid);
 
 	free(tcb);
 }
@@ -546,11 +545,11 @@ void wake_thread(uint32_t resource)
 		t_hilo *woken = queue_pop(rsc_queue);
 		woken->cola = READY;
 
-		log_trace(logger, "Desbloqueando hilo (PID %u, TID %u). Motivo: liberando recurso (ID %u).", 
+		log_trace(logger, "[WAKE_THREAD]: (PID %u, TID %u): READY (RESOURCE_ID %u).", 
 			woken->pid, woken->tid, resource);
 	}
 	else
-		log_warning(logger, "El recurso a liberar (ID %u) no existe.", resource);
+		log_warning(logger, "[NOT_FOUND @ WAKE_THREAD]: (RESOURCE_ID %u).", resource);
 
 	free(key);
 }
@@ -587,8 +586,10 @@ t_cpu *find_cpu_by_sock_fd(uint32_t sock_fd)
 void finalize_process_by_pid(uint32_t pid)
 {
 	void _finalize_process_by_pid(t_hilo *a_tcb) {
-		if (a_tcb->pid == pid && a_tcb->kernel_mode == false) 
+		if (a_tcb->pid == pid && a_tcb->kernel_mode == false) {
 			a_tcb->cola = EXIT;
+			log_trace(logger, "[FINALIZE]: (PID %u, TID %u) => EXIT.", a_tcb->pid, a_tcb->tid);
+		}
 	}
 
 	pthread_mutex_lock(&process_list_mutex);
@@ -602,8 +603,8 @@ void log_processes(char *message)
 	char *string_proc = string_new();
 
 	void _log_processes(t_hilo *a_tcb) {
-		string_append_with_format(&string_proc, "%s{ PID: %u, TID: %u, %s, %s }", string_is_empty(string_proc) ? "" : ", ", 
-			a_tcb->pid, a_tcb->tid, string_cola(a_tcb->cola), a_tcb->kernel_mode ? "KLT" : "ULT");
+		string_append_with_format(&string_proc, "%s{ PID %u, TID %u, %s, %s }", string_is_empty(string_proc) ? "" : ", ", 
+			a_tcb->pid, a_tcb->tid, string_cola(a_tcb->cola), km_string(a_tcb));
 	}
 
 	pthread_mutex_lock(&process_list_mutex);
@@ -641,7 +642,7 @@ void unlock_joined_processes(void)
 			if (tcb_caller != NULL) {
 				tcb_caller->cola = READY;
 
-				log_trace(logger, "Desbloqueando hilo (PID %u, TID %u). Motivo: hilo joined (PID %u, TID %u) finaliza.",
+				log_trace(logger, "[UNLOCK_JOIN]: (PID %u, TID %u, %s) => READY [(PID %u, TID %u)].",
 					tcb_caller->pid, tcb_caller->tid, a_tcb->pid, a_tcb->tid);
 			}
 			free(key);
@@ -661,7 +662,7 @@ void kill_child_processes(void)
 			void _set_child_to_exit(t_hilo *b_tcb) {
 				if (b_tcb->pid == a_tcb->pid && b_tcb->tid > 0 && b_tcb->cola != EXIT) {
 					b_tcb->cola = EXIT;
-					log_trace(logger, "Finalizando hilo (PID %u, TID %u). Motivo: fin hilo padre.", b_tcb->pid, b_tcb->tid);
+					log_trace(logger, "[KILL_CHILD_THREADS]: (PID %u, TID %u) => EXIT.", b_tcb->pid, b_tcb->tid);
 				}
 			}
 
