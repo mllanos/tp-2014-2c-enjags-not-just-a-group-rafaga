@@ -1,6 +1,6 @@
 #include "planificador.h"
 
-bool blocked_by_join = false;
+bool blocked_by_condition = false;
 
 void *planificador(void *arg)
 {
@@ -24,6 +24,8 @@ void *planificador(void *arg)
 			}
 			continue;
 		}
+
+		print_msg(recibido);
 
 		switch (recibido->header.id) {	
 			case CPU_CONNECT:
@@ -275,9 +277,9 @@ void finish_process(uint32_t sock_fd, t_hilo *tcb)
 
 			t_syscall *syscall = queue_pop(syscall_queue);
 
-			if(blocked_by_join == true) {
+			if(blocked_by_condition == true) {
 				/* Hilo encolado en syscalls fue bloqueado por join. */
-				blocked_by_join = false;
+				blocked_by_condition = false;
 			} else {
 				memcpy(syscall->blocked->registros, tcb->registros, sizeof tcb->registros);
 
@@ -407,8 +409,10 @@ void return_string_input(uint32_t cpu_sock_fd, char *stream)
 }
 
 
-void create_thread(uint32_t cpu_sock_fd, t_hilo *padre)
+void create_thread(uint32_t cpu_sock_fd, t_hilo *tcb)
 {
+	t_hilo *padre = find_thread_by_pid_tid(tcb->pid, tcb->tid, true);
+
 	char *key = string_from_format("%u", padre->pid);
 	uint32_t *counter = dictionary_get(father_child_dict, key);
 	if (counter == NULL) {
@@ -483,7 +487,7 @@ void create_thread(uint32_t cpu_sock_fd, t_hilo *padre)
 		exit(EXIT_FAILURE);	
 	}
 
-	free(padre);
+	free(tcb);
 	destroy_message(create_stack);
 	destroy_message(status_stack);
 }
@@ -498,7 +502,7 @@ void join_thread(uint32_t tid_caller, uint32_t tid_towait, uint32_t process_pid)
 	}
 
 	t_hilo *tcb_caller = find_thread_by_pid_tid(process_pid, tid_caller, true);
-	blocked_by_join = true;
+	blocked_by_condition = true;
 
 	char *key = string_from_format("%u:%u", process_pid, tid_towait);
 	dictionary_put(join_dict, key, tcb_caller);
@@ -523,10 +527,9 @@ void block_thread(uint32_t resource, t_hilo *tcb)
 	/* Actualizar y encolar TCB a BLOCK. */
 	t_hilo *to_block = find_thread_by_pid_tid(tcb->pid, tcb->tid, true);
 	if(to_block != NULL) {
-		memcpy(to_block, tcb, sizeof *tcb);
 		to_block->cola = BLOCK;
 		queue_push(rsc_queue, to_block);
-
+		blocked_by_condition = true;
 		log_trace(logger, "[BLOCK_THREAD]: (PID %u, TID %u) => BLOCK [(RESOURCE_ID %u)].", tcb->pid, tcb->tid, resource);
 	} else
 		log_warning(logger, "[NOT_FOUND @ BLOCK_THREAD]: (PID %u, TID %u).", tcb->pid, tcb->tid);
@@ -642,7 +645,7 @@ void unlock_joined_processes(void)
 			if (tcb_caller != NULL) {
 				tcb_caller->cola = READY;
 
-				log_trace(logger, "[UNLOCK_JOIN]: (PID %u, TID %u, %s) => READY [(PID %u, TID %u)].",
+				log_trace(logger, "[UNLOCK_JOIN]: (PID %u, TID %u) => READY [(PID %u, TID %u)].",
 					tcb_caller->pid, tcb_caller->tid, a_tcb->pid, a_tcb->tid);
 			}
 			free(key);

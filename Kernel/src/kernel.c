@@ -224,8 +224,8 @@ void receive_messages_select(void)
 
 void finalize(void)
 {
-	pthread_cancel(loader_th);
-	pthread_cancel(planificador_th);
+	//pthread_cancel(loader_th);
+	//pthread_cancel(planificador_th);
 
 	destroy_segments_on_exit_or_condition(true);
 
