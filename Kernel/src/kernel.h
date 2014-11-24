@@ -48,6 +48,7 @@
 
 /* Otros. */
 #define KM_STRING(tcb) tcb->kernel_mode ? "KLT" : "ULT"
+#define SEM_RELATIVE_VALUE(sem) (sem - klt_tcb->base_stack)
 
 
 typedef enum {
