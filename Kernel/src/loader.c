@@ -8,6 +8,9 @@ void *loader(void *arg)
 			exit(EXIT_FAILURE);
 		}
 
+		if(!alive)
+			return NULL;
+
 		pthread_mutex_lock(&loader_mutex);
 		t_msg *recibido = queue_pop(loader_queue);
 		pthread_mutex_unlock(&loader_mutex);
