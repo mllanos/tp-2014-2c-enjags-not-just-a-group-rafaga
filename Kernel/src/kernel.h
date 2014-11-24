@@ -31,21 +31,23 @@
 #define MAXEVENTS 64
 
 /* Macros de respuesta MSP. */
-#define MSP_RESERVE_FAILURE(s) (s == FULL_MEMORY || s == INVALID_SEG_SIZE || s == MAX_SEG_NUM_REACHED)
-#define MSP_RESERVE_SUCCESS(s) (s == OK_CREATE)
-#define MSP_WRITE_FAILURE(s) (s == INVALID_DIR || s == SEGMENTATION_FAULT)
-#define MSP_WRITE_SUCCESS(s) (s == OK_WRITE)
+#define MSP_RESERVE_FAILURE(s) (s->header.id == FULL_MEMORY || s->header.id == INVALID_SEG_SIZE || s->header.id == MAX_SEG_NUM_REACHED)
+#define MSP_RESERVE_SUCCESS(s) (s->header.id == OK_CREATE)
+#define MSP_WRITE_FAILURE(s) (s->header.id == INVALID_DIR || s->header.id == SEGMENTATION_FAULT)
+#define MSP_WRITE_SUCCESS(s) (s->header.id == OK_WRITE)
+#define MSP_DESTROY_SUCCESS(s) (s->header.id == OK_DESTROY)
+#define MSP_DESTROY_FAILURE(s) (s->header.id == INVALID_DIR)
 
 /* Macros getters de config. */
-#define get_puerto() config_get_int_value(config, "PUERTO")
-#define get_ip_msp() config_get_string_value(config, "IP_MSP")
-#define get_puerto_msp() config_get_int_value(config, "PUERTO_MSP")
-#define get_quantum() config_get_int_value(config, "QUANTUM")
-#define get_stack_size() config_get_int_value(config, "TAMANIO_STACK")
-#define get_syscalls() config_get_string_value(config, "SYSCALLS")
+#define KERNEL_PORT() config_get_int_value(config, "PUERTO")
+#define MSP_IP() config_get_string_value(config, "IP_MSP")
+#define MSP_PORT() config_get_int_value(config, "PUERTO_MSP")
+#define QUANTUM() config_get_int_value(config, "QUANTUM")
+#define STACK_SIZE() config_get_int_value(config, "TAMANIO_STACK")
+#define SYSCALL_PATH() config_get_string_value(config, "SYSCALLS")
 
 /* Otros. */
-#define km_string(tcb) tcb->kernel_mode ? "KLT" : "ULT"
+#define KM_STRING(tcb) tcb->kernel_mode ? "KLT" : "ULT"
 
 
 typedef enum {
@@ -148,5 +150,10 @@ int msp_fd;
 
 /* TCB de hilo de Kernel. */
 t_hilo *klt_tcb;
+
+
+/* Otros. */
+bool alive;
+bool blocked_by_condition;
 
 #endif

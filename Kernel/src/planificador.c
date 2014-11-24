@@ -1,7 +1,5 @@
 #include "planificador.h"
 
-bool blocked_by_condition = false;
-
 void *planificador(void *arg)
 {
 	while (1) {
@@ -10,6 +8,9 @@ void *planificador(void *arg)
 			perror("planificador");
 			exit(EXIT_FAILURE);
 		}
+
+		if(!alive)
+			return NULL;
 
 		//hilos(process_list);
 
@@ -24,8 +25,6 @@ void *planificador(void *arg)
 			}
 			continue;
 		}
-
-		print_msg(recibido);
 
 		switch (recibido->header.id) {	
 			case CPU_CONNECT:
@@ -89,7 +88,6 @@ void *planificador(void *arg)
 	}
 
 	return NULL;
-
 }
 
 
@@ -120,7 +118,7 @@ void assign_processes(void)
 
 		t_cpu *cpu = queue_pop(request_queue);
 
-		t_msg *msg = tcb_message(NEXT_TCB, tcb, 1, get_quantum());
+		t_msg *msg = tcb_message(NEXT_TCB, tcb, 1, QUANTUM());
 		if(enviar_mensaje(cpu->sock_fd, msg) == -1) {
 			log_warning(logger, "[LOST_CONNECTION @ ASSIGN_PROCESS]: (CPU_ID %u).", cpu->cpu_id);
 			tcb->cola = READY;
@@ -135,7 +133,7 @@ void assign_processes(void)
 		cpu->disponible = false;
 		cpu->kernel_mode = tcb->kernel_mode;
 
-		log_trace(logger, "[ASSIGN_PROCESS]: (CPU_ID %u) => BUSY [(PID %u, TID %u, %s)].", cpu->cpu_id, tcb->pid, tcb->tid, km_string(tcb));
+		log_trace(logger, "[CPU_ASSIGN @ ASSIGN_PROCESS]: (CPU_ID %u) [() => (PID %u, TID %u, %s)].", cpu->cpu_id, tcb->pid, tcb->tid, KM_STRING(tcb));
 	}
 }
 
@@ -165,7 +163,7 @@ void cpu_queue(uint32_t sock_fd)
 		queue_push(request_queue, cpu);
 		log_trace(logger, "[PUSHING_REQUEST @ CPU_QUEUE]: (CPU_ID %u).", cpu->cpu_id);
 	} else
-		log_warning(logger, "[NOT_FOUND @ CPU_QUEUE]: (CPU_SOCK %u).", sock_fd);
+		log_warning(logger, "[CPU_NOT_FOUND @ CPU_QUEUE]: (CPU_SOCK %u).", sock_fd);
 }
 
 
@@ -196,9 +194,9 @@ void cpu_abort(uint32_t sock_fd, t_hilo *tcb)
 				attend_next_syscall_request();
 			}
 		} else
-			log_warning(logger, "[NOT_FOUND @ CPU_ABORT]: (PID %u, TID %u).", tcb->pid, tcb->tid);
+			log_warning(logger, "[TCB_NOT_FOUND @ CPU_ABORT]: (PID %u, TID %u).", tcb->pid, tcb->tid);
 	} else
-		log_warning(logger, "[NOT_FOUND @ CPU_ABORT]: (CPU_SOCK %u).", sock_fd);
+		log_warning(logger, "[CPU_NOT_FOUND @ CPU_ABORT]: (CPU_SOCK %u).", sock_fd);
 
 	free(tcb);
 }
@@ -237,13 +235,13 @@ void return_process(uint32_t sock_fd, t_hilo *tcb)
 		/* Actualizamos el tcb recibido y lo encolamos a READY si es que existe. */
 		t_hilo *to_update = find_thread_by_pid_tid(tcb->pid, tcb->tid, true);
 		if (to_update != NULL) {
-			log_trace(logger, "[UPDATING @ RETURN_PROCESS]: (PID %u, TID %u).", tcb->pid, tcb->tid);
+			log_trace(logger, "[UPDATING @ RETURN_PROCESS]: (PID %u, TID %u) => READY.", tcb->pid, tcb->tid);
 			memcpy(to_update, tcb, sizeof *tcb);
 			to_update->cola = READY;
 		} else
-			log_warning(logger, "[NOT_FOUND @ RETURN_PROCESS]: (PID %u, TID %u).", tcb->pid, tcb->tid);
+			log_warning(logger, "[TCB_NOT_FOUND @ RETURN_PROCESS]: (PID %u, TID %u).", tcb->pid, tcb->tid);
 	} else
-		log_warning(logger, "[NOT_FOUND @ RETURN_PROCESS]: (CPU_SOCK %u).", sock_fd);
+		log_warning(logger, "[CPU_NOT_FOUND @ RETURN_PROCESS]: (CPU_SOCK %u).", sock_fd);
 
 	free(tcb);
 }
@@ -258,7 +256,7 @@ void finish_process(uint32_t sock_fd, t_hilo *tcb)
 	if(cpu != NULL) {
 		cpu->disponible = true;
 
-		log_trace(logger, "[FINISH_PROCESS]: (CPU_ID %u) => FREE [(PID %u, TID %u)].", cpu->cpu_id, tcb->pid, tcb->tid);
+		log_trace(logger, "[CPU_FREE @ FINISH_PROCESS]: (CPU_ID %u) [(PID %u, TID %u) => ()].", cpu->cpu_id, tcb->pid, tcb->tid);
 
 		if (tcb->kernel_mode == false) { 
 			/* Recibido ULT, actualizamos el tcb recibido y lo encolamos a EXIT si es que existe. */
@@ -271,7 +269,7 @@ void finish_process(uint32_t sock_fd, t_hilo *tcb)
 
 				log_trace(logger, "[THREAD_END @ FINISH_PROCESS]: (PID %u, TID %u) => EXIT.", tcb->pid, tcb->tid);
 			} else 
-				log_warning(logger, "[NOT_FOUND @ FINISH_PROCESS]: (PID %u, TID %u).", tcb->pid, tcb->tid);
+				log_warning(logger, "[TCB_NOT_FOUND @ FINISH_PROCESS]: (PID %u, TID %u).", tcb->pid, tcb->tid);
 		} else {
 			/* Recibido KLT, copiamos registros al proceso bloqueado por syscalls y lo encolamos a READY. */
 
@@ -279,6 +277,7 @@ void finish_process(uint32_t sock_fd, t_hilo *tcb)
 
 			if(blocked_by_condition == true) {
 				/* Hilo encolado en syscalls fue bloqueado por join. */
+				log_trace(logger, "[BLOCKED_BY_CONDITION @ FINISH_PROCESS]: (PID %u, TID %u).", tcb->pid, tcb->tid);
 				blocked_by_condition = false;
 			} else {
 				memcpy(syscall->blocked->registros, tcb->registros, sizeof tcb->registros);
@@ -288,14 +287,14 @@ void finish_process(uint32_t sock_fd, t_hilo *tcb)
 					log_trace(logger, "[SYSCALL_END @ FINISH_PROCESS]: (PID %u, TID %u) => READY.", tcb->pid, tcb->tid);
 				} else {
 					syscall->blocked->cola = EXIT;
-					log_warning(logger, "[NOT_FOUND @ FINISH_PROCESS]: (CONSOLE_ID %u).", syscall->blocked->pid);
+					log_warning(logger, "[CONSOLE_NOT_FOUND @ FINISH_PROCESS]: (CONSOLE_ID %u).", syscall->blocked->pid);
 				}
 			}
 
 			attend_next_syscall_request();
 		}
 	} else
-		log_warning(logger, "[NOT_FOUND @ FINISH_PROCESS]: (CPU_SOCK %u).", sock_fd);
+		log_warning(logger, "[CPU_NOT_FOUND @ FINISH_PROCESS]: (CPU_SOCK %u).", sock_fd);
 
 	free(tcb);
 }
@@ -321,7 +320,7 @@ void syscall_start(uint32_t call_dir, t_hilo *tcb)
 		if (klt_tcb->cola == BLOCK) 
 			attend_next_syscall_request();
 	} else
-		log_warning(logger, "[NOT_FOUND @ SYSCALL_START]: (PID %u, TID %u).", tcb->pid, tcb->tid);
+		log_warning(logger, "[TCB_NOT_FOUND @ SYSCALL_START]: (PID %u, TID %u).", tcb->pid, tcb->tid);
 
 	free(tcb);
 }
@@ -338,7 +337,7 @@ void numeric_input(uint32_t cpu_sock_fd, uint32_t tcb_pid)
 		}
 		destroy_message(msg);
 	} else
-		log_warning(logger, "[NOT_FOUND @ NUMERIC_INPUT]: (CONSOLE_ID %u).", tcb_pid);
+		log_warning(logger, "[CONSOLE_NOT_FOUND @ NUMERIC_INPUT]: (CONSOLE_ID %u).", tcb_pid);
 }
 
 
@@ -353,7 +352,7 @@ void string_input(uint32_t cpu_sock_fd, uint32_t tcb_pid, uint32_t length)
 		}
 		destroy_message(msg);
 	} else
-		log_warning(logger, "[NOT_FOUND @ STRING_INPUT]: (CONSOLE_ID %u).", tcb_pid);
+		log_warning(logger, "[CONSOLE_NOT_FOUND @ STRING_INPUT]: (CONSOLE_ID %u).", tcb_pid);
 }
 
 
@@ -383,7 +382,7 @@ void string_output(uint32_t tcb_pid, char *output_stream)
 		}
 		destroy_message(msg);
 	} else
-		log_warning(logger, "[NOT_FOUND @ STRING_OUTPUT]: (CONSOLE_ID %u).", tcb_pid);
+		log_warning(logger, "[CONSOLE_NOT_FOUND @ STRING_OUTPUT]: (CONSOLE_ID %u).", tcb_pid);
 }
 
 
@@ -426,14 +425,14 @@ void create_thread(uint32_t cpu_sock_fd, t_hilo *tcb)
 
 	log_trace(logger, "[NEW @ CREATE_THREAD]: (PID %u) [(PID %u, TID %u)].", padre->pid, padre->pid, new_tid);
 
-	t_msg *create_stack = argv_message(CREATE_SEGMENT, 2, padre->pid, get_stack_size());
+	t_msg *create_stack = argv_message(CREATE_SEGMENT, 2, padre->pid, STACK_SIZE());
 	enviar_mensaje(msp_fd, create_stack);
 	t_msg *status_stack = recibir_mensaje(msp_fd);
 
 	uint32_t base_stack = status_stack->argv[0];
 	uint32_t bytes_ocupados_stack = padre->cursor_stack - padre->base_stack;
 
-	if (MSP_RESERVE_SUCCESS(status_stack->header.id)) { 
+	if (MSP_RESERVE_SUCCESS(status_stack)) { 
 		/* Memoria reservada, crear nuevo hilo y encolar a READY. */
 		log_trace(logger, "[CREATE_THREAD]: (PID %u, TID %u) => READY.", padre->pid, new_tid);
 
@@ -469,7 +468,7 @@ void create_thread(uint32_t cpu_sock_fd, t_hilo *tcb)
 		destroy_message(write_stack);
 		destroy_message(crea_success);
 
-	} else if (MSP_RESERVE_FAILURE(status_stack->header.id)) { 
+	} else if (MSP_RESERVE_FAILURE(status_stack)) { 
 		/* No hay suficiente memoria, avisar a Consola. */
 		t_console *console = find_console_by_pid(padre->pid);
 		if(console != NULL) {
@@ -480,7 +479,7 @@ void create_thread(uint32_t cpu_sock_fd, t_hilo *tcb)
 			}
 			destroy_message(msg);
 		} else
-			log_warning(logger, "[NOT_FOUND @ CREATE_THREAD]: (PID %u, TID %u).", padre->pid, padre->tid);
+			log_warning(logger, "[TCB_NOT_FOUND @ CREATE_THREAD]: (PID %u, TID %u).", padre->pid, padre->tid);
 	} else {
 		errno = EBADMSG;
 		perror("create_thread");
@@ -497,7 +496,7 @@ void join_thread(uint32_t tid_caller, uint32_t tid_towait, uint32_t process_pid)
 {
 	t_hilo *tcb_towait = find_thread_by_pid_tid(process_pid, tid_towait, true);
 	if(tcb_towait == NULL) {
-		log_warning(logger, "[NOT_FOUND @ JOIN_THREAD]: (PID %u, TID %u).", process_pid, tid_towait);
+		log_warning(logger, "[TCB_NOT_FOUND @ JOIN_THREAD]: (PID %u, TID %u).", process_pid, tid_towait);
 		return;
 	}
 
@@ -520,9 +519,8 @@ void block_thread(uint32_t resource, t_hilo *tcb)
 	if (rsc_queue == NULL) { 
 		/* Nueva entrada de recurso en diccionario. */
 		rsc_queue = queue_create();
-		dictionary_put(resource_dict, key, rsc_queue);
-	} else
-		free(key);
+		dictionary_put(resource_dict, strdup(key), rsc_queue);
+	}
 
 	/* Actualizar y encolar TCB a BLOCK. */
 	t_hilo *to_block = find_thread_by_pid_tid(tcb->pid, tcb->tid, true);
@@ -531,9 +529,12 @@ void block_thread(uint32_t resource, t_hilo *tcb)
 		queue_push(rsc_queue, to_block);
 		blocked_by_condition = true;
 		log_trace(logger, "[BLOCK_THREAD]: (PID %u, TID %u) => BLOCK [(RESOURCE_ID %u)].", tcb->pid, tcb->tid, resource);
-	} else
-		log_warning(logger, "[NOT_FOUND @ BLOCK_THREAD]: (PID %u, TID %u).", tcb->pid, tcb->tid);
 
+		log_blocked_processes_by_resource_id(key, rsc_queue->elements);
+	} else
+		log_warning(logger, "[TCB_NOT_FOUND @ BLOCK_THREAD]: (PID %u, TID %u).", tcb->pid, tcb->tid);
+
+	free(key);
 	free(tcb);
 }
 
@@ -543,16 +544,21 @@ void wake_thread(uint32_t resource)
 	char *key = string_from_format("%u", resource);
 
 	t_queue *rsc_queue = dictionary_get(resource_dict, key);
-	if(rsc_queue != NULL) {
-
+	if(rsc_queue == NULL) {
+		rsc_queue = queue_create();
+		dictionary_put(resource_dict, strdup(key), rsc_queue);
+	}
+	
+	if (!queue_is_empty(rsc_queue)) {
 		t_hilo *woken = queue_pop(rsc_queue);
 		woken->cola = READY;
 
-		log_trace(logger, "[WAKE_THREAD]: (PID %u, TID %u): READY (RESOURCE_ID %u).", 
+		log_trace(logger, "[WAKE_THREAD]: (PID %u, TID %u) => READY [(RESOURCE_ID %u)].", 
 			woken->pid, woken->tid, resource);
-	}
-	else
-		log_warning(logger, "[NOT_FOUND @ WAKE_THREAD]: (RESOURCE_ID %u).", resource);
+
+		log_blocked_processes_by_resource_id(key, rsc_queue->elements);
+	} else
+		log_trace(logger, "[NO_BLOCKED_THREADS @ WAKE_THREAD]: () [(RESOURCE_ID %u)].", resource);
 
 	free(key);
 }
@@ -607,7 +613,7 @@ void log_processes(char *message)
 
 	void _log_processes(t_hilo *a_tcb) {
 		string_append_with_format(&string_proc, "%s{ PID %u, TID %u, %s, %s }", string_is_empty(string_proc) ? "" : ", ", 
-			a_tcb->pid, a_tcb->tid, string_cola(a_tcb->cola), km_string(a_tcb));
+			a_tcb->pid, a_tcb->tid, string_cola(a_tcb->cola), KM_STRING(a_tcb));
 	}
 
 	pthread_mutex_lock(&process_list_mutex);
@@ -681,27 +687,33 @@ void kill_child_processes(void)
 
 void destroy_segments_on_exit_or_condition(bool kill_all)
 {
-	void _destroy_stack_segments_on_exit(t_hilo *a_tcb) {
+	void _destroy_stack_segments_on_exit_or_condition(t_hilo *a_tcb) {
 		if (a_tcb->cola == EXIT || kill_all) {
-			t_msg *destroy_stack = argv_message(DESTROY_SEGMENT, 2, a_tcb->pid, a_tcb->base_stack);
+			t_msg *destroy_stack = argv_message(DESTROY_SEGMENT, 2, a_tcb->kernel_mode ? 0 : a_tcb->pid, a_tcb->base_stack);
 			enviar_mensaje(msp_fd, destroy_stack);
-			destroy_message(recibir_mensaje(msp_fd));
+			t_msg *status = recibir_mensaje(msp_fd);
+			log_trace(logger, "[%s @ DESTROY_STACK]: (PID %u, TID %u, DIR %u).", 
+				MSP_DESTROY_SUCCESS(status) ? "SUCCESS" : "FAILURE", a_tcb->kernel_mode ? 0 : a_tcb->pid, a_tcb->kernel_mode ? 0 : a_tcb->tid, a_tcb->base_stack);
+			destroy_message(status);
 			destroy_message(destroy_stack);
 		}
 	}
 
-	void _destroy_code_segments_on_exit(t_hilo *a_tcb) {
+	void _destroy_code_segments_on_exit_or_condition(t_hilo *a_tcb) {
 		if((a_tcb->cola == EXIT || kill_all) && a_tcb->tid == 0) {
-			t_msg *destroy_code = argv_message(DESTROY_SEGMENT, 2, a_tcb->pid, a_tcb->segmento_codigo);
+			t_msg *destroy_code = argv_message(DESTROY_SEGMENT, 2, a_tcb->kernel_mode ? 0 : a_tcb->pid, a_tcb->segmento_codigo);
 			enviar_mensaje(msp_fd, destroy_code);
-			destroy_message(recibir_mensaje(msp_fd));
+			t_msg *status = recibir_mensaje(msp_fd);
+			log_trace(logger, "[%s @ DESTROY_CODE]: (PID %u, TID %u, DIR %u).", 
+				MSP_DESTROY_SUCCESS(status) ? "SUCCESS" : "FAILURE", a_tcb->kernel_mode ? 0 : a_tcb->pid, a_tcb->kernel_mode ? 0 : a_tcb->tid, a_tcb->segmento_codigo);
+			destroy_message(status);
 			destroy_message(destroy_code);
 		}
 	}
 
 	pthread_mutex_lock(&process_list_mutex);
-	list_iterate(process_list, (void *) _destroy_stack_segments_on_exit);
-	list_iterate(process_list, (void *) _destroy_code_segments_on_exit);
+	list_iterate(process_list, (void *) _destroy_stack_segments_on_exit_or_condition);
+	list_iterate(process_list, (void *) _destroy_code_segments_on_exit_or_condition);
 	pthread_mutex_unlock(&process_list_mutex);
 }
 
@@ -756,4 +768,20 @@ t_hilo *find_process_by_ready(void)
 	pthread_mutex_unlock(&process_list_mutex);
 
 	return found;
+}
+
+
+void log_blocked_processes_by_resource_id(char *key, t_list *queue_elements)
+{
+	char *string_proc = string_new();
+
+	void _log_blocked_processes_by_resource_id(t_hilo *a_tcb) {
+		string_append_with_format(&string_proc, "%s{ PID %u, TID %u }", string_is_empty(string_proc) ? "" : ", ", a_tcb->pid, a_tcb->tid);
+	}
+
+	list_iterate(queue_elements, (void *) _log_blocked_processes_by_resource_id);
+
+	log_trace(logger, "[BLOCKED_THREADS @ RESOURCE_ID %s]:\n[%s]", key, string_proc);
+
+	free(string_proc);
 }

@@ -137,5 +137,6 @@ void new_processes_to_ready(void);
 void sort_processes_by_bprr(void);
 t_hilo *find_thread_by_pid_tid(uint32_t pid, uint32_t tid, bool mutex_lock);
 t_hilo *find_process_by_ready(void);
+void log_blocked_processes_by_resource_id(char *key, t_list *queue_elements);
 
 #endif

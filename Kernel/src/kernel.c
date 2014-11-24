@@ -13,6 +13,8 @@ int main(int argc, char **argv)
 
 void initialize(char *config_path)
 {
+	alive = true;
+	blocked_by_condition = false;
 	config = config_create(config_path);
 	logger = log_create(LOG_PATH, "Kernel", true, LOG_LEVEL_TRACE);
 	process_list = list_create();
@@ -38,7 +40,7 @@ void initialize(char *config_path)
 	pthread_create(&loader_th, NULL, loader, NULL);
 	pthread_create(&planificador_th, NULL, planificador, NULL);
 
-	msp_fd = client_socket(get_ip_msp(), get_puerto_msp());
+	msp_fd = client_socket(MSP_IP(), MSP_PORT());
 	if (msp_fd < 0) {
 		log_error(logger, "No se pudo conectar con la MSP.");
 		exit(EXIT_FAILURE);
@@ -59,7 +61,7 @@ void boot_kernel(void)
 	klt_tcb->cola = BLOCK;
 	memset(klt_tcb->registros, 0, sizeof klt_tcb->registros);
 
-	klt_tcb = reservar_memoria(klt_tcb, beso_message(INIT_CONSOLE, get_syscalls(), 0));
+	klt_tcb = reservar_memoria(klt_tcb, beso_message(INIT_CONSOLE, SYSCALL_PATH(), 0));
 	if (klt_tcb == NULL) {
 		/* Couldn't allocate memory. */
 		log_error(logger, "No se pudo reservar memoria para el hilo de Kernel.");
@@ -68,7 +70,7 @@ void boot_kernel(void)
 		exit(EXIT_FAILURE);
 	}
 
-	log_trace(logger, "[BOOT]: (PID %u, TID %u, %s) => BLOCK.", klt_tcb->pid, klt_tcb->tid, km_string(klt_tcb));
+	log_trace(logger, "[BOOT]: (PID %u, TID %u, %s) => BLOCK.", klt_tcb->pid, klt_tcb->tid, KM_STRING(klt_tcb));
 
 	list_add(process_list, klt_tcb);
 }
@@ -81,7 +83,7 @@ void receive_messages_epoll(void)
 
 	memset(&event, 0, sizeof(event));
 
-	int sfd = server_socket(get_puerto());
+	int sfd = server_socket(KERNEL_PORT());
 	if(sfd < 0) {
 		log_error(logger, "No se pudo crear socket escucha.");
 		perror("receive_messages_epoll");
@@ -107,7 +109,7 @@ void receive_messages_epoll(void)
 	events = calloc(MAXEVENTS, sizeof event);
 
 	/* The event loop. */
-	while(1) {
+	while(alive) {
 		int n, i;
 
 		n = epoll_wait(efd, events, MAXEVENTS, -1);
@@ -155,6 +157,9 @@ void receive_messages_epoll(void)
 			}
 		}
 	}
+
+	free(events);
+	close(sfd);
 }
 
 
@@ -163,7 +168,7 @@ void receive_messages_select(void)
 	fd_set master, read_fds;
 
 	/* Create the socket and set it up to accept connections. */
-	int listener = server_socket(get_puerto());
+	int listener = server_socket(KERNEL_PORT());
 	if(listener < 0) {
 		log_error(logger, "No se pudo crear socket escucha.");
 		perror("receive_messages_select");
@@ -176,7 +181,7 @@ void receive_messages_select(void)
 
 	int fdmax = listener;
 
-	while (1) {
+	while (alive) {
 		/* Block until input arrives on one or more active sockets. */
 		memcpy(&read_fds, &master, sizeof(read_fds));
 
@@ -219,16 +224,14 @@ void receive_messages_select(void)
 				}
 			}
 	}
+
+	close(listener);
 }
 
 
 void finalize(void)
 {
-	//pthread_cancel(loader_th);
-	//pthread_cancel(planificador_th);
-
 	destroy_segments_on_exit_or_condition(true);
-
 	sem_destroy(&sem_loader);
 	sem_destroy(&sem_planificador);
 	pthread_mutex_destroy(&loader_mutex);
@@ -245,7 +248,7 @@ void finalize(void)
 	list_destroy_and_destroy_elements(cpu_list, (void *) free);
 	dictionary_destroy_and_destroy_elements(resource_dict, (void *) free);
 	dictionary_destroy_and_destroy_elements(join_dict, (void *) free);
-	dictionary_destroy(father_child_dict);
+	dictionary_destroy_and_destroy_elements(father_child_dict, (void *) free);
 	queue_destroy_and_destroy_elements(loader_queue, (void *) destroy_message);
 	queue_destroy_and_destroy_elements(planificador_queue, (void *) destroy_message);
 	queue_destroy_and_destroy_elements(syscall_queue, (void *) free);
@@ -258,6 +261,7 @@ void interpret_message(int sock_fd, t_msg *recibido)
 	/* Tipos de mensaje: <[stream]; [argv, [argv, ]*]> */
 
 	//print_msg(recibido);
+	log_debug(logger, "[MESSAGE @ INTERPRET_MESSAGE]: [ ID: %s ].", id_string(recibido->header.id));
 
 	switch (recibido->header.id) {
 		/* Mensaje de conexion de Consola. */
@@ -320,18 +324,18 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 	t_msg **status = message + 3;
 
 	message[0] = argv_message(CREATE_SEGMENT, 2, tcb->pid, msg->header.length);
-	message[1] = argv_message(CREATE_SEGMENT, 2, tcb->pid, get_stack_size());
+	message[1] = argv_message(CREATE_SEGMENT, 2, tcb->pid, STACK_SIZE());
 
 	for (i = 0; i < 2 && cont; i++) {
 		enviar_mensaje(msp_fd, message[i]);
 
 		status[i] = recibir_mensaje(msp_fd);
 
-		if (MSP_RESERVE_FAILURE(status[i]->header.id)) {
+		if (MSP_RESERVE_FAILURE(status[i])) {
 			free(tcb);
 			tcb = NULL;
 			cont = 0;
-		} else if (!MSP_RESERVE_SUCCESS(status[i]->header.id)) {
+		} else if (!MSP_RESERVE_SUCCESS(status[i])) {
 			errno = EBADMSG;
 			perror("reservar_memoria");
 			exit(EXIT_FAILURE);
@@ -345,10 +349,10 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 
 		status[2] = recibir_mensaje(msp_fd);
 
-		if (MSP_WRITE_FAILURE(status[2]->header.id)) {
+		if (MSP_WRITE_FAILURE(status[2])) {
 			free(tcb);
 			tcb = NULL;
-		} else if (!MSP_WRITE_SUCCESS(status[2]->header.id)) {
+		} else if (!MSP_WRITE_SUCCESS(status[2])) {
 			errno = EBADMSG;
 			perror("reservar_memoria");
 			exit(EXIT_FAILURE);
@@ -464,8 +468,11 @@ void kill_kernel(int signo)
 	switch(signo) {
 		case SIGINT:
 			log_trace(logger, "Finalizando Kernel por SIGINT.");
-			finalize();
-			exit(EXIT_SUCCESS);
+			alive = false;
+			sem_post(&sem_loader);
+			sem_post(&sem_planificador);
+			pthread_join(loader_th, NULL);
+			pthread_join(planificador_th, NULL);
 		default:
 			break;
 	}
