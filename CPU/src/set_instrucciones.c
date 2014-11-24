@@ -39,7 +39,7 @@ void getm (void) {
 		char *buffer = solicitar_memoria(PIDKM,registro(j),1);
 
 		if(buffer != NULL) {
-			memcpy(&registro(i),buffer,1);
+			registro(i) = *buffer;
 			free(buffer);
 		}
 	}
