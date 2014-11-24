@@ -74,10 +74,10 @@ void *planificador(void *arg)
 				join_thread(recibido->argv[0], recibido->argv[1], recibido->argv[2]);
 				break;
 			case CPU_BLOCK:
-				block_thread(recibido->argv[0], retrieve_tcb(recibido));
+				block_thread(SEM_RELATIVE_VALUE(recibido->argv[0]), retrieve_tcb(recibido));
 				break;
 			case CPU_WAKE:
-				wake_thread(recibido->argv[0]);
+				wake_thread(SEM_RELATIVE_VALUE(recibido->argv[0]));
 				break;
 			default:
 				errno = EBADMSG;
@@ -723,6 +723,12 @@ void remove_processes_on_exit(void)
 	bool _on_exit(t_hilo *a_tcb) {
 		return a_tcb->cola == EXIT;
 	}
+
+	void _remove_on_exit(char *key, t_queue *a_queue) {
+		list_remove_by_condition(a_queue->elements, (void *) _on_exit);
+	}
+
+	dictionary_iterator(resource_dict, (void *) _remove_on_exit);
 
 	pthread_mutex_lock(&process_list_mutex);
 	list_remove_and_destroy_by_condition(process_list, (void *) _on_exit, (void *) free);
