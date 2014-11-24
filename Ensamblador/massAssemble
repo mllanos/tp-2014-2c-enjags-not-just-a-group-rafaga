@@ -4,7 +4,7 @@ for f in $(find ./ESO/* -name '*.txt' -print); do
 	mv ${f%.txt}.bc ../Consola/BESO
 	aux=${f/.txt/}
 	name=${aux:6}
-	file="../Consola/"$name"Console"
+	file="../Consola/"$name"Console.bs"
 	touch $file
 	echo -e "#!/bin/bash\nclear\n./bin/Consola BESO/"$name".bc" > $file
 	chmod +x $file

@@ -27,6 +27,7 @@
 *~
 # Bin files
 *.bin
+*.bs
 #Eclipse Directories
 Consola/Debug
 Consola/release
