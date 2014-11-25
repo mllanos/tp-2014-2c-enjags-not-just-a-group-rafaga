@@ -1,0 +1,12 @@
+^**************************************************************
+^Objetivo: Ejemplo de Productor Consumidor
+^Modo de ejecucion: Ejecutar una instancia del `Productor` e inmediatamente despues ejecutar N instancias de `Consumidor`, que quedaran trabadas.
+^					Se destrabaran una por una, imprimiendo un mensaje.
+^Resultado: Finalizan secuencialmente las instancias de `Consumidor`. El `Productor` cicla infinitamente.
+^**************************************************************
+LOAD E,#FOR
+:FOR
+LOAD B,47
+INTE SIGNAL^Liberar una instancia
+GOTO E
+^Cicla infinitamente
