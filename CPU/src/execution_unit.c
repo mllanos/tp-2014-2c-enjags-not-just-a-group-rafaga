@@ -92,7 +92,7 @@ void devolver_hilo() {
 	Kernel_Msg = NULL;
 }
 
-int fetch_operand(t_operandos tipo_operando) {	//se puede mejorar con un Union
+int fetch_operand(t_operandos tipo_operando) {
 
 	uint8_t size;
 	char *buffer;

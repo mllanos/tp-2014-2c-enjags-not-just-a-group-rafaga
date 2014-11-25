@@ -1,8 +1,8 @@
 /*
- * msp.c
+ * Unidad de Memoria con Segmentación Paginada para el Sistema Ráfaga.
  *
  *  Created on: 09/10/2014
- *      Author: matias
+ *      Author: ENJAG's Not Just A a Group.
  */
 
 #include "msp.h"

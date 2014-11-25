@@ -18,5 +18,6 @@ directories:
 
 clean:
 	rm -rf $(OUT) $(OBJ) $(DIRS)
+	find . -name "*.bs" -type f -delete
 
 .PHONY: directories clean

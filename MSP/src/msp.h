@@ -54,5 +54,4 @@ char *AlgoritmoSustitucion;
 pthread_mutex_t LogMutex, MemMutex;
 /* FIN Variables Globales */
 
-
 #endif /* MSP_H_ */

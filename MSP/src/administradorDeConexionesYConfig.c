@@ -28,7 +28,7 @@ void *atenderConsola(void *parametro) {
 	uint32_t pid, size, direccionLogica, baseSegmento;
 	char *error, *buffer, *stringPID, *parameters, aux[1];
 
-	puts("Inicio de Consola MSP. A la espera de comandos...");
+	puts("Inicio de Consola MSP.\nIngrese <help> para información sobre los comandos.");
 
 	while(1) {
 
@@ -46,6 +46,7 @@ void *atenderConsola(void *parametro) {
 			break;
 		case CLEAR:
 			system("clear");
+			puts("Inicio de Consola MSP.\nIngrese <help> para información sobre los comandos.");
 			break;
 		case CLEAR_SWAP:
 			buffer = string_from_format("cd %s\nrm -f *", SWAP_PATH);

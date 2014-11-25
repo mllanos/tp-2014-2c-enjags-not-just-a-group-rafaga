@@ -7,7 +7,7 @@
 
 #include "administradorDeMemoria.h"
 
-void inicializarMSP(void) {	//por ahí podría borrar acá lo que hay en la carpeta swap ya que estoy
+void inicializarMSP(void) {
 
 	int i;
 
@@ -68,7 +68,7 @@ uint32_t crearSegmento(uint32_t pid, size_t size, t_msg_id* id) {
 		char *stringPID = string_uitoa(pid);
 
 		if ((tablaLocal = tablaDelProceso(stringPID)) == NULL)	{
-			dictionary_put(TablaSegmentosGlobal, stringPID, tablaLocal = malloc(NUM_SEG_MAX * sizeof(t_segmento)));	/* Creo la tabla local del proceso PID */
+			dictionary_put(TablaSegmentosGlobal, stringPID, tablaLocal = malloc(NUM_SEG_MAX * sizeof(t_segmento)));			/* Creo la tabla local del proceso PID */
 
 			for (numSegmento = 0; numSegmento < NUM_SEG_MAX; ++numSegmento)													/* Inicializo la Tabla Local de Segmentos */
 				tablaLocal[numSegmento].limite = 0;

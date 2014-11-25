@@ -1,10 +1,14 @@
 #!/bin/bash
+
+./build/so-ensamblador -o syscalls.bc systemCalls.txt
+mv -f syscalls.bc ../Kernel/config/syscalls.bc
+
 for f in $(find ./ESO/* -name '*.txt' -print); do
 	echo $f $(./build/so-ensamblador -o ${f%.txt}.bc $f)
 	mv ${f%.txt}.bc ../Consola/BESO
 	aux=${f/.txt/}
 	name=${aux:6}
-	file="../Consola/"$name"Console.bs"
+	file="../Consola/"$name".bs"
 	touch $file
 	echo -e "#!/bin/bash\nclear\n./bin/Consola BESO/"$name".bc" > $file
 	chmod +x $file

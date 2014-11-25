@@ -16,11 +16,6 @@ int main(int argc, char **argv) {
 
 		obtener_siguiente_hilo();				/* Solicita un nuevo hilo para ejecutar (TCB y quantum) al Kernel */
 
-		/*--------------------------DUMMY-----------------------------*/
-		//puts("TCB RECIBIDO");
-		//print_tcb(&Hilo);
-		/*--------------------------DUMMY-----------------------------*/
-
 		ejecucion_hilo(&Hilo,Quantum);			/* LOG */
 
 		eu_cargar_registros();
@@ -35,11 +30,6 @@ int main(int argc, char **argv) {
 				eu_actualizar_registros();
 			}
 		}
-
-		/*--------------------------DUMMY-----------------------------*/
-		//puts("TCB ENVIADO");
-		//print_tcb(&Hilo);
-		/*--------------------------DUMMY-----------------------------*/
 
 		devolver_hilo();	/* Devuelve el hilo al kernel */
 

@@ -19,4 +19,4 @@ directories:
 clean:
 	rm -rf $(OUT) $(OBJ) $(DIRS)
 
-.PHONY: directories clean
+.PHONY: directories kernel clean

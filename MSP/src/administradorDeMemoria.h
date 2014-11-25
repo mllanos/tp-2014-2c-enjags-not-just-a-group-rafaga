@@ -24,7 +24,7 @@
 #define decodeDirLogica(DIRLOG, SEG, PAG, OFFSET)\
 	*SEG = DIRLOG >> 20;\
 	*PAG = (DIRLOG << 12) >> 20;\
-	*OFFSET = (DIRLOG << 24) >> 24; //creo que no hace falta, asignándolo a un int de menor tamaño elimina los bits de más
+	*OFFSET = (DIRLOG << 24) >> 24;
 
 #define generarDireccionLogica(SEG, PAG, OFFSET) ((SEG << 20) + (PAG << 8) + OFFSET)
 #define obtenerSwapPath(PID, SEG, PAG) string_from_format("%s%u-%u-%u", SWAP_PATH, PID, SEG, PAG)
