@@ -7,10 +7,10 @@
 typedef struct {
 	uint32_t cpu_id;
 	uint32_t sock_fd;
+	bool ocupado;
+	bool kernel_mode;
 	uint32_t pid;
 	uint32_t tid;
-	bool disponible;
-	bool kernel_mode;
 } t_cpu;
 
 typedef struct {
@@ -124,6 +124,7 @@ void attend_next_syscall_request(void);
 /* Funciones auxiliares de CPU. */
 t_cpu *remove_cpu_by_sock_fd(uint32_t sock_fd);
 t_cpu *find_cpu_by_sock_fd(uint32_t sock_fd);
+void remove_cpu_request_by_id(uint32_t id);
 
 
 /* Funciones auxiliares de procesos. */

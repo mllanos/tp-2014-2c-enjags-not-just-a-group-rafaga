@@ -227,7 +227,9 @@ t_msg *beso_message(t_msg_id id, char *beso_path, uint16_t count, ...)
 	va_list arguments;
 	va_start(arguments, count);
 
-	int32_t *val = malloc(count * sizeof *val);
+	int32_t *val = NULL;
+	if(count > 0)
+		val = malloc(count * sizeof *val);
 
 	int i;
 	for (i = 0; i < count; i++) {

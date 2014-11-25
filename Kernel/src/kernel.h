@@ -98,7 +98,7 @@ int remove_from_lists(uint32_t sock_fd);
 
 /* Funciones auxiliares. */
 uint32_t get_unique_id(t_unique_id id);
-int make_socket_non_blocking(int sfd);
+void make_socket_non_blocking(int sfd);
 void kill_kernel(int signo);
 
 
@@ -133,6 +133,7 @@ pthread_mutex_t unique_id_mutex[3];
 pthread_mutex_t console_list_mutex;
 pthread_mutex_t cpu_list_mutex;
 pthread_mutex_t process_list_mutex;
+pthread_mutex_t request_queue_mutex;
 
 
 /* Semaphores. */
@@ -155,6 +156,7 @@ t_hilo *klt_tcb;
 
 /* Otros. */
 bool alive;
+bool thread_alive;
 bool blocked_by_condition;
 
 #endif
