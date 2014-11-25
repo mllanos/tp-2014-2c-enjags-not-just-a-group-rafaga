@@ -14,6 +14,7 @@ int main(int argc, char **argv)
 void initialize(char *config_path)
 {
 	alive = true;
+	thread_alive = true;
 	blocked_by_condition = false;
 	config = config_create(config_path);
 	logger = log_create(LOG_PATH, "Kernel", true, LOG_LEVEL_TRACE);
@@ -99,6 +100,7 @@ void receive_messages_epoll(void)
 
 	event.data.fd = sfd;
 	event.events = EPOLLIN;
+
 	int s = epoll_ctl(efd, EPOLL_CTL_ADD, sfd, &event);
 	if (s == -1) {
 		perror("epoll_ctl");
@@ -123,10 +125,7 @@ void receive_messages_epoll(void)
 				int infd = accept_connection(sfd);
 
 				/* Make the incoming socket non-blocking and add it to the list of fds to monitor. */
-				s = make_socket_non_blocking(infd);
-				if (s == -1) {
-					exit(EXIT_FAILURE);
-				}
+				make_socket_non_blocking(infd);
 
 				event.data.fd = infd;
 				event.events = EPOLLIN;
@@ -231,6 +230,11 @@ void receive_messages_select(void)
 
 void finalize(void)
 {
+	thread_alive = false;
+	sem_post(&sem_loader);
+	sem_post(&sem_planificador);
+	pthread_join(loader_th, NULL);
+	pthread_join(planificador_th, NULL);
 	destroy_segments_on_exit_or_condition(true);
 	sem_destroy(&sem_loader);
 	sem_destroy(&sem_planificador);
@@ -246,13 +250,13 @@ void finalize(void)
 	list_destroy_and_destroy_elements(process_list, (void *) free);
 	list_destroy_and_destroy_elements(console_list, (void *) free);
 	list_destroy_and_destroy_elements(cpu_list, (void *) free);
-	dictionary_destroy_and_destroy_elements(resource_dict, (void *) free);
-	dictionary_destroy_and_destroy_elements(join_dict, (void *) free);
+	dictionary_destroy_and_destroy_elements(resource_dict, (void *) queue_destroy);
+	dictionary_destroy(join_dict);
 	dictionary_destroy_and_destroy_elements(father_child_dict, (void *) free);
 	queue_destroy_and_destroy_elements(loader_queue, (void *) destroy_message);
 	queue_destroy_and_destroy_elements(planificador_queue, (void *) destroy_message);
 	queue_destroy_and_destroy_elements(syscall_queue, (void *) free);
-	queue_destroy_and_destroy_elements(request_queue, (void *) free);
+	queue_destroy(request_queue);
 }
 
 
@@ -261,7 +265,9 @@ void interpret_message(int sock_fd, t_msg *recibido)
 	/* Tipos de mensaje: <[stream]; [argv, [argv, ]*]> */
 
 	//print_msg(recibido);
-	log_debug(logger, "[MESSAGE @ INTERPRET_MESSAGE]: [ ID: %s ].", id_string(recibido->header.id));
+	char *id = id_string(recibido->header.id);
+	log_debug(logger, "[MESSAGE @ INTERPRET_MESSAGE]: [ ID: %s ].", id);
+	free(id);
 
 	switch (recibido->header.id) {
 		/* Mensaje de conexion de Consola. */
@@ -387,39 +393,40 @@ int remove_from_lists(uint32_t sock_fd)
 	t_cpu *out_cpu = remove_cpu_by_sock_fd(sock_fd);
 
 	if (out_console != NULL) {
-		/* Es una consola, finalizar todos sus procesos. Verificar que ninguno sea el hilo Kernel. */
 		//desconexion_consola(out_console->console_id);
 
-		log_trace(logger, "[DISCONNECTION @ REMOVE_FROM_LISTS]: (CONSOLE_ID %u).", out_console->pid);
+		log_trace(logger, "[DISCONNECTION @ REMOVE_FROM_LISTS]: (CONSOLE_ID %u, CONSOLE_SOCK %u).", out_console->pid, out_console->sock_fd);
 
 		finalize_process_by_pid(out_console->pid);
 
 		free(out_console);
 	} else if (out_cpu != NULL) {
-		/* Es una CPU. Verificar si tiene hilos ejecutando. */
 		//desconexion_cpu(out_cpu->cpu_id);
 
-		log_trace(logger, "[DISCONNECTION @ REMOVE_FROM_LISTS]: (CPU_ID %u).", out_cpu->cpu_id);
+		log_trace(logger, "[DISCONNECTION @ REMOVE_FROM_LISTS]: (CPU_ID %u, CPU_SOCK %u).", out_cpu->cpu_id, out_cpu->sock_fd);
 
-		if (out_cpu->disponible == false) {
+		if (out_cpu->ocupado == true) {
 			/* La CPU saliente tiene hilos ejecutando. */
 
 			if (out_cpu->kernel_mode == false) {
 				/* Es un ULT. Avisar a la Consola para que se desconecte. */
 				t_console *out_cons = find_console_by_pid(out_cpu->pid);
-				log_trace(logger, "[CPU_QUIT @ REMOVE_FROM_LISTS]: (CONSOLE_ID %u).", out_cons->pid);
 				t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: CPU saliente.", 0);
 				enviar_mensaje(out_cons->sock_fd, msg);
 				destroy_message(msg);
 
-			} else 
+			} else {
 				/* Es el KLT. Liberar recursos y salir del programa. */
+				log_trace(logger, "Finalizando Kernel por aborto de CPU con KLT.");
 				result = -1;
+			}
+		} else {
+			/* Tiene request pendiente. */
+			remove_cpu_request_by_id(out_cpu->cpu_id);
 		}
 
 		free(out_cpu);
 	} else {
-		/* No es ni CPU ni Consola. */
 		errno = EBADF;
 		perror("remove_from_lists");
 		exit(EXIT_FAILURE);
@@ -442,24 +449,20 @@ uint32_t get_unique_id(t_unique_id id)
 }
 
 
-int make_socket_non_blocking(int sfd)
+void make_socket_non_blocking(int sfd)
 {
-	int flags, s;
-
-	flags = fcntl(sfd, F_GETFL, 0);
+	int flags = fcntl(sfd, F_GETFL, 0);
 	if (flags == -1) {
 		perror("fcntl");
-		return -1;
+		exit(EXIT_FAILURE);
 	}
 
 	flags |= O_NONBLOCK;
-	s = fcntl(sfd, F_SETFL, flags);
-	if (s == -1) {
-		perror("fcntl");
-		return -1;
-	}
 
-	return 0;
+	if (fcntl(sfd, F_SETFL, flags) == -1) {
+		perror("fcntl");
+		exit(EXIT_FAILURE);
+	}
 }
 
 
@@ -469,10 +472,7 @@ void kill_kernel(int signo)
 		case SIGINT:
 			log_trace(logger, "Finalizando Kernel por SIGINT.");
 			alive = false;
-			sem_post(&sem_loader);
-			sem_post(&sem_planificador);
-			pthread_join(loader_th, NULL);
-			pthread_join(planificador_th, NULL);
+			break;
 		default:
 			break;
 	}

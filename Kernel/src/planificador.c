@@ -9,7 +9,7 @@ void *planificador(void *arg)
 			exit(EXIT_FAILURE);
 		}
 
-		if(!alive)
+		if(!thread_alive)
 			return NULL;
 
 		//hilos(process_list);
@@ -116,7 +116,9 @@ void assign_processes(void)
 
 		tcb->cola = EXEC;
 
+		pthread_mutex_lock(&request_queue_mutex);
 		t_cpu *cpu = queue_pop(request_queue);
+		pthread_mutex_unlock(&request_queue_mutex);
 
 		t_msg *msg = tcb_message(NEXT_TCB, tcb, 1, QUANTUM());
 		if(enviar_mensaje(cpu->sock_fd, msg) == -1) {
@@ -128,10 +130,10 @@ void assign_processes(void)
 		destroy_message(msg);
 
 		/* Seteamos CPU a ocupada y actualizamos sus datos. */
+		cpu->ocupado = true;
+		cpu->kernel_mode = tcb->kernel_mode;
 		cpu->pid = tcb->pid;
 		cpu->tid = tcb->tid;
-		cpu->disponible = false;
-		cpu->kernel_mode = tcb->kernel_mode;
 
 		log_trace(logger, "[CPU_ASSIGN @ ASSIGN_PROCESS]: (CPU_ID %u) [() => (PID %u, TID %u, %s)].", cpu->cpu_id, tcb->pid, tcb->tid, KM_STRING(tcb));
 	}
@@ -143,24 +145,26 @@ void cpu_add(uint32_t sock_fd)
 	t_cpu *new_cpu = malloc(sizeof *new_cpu);
 	new_cpu->cpu_id = get_unique_id(CPU_ID);
 	new_cpu->sock_fd = sock_fd;
+	new_cpu->ocupado = false;
+	new_cpu->kernel_mode = false;
 	new_cpu->pid = 0;
 	new_cpu->tid = 0;
-	new_cpu->disponible = true;
-	new_cpu->kernel_mode = false;
 
 	pthread_mutex_lock(&cpu_list_mutex);
 	list_add(cpu_list, new_cpu);
 	pthread_mutex_unlock(&cpu_list_mutex);
 
 	//conexion_cpu(new_cpu->cpu_id);
-	log_trace(logger, "[NEW_CONNECTION @ CPU_ADD]: (CPU_ID %u).", new_cpu->cpu_id);
+	log_trace(logger, "[NEW_CONNECTION @ CPU_ADD]: (CPU_ID %u, CPU_SOCK %u).", new_cpu->cpu_id, new_cpu->sock_fd);
 }
 
 void cpu_queue(uint32_t sock_fd)
 {
 	t_cpu *cpu = find_cpu_by_sock_fd(sock_fd);
 	if(cpu != NULL) {
+		pthread_mutex_lock(&request_queue_mutex);
 		queue_push(request_queue, cpu);
+		pthread_mutex_unlock(&request_queue_mutex);
 		log_trace(logger, "[PUSHING_REQUEST @ CPU_QUEUE]: (CPU_ID %u).", cpu->cpu_id);
 	} else
 		log_warning(logger, "[CPU_NOT_FOUND @ CPU_QUEUE]: (CPU_SOCK %u).", sock_fd);
@@ -171,7 +175,7 @@ void cpu_abort(uint32_t sock_fd, t_hilo *tcb)
 {
 	t_cpu *cpu = find_cpu_by_sock_fd(sock_fd);
 	if(cpu != NULL) {
-		cpu->disponible = true;
+		cpu->ocupado = false;
 
 		log_trace(logger, "[CPU_ABORT]: (CPU_ID %u) => FREE [(PID %u, TID %u)].", cpu->cpu_id, tcb->pid, tcb->tid);
 
@@ -190,7 +194,7 @@ void cpu_abort(uint32_t sock_fd, t_hilo *tcb)
 
 			if (tcb->kernel_mode == true) {
 				/* Abortado hilo de Kernel. */
-				queue_pop(syscall_queue);
+				free(queue_pop(syscall_queue));
 				attend_next_syscall_request();
 			}
 		} else
@@ -228,9 +232,9 @@ void return_process(uint32_t sock_fd, t_hilo *tcb)
 	/* Seteamos la CPU a disponible. */
 	t_cpu *cpu = find_cpu_by_sock_fd(sock_fd);
 	if(cpu != NULL) {
-		cpu->disponible = true;
+		cpu->ocupado = false;
 
-		log_trace(logger, "[QUANTUM_END @ RETURN_PROCESS]: (CPU_ID %u) => FREE [(PID %u, TID %u)].", cpu->cpu_id, tcb->pid, tcb->tid);
+		log_trace(logger, "[QUANTUM_END @ RETURN_PROCESS]: (CPU_ID %u) [(PID %u, TID %u) => ()].", cpu->cpu_id, tcb->pid, tcb->tid);
 
 		/* Actualizamos el tcb recibido y lo encolamos a READY si es que existe. */
 		t_hilo *to_update = find_thread_by_pid_tid(tcb->pid, tcb->tid, true);
@@ -254,7 +258,7 @@ void finish_process(uint32_t sock_fd, t_hilo *tcb)
 	/* Seteamos la CPU a disponible. */
 	t_cpu *cpu = find_cpu_by_sock_fd(sock_fd);
 	if(cpu != NULL) {
-		cpu->disponible = true;
+		cpu->ocupado = false;
 
 		log_trace(logger, "[CPU_FREE @ FINISH_PROCESS]: (CPU_ID %u) [(PID %u, TID %u) => ()].", cpu->cpu_id, tcb->pid, tcb->tid);
 
@@ -290,6 +294,8 @@ void finish_process(uint32_t sock_fd, t_hilo *tcb)
 					log_warning(logger, "[CONSOLE_NOT_FOUND @ FINISH_PROCESS]: (CONSOLE_ID %u).", syscall->blocked->pid);
 				}
 			}
+
+			free(syscall);
 
 			attend_next_syscall_request();
 		}
@@ -462,6 +468,7 @@ void create_thread(uint32_t cpu_sock_fd, t_hilo *tcb)
 		if (enviar_mensaje(cpu_sock_fd, crea_success) == -1) {
 			t_cpu *cpu = remove_cpu_by_sock_fd(cpu_sock_fd);
 			log_warning(logger, "[LOST_CONNECTION @ CREATE_THREAD]: (CPU_ID %u).", cpu->cpu_id);
+			free(cpu);
 		}
 
 		destroy_message(request_stack);
@@ -486,6 +493,7 @@ void create_thread(uint32_t cpu_sock_fd, t_hilo *tcb)
 		exit(EXIT_FAILURE);	
 	}
 
+	free(key);
 	free(tcb);
 	destroy_message(create_stack);
 	destroy_message(status_stack);
@@ -508,6 +516,8 @@ void join_thread(uint32_t tid_caller, uint32_t tid_towait, uint32_t process_pid)
 
 	log_trace(logger, "[JOIN_THREAD]: (PID %u, TID %u) => BLOCK [(PID %u, TID %u)].", 
 		process_pid, tid_caller, process_pid, tid_towait);
+
+	free(key);
 }
 
 
@@ -519,7 +529,7 @@ void block_thread(uint32_t resource, t_hilo *tcb)
 	if (rsc_queue == NULL) { 
 		/* Nueva entrada de recurso en diccionario. */
 		rsc_queue = queue_create();
-		dictionary_put(resource_dict, strdup(key), rsc_queue);
+		dictionary_put(resource_dict, key, rsc_queue);
 	}
 
 	/* Actualizar y encolar TCB a BLOCK. */
@@ -546,7 +556,7 @@ void wake_thread(uint32_t resource)
 	t_queue *rsc_queue = dictionary_get(resource_dict, key);
 	if(rsc_queue == NULL) {
 		rsc_queue = queue_create();
-		dictionary_put(resource_dict, strdup(key), rsc_queue);
+		dictionary_put(resource_dict, key, rsc_queue);
 	}
 	
 	if (!queue_is_empty(rsc_queue)) {
@@ -589,6 +599,18 @@ t_cpu *find_cpu_by_sock_fd(uint32_t sock_fd)
 	pthread_mutex_unlock(&cpu_list_mutex);
 
 	return found;
+}
+
+
+void remove_cpu_request_by_id(uint32_t id)
+{
+	bool _remove_cpu_request_by_id(t_cpu *a_cpu) {
+		return a_cpu->cpu_id == id;
+	}
+
+	pthread_mutex_lock(&request_queue_mutex);
+	list_remove_by_condition(request_queue->elements, (void *) _remove_cpu_request_by_id);
+	pthread_mutex_unlock(&request_queue_mutex);
 }
 
 

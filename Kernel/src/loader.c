@@ -8,7 +8,7 @@ void *loader(void *arg)
 			exit(EXIT_FAILURE);
 		}
 
-		if(!alive)
+		if(!thread_alive)
 			return NULL;
 
 		pthread_mutex_lock(&loader_mutex);
@@ -18,7 +18,7 @@ void *loader(void *arg)
 		t_console *console = new_console(recibido->argv[0]);
 
 		//conexion_consola(console->console_id);
-		log_trace(logger, "[NEW_CONNECTION @ LOADER]: (CONSOLE_ID %u).", console->pid);
+		log_trace(logger, "[NEW_CONNECTION @ LOADER]: (CONSOLE_ID %u, CONSOLE_SOCK %u).", console->pid, console->sock_fd);
 
 		t_hilo *new_tcb = reservar_memoria(ult_tcb(console->pid), recibido);
 		if (new_tcb == NULL) {
@@ -88,11 +88,7 @@ t_console *find_console_by_pid(uint32_t pid)
 t_console *remove_console_by_sock_fd(uint32_t sock_fd)
 {
 	bool _remove_console_by_sock_fd(t_console *a_cnsl) { 
-		bool result = a_cnsl->sock_fd == sock_fd;
-		if(result)
-			log_trace(logger, "[REMOVED]: (CONSOLE_ID %u).", a_cnsl->pid);
-
-		return result;
+		return a_cnsl->sock_fd == sock_fd;
 	}
 
 	pthread_mutex_lock(&console_list_mutex);
