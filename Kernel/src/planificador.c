@@ -127,6 +127,7 @@ void assign_processes(void)
 			log_warning(logger, "[LOST_CONNECTION @ ASSIGN_PROCESS]: (CPU_ID %u).", cpu->cpu_id);
 			tcb->cola = READY;
 			remove_cpu_by_sock_fd(cpu->sock_fd);
+			free(cpu);
 			continue;
 		}
 		destroy_message(msg);
@@ -189,8 +190,9 @@ void cpu_abort(uint32_t sock_fd, t_hilo *tcb)
 		if (console != NULL) {
 			t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: CPU abortando.", 0);
 			if (enviar_mensaje(console->sock_fd, msg) == -1) {
-				log_warning(logger, "[LOST_CONNECTION @ CPU_ABORT]: (CONSOLE_ID %u).", console->pid);
 				remove_console_by_sock_fd(console->sock_fd);
+				log_warning(logger, "[LOST_CONNECTION @ CPU_ABORT]: (CONSOLE_ID %u).", console->pid);
+				free(console);
 			}
 			destroy_message(msg);
 
@@ -340,8 +342,9 @@ void numeric_input(uint32_t cpu_sock_fd, uint32_t tcb_pid)
 	if (console != NULL) {
 		t_msg *msg = argv_message(NUMERIC_INPUT, 1, cpu_sock_fd);
 		if (enviar_mensaje(console->sock_fd, msg) == -1) {
-			free(remove_console_by_sock_fd(console->sock_fd));
+			remove_console_by_sock_fd(console->sock_fd);
 			log_warning(logger, "[LOST_CONNECTION @ NUMERIC_INPUT]: (CONSOLE_ID %u).", console->pid);
+			free(console);
 		}
 		destroy_message(msg);
 	} else
@@ -357,6 +360,7 @@ void string_input(uint32_t cpu_sock_fd, uint32_t tcb_pid, uint32_t length)
 		if (enviar_mensaje(console->sock_fd, msg) == -1) {
 			remove_console_by_sock_fd(console->sock_fd);
 			log_warning(logger, "[LOST_CONNECTION @ STRING_INPUT]: (CONSOLE_ID %u).", console->pid);
+			free(console);
 		}
 		destroy_message(msg);
 	} else
@@ -372,6 +376,7 @@ void numeric_output(uint32_t tcb_pid, int output_number)
 		if (enviar_mensaje(console->sock_fd, msg) == -1) {
 			remove_console_by_sock_fd(console->sock_fd);
 			log_warning(logger, "[LOST_CONNECTION @ NUMERIC_OUTPUT]: (CONSOLE_ID %u).", console->pid);
+			free(console);
 		}
 		destroy_message(msg);
 	} else
@@ -387,6 +392,7 @@ void string_output(uint32_t tcb_pid, char *output_stream)
 		if (enviar_mensaje(console->sock_fd, msg) == -1) {
 			remove_console_by_sock_fd(console->sock_fd);
 			log_warning(logger, "[LOST_CONNECTION @ STRING_INPUT]: (CONSOLE_ID %u).", console->pid);
+			free(console);
 		}
 		destroy_message(msg);
 	} else
@@ -400,6 +406,7 @@ void return_numeric_input(uint32_t cpu_sock_fd, int number)
 	if (enviar_mensaje(cpu_sock_fd, msg) == -1) {
 		t_cpu *cpu = remove_cpu_by_sock_fd(cpu_sock_fd);
 		log_warning(logger, "[LOST_CONNECTION @ RETURN_NUMERIC_INPUT]: (CPU_ID %u).", cpu->cpu_id);
+		free(cpu);
 	}
 	destroy_message(msg);
 }
@@ -411,6 +418,7 @@ void return_string_input(uint32_t cpu_sock_fd, char *stream)
 	if (enviar_mensaje(cpu_sock_fd, msg) == -1) {
 		t_cpu *cpu = remove_cpu_by_sock_fd(cpu_sock_fd);
 		log_warning(logger, "[LOST_CONNECTION @ RETURN_NUMERIC_INPUT]: (CPU_ID %u).", cpu->cpu_id);
+		free(cpu);
 	}
 	destroy_message(msg);
 }
@@ -513,6 +521,7 @@ void create_thread(uint32_t cpu_sock_fd, t_hilo *tcb)
 			if (enviar_mensaje(console->sock_fd, msg) == -1) {
 				remove_console_by_sock_fd(console->sock_fd);
 				log_warning(logger, "[LOST_CONNECTION @ CREATE_THREAD]: (CONSOLE_ID %u).", console->pid);
+				free(console);
 			}
 			destroy_message(msg);
 		} else

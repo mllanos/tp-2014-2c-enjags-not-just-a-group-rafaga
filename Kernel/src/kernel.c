@@ -430,6 +430,7 @@ int remove_from_lists(uint32_t sock_fd)
 					if (enviar_mensaje(out_cons->sock_fd, msg) == -1) {
 						remove_console_by_sock_fd(out_cons->sock_fd);
 						log_warning(logger, "[LOST_CONNECTION @ REMOVE_FROM_LISTS]: (CONSOLE_ID %u).", out_cons->pid);
+						free(out_cons);
 					}
 					destroy_message(msg);
 				}
