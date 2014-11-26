@@ -85,7 +85,7 @@ void receive_messages_epoll(void)
 	memset(&event, 0, sizeof(event));
 
 	int sfd = server_socket(KERNEL_PORT());
-	if(sfd < 0) {
+	if (sfd < 0) {
 		log_error(logger, "No se pudo crear socket escucha.");
 		perror("receive_messages_epoll");
 		exit(EXIT_FAILURE);
@@ -168,7 +168,7 @@ void receive_messages_select(void)
 
 	/* Create the socket and set it up to accept connections. */
 	int listener = server_socket(KERNEL_PORT());
-	if(listener < 0) {
+	if (listener < 0) {
 		log_error(logger, "No se pudo crear socket escucha.");
 		perror("receive_messages_select");
 		exit(EXIT_FAILURE);
@@ -275,7 +275,7 @@ void interpret_message(int sock_fd, t_msg *recibido)
 			pthread_mutex_lock(&loader_mutex);
 			queue_push(loader_queue, modify_message(NO_NEW_ID, recibido, 1, sock_fd));
 			pthread_mutex_unlock(&loader_mutex);
-			if(sem_post(&sem_loader) == -1) {
+			if (sem_post(&sem_loader) == -1) {
 				perror("interpret_message");
 				exit(EXIT_FAILURE);
 			}
@@ -292,7 +292,7 @@ void interpret_message(int sock_fd, t_msg *recibido)
 			pthread_mutex_lock(&planificador_mutex);
 			queue_push(planificador_queue, modify_message(NO_NEW_ID, recibido, 1, sock_fd));
 			pthread_mutex_unlock(&planificador_mutex);
-			if(sem_post(&sem_planificador) == -1) {
+			if (sem_post(&sem_planificador) == -1) {
 				perror("interpret_message");
 				exit(EXIT_FAILURE);
 			}
@@ -310,7 +310,7 @@ void interpret_message(int sock_fd, t_msg *recibido)
 			pthread_mutex_lock(&planificador_mutex);
 			queue_push(planificador_queue, recibido);
 			pthread_mutex_unlock(&planificador_mutex);
-			if(sem_post(&sem_planificador) == -1) {
+			if (sem_post(&sem_planificador) == -1) {
 				perror("interpret_message");
 				exit(EXIT_FAILURE);
 			}
@@ -333,9 +333,16 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 	message[1] = argv_message(CREATE_SEGMENT, 2, tcb->pid, STACK_SIZE());
 
 	for (i = 0; i < 2 && cont; i++) {
-		enviar_mensaje(msp_fd, message[i]);
+		if (enviar_mensaje(msp_fd, message[i]) == -1) {
+			log_error(logger, "[LOST_CONNECTION @ RESERVAR_MEMORIA]: MSP.");
+			exit(0);
+		}
 
 		status[i] = recibir_mensaje(msp_fd);
+		if (status[i] == NULL) {
+			log_error(logger, "[LOST_CONNECTION @ RESERVAR_MEMORIA]: MSP.");
+			exit(0);
+		}
 
 		if (MSP_RESERVE_FAILURE(status[i])) {
 			free(tcb);
@@ -348,12 +355,19 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 		}
 	}
 
-	if(cont) {
+	if (cont) {
 		message[2] = remake_message(WRITE_MEMORY, msg, 2, tcb->pid, status[0]->argv[0]);
 
-		enviar_mensaje(msp_fd, message[2]);
+		if (enviar_mensaje(msp_fd, message[2]) == -1) {
+			log_error(logger, "[LOST_CONNECTION @ RESERVAR_MEMORIA]: MSP.");
+			exit(0);
+		}
 
 		status[2] = recibir_mensaje(msp_fd);
+		if (status[2] == NULL) {
+			log_error(logger, "[LOST_CONNECTION @ RESERVAR_MEMORIA]: MSP.");
+			exit(0);
+		}
 
 		if (MSP_WRITE_FAILURE(status[2])) {
 			free(tcb);
@@ -364,7 +378,7 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 			exit(EXIT_FAILURE);
 		}
 
-		if(tcb != NULL) {
+		if (tcb != NULL) {
 			tcb->segmento_codigo = status[0]->argv[0];
 			tcb->segmento_codigo_size = message[2]->header.length;
 			tcb->puntero_instruccion = tcb->segmento_codigo;
@@ -406,15 +420,19 @@ int remove_from_lists(uint32_t sock_fd)
 		log_trace(logger, "[DISCONNECTION @ REMOVE_FROM_LISTS]: (CPU_ID %u, CPU_SOCK %u).", out_cpu->cpu_id, out_cpu->sock_fd);
 
 		if (out_cpu->ocupado == true) {
-			/* La CPU saliente tiene hilos ejecutando. */
+			/* La CPU saliente tiene un hilo ejecutando. */
 
 			if (out_cpu->kernel_mode == false) {
 				/* Es un ULT. Avisar a la Consola para que se desconecte. */
 				t_console *out_cons = find_console_by_pid(out_cpu->pid);
-				t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: CPU saliente.", 0);
-				enviar_mensaje(out_cons->sock_fd, msg);
-				destroy_message(msg);
-
+				if (out_cons != NULL) {
+					t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: CPU saliente.", 0);
+					if (enviar_mensaje(out_cons->sock_fd, msg) == -1) {
+						remove_console_by_sock_fd(out_cons->sock_fd);
+						log_warning(logger, "[LOST_CONNECTION @ REMOVE_FROM_LISTS]: (CONSOLE_ID %u).", out_cons->pid);
+					}
+					destroy_message(msg);
+				}
 			} else {
 				/* Es el KLT. Liberar recursos y salir del programa. */
 				log_trace(logger, "Finalizando Kernel por aborto de CPU con KLT.");
