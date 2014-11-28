@@ -42,6 +42,7 @@ int main(int argc, char **argv) {
 }
 
 void inicializar_CPU(char *path, uint32_t *retardo) {
+
 	t_config* config = config_create(path);
 
 	*retardo = config_get_int_value(config,"RETARDO");

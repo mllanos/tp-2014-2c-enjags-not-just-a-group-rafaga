@@ -1,5 +1,7 @@
-#include <stdio.h>
 #include "cpu.h"
+#include <stdio.h>
+
+#define comienzo_ejecucion ejecucion_hilo
 
 char* itoa(int value, char* result, int base) {
 	// check that the base if valid
@@ -27,40 +29,57 @@ char* itoa(int value, char* result, int base) {
 
 void ejecucion_hilo(t_hilo* hilo, uint32_t quantum) {
 
-	printf("Comienza a ejecutar el hilo { PID: %d, TID: %d }", hilo->pid, hilo->tid);
+	char* mensaje = string_new();
+
+	string_append_with_format(&mensaje, "Comienza a ejecutar el hilo { PID: %d, TID: %d }", hilo->pid, hilo->tid);
 
 	if (hilo->kernel_mode)
-		printf(" en modo kernel");
+		string_append(&mensaje, " en modo kernel");
 
-	printf("\n");
+	log_info(logger, mensaje);
+
+	free(mensaje);
+
 }
 
 void ejecucion_instruccion(char* mnemonico, t_list* parametros) {
 
-	printf("Ejecutar instrucción %s; Parámetros: [", mnemonico);
+	char* mensaje = string_new();
+	string_append_with_format(&mensaje, "Instrucción %s [", mnemonico);
 
-	char *parametro;
 	bool primero = true;
-	while((parametro = (char*) list_remove(parametros,0)) != NULL) {
-		if (!primero) printf(", ");
-		printf("%s", parametro);
+
+	void _imprimirParametro(char* parametro) {
+
+		if (!primero) string_append(&mensaje, ", ");
+			string_append_with_format(&mensaje, "%s", parametro);
+
 		primero = false;
 	}
 
-	printf("]\n");
+	list_iterate(parametros, (void*) _imprimirParametro);
+	string_append(&mensaje, "]");
+
+	log_info(logger, mensaje);
+
+	free(mensaje);
+
 }
 
 void cambio_registros(t_registros_cpu registros) {
 
-	printf("Registros: { A: %d, B: %d, C: %d, D: %d, E: %d, M: %u, P: %u, X: %u, S: %u, K: %u, I: %u }\n",
-	registros.registros_programacion[0],
-	registros.registros_programacion[1],
-	registros.registros_programacion[2],
-	registros.registros_programacion[3],
-	registros.registros_programacion[4],
-	registros.M, registros.P, registros.X, registros.S, registros.K, registros.I);
+	printf("Registros: { A: %d, B: %d, C: %d, D: %d, E: %d, M: %d, P: %d, X: %d, S: %d, K: %d, I: %d }",
+			registros.registros_programacion[0],
+			registros.registros_programacion[1],
+			registros.registros_programacion[2],
+			registros.registros_programacion[3],
+			registros.registros_programacion[4],
+			registros.M, registros.P, registros.X, registros.S, registros.K, registros.I
+	);
+
 }
 
 void fin_ejecucion() {
-	printf("La CPU empieza a estar iddle\n");
+
+	log_info(logger, "La CPU empieza a estar iddle");
 }
