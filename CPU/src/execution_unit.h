@@ -24,7 +24,6 @@
 #define stack_size (Registros.S - Registros.X)
 #define PIDKM (KernelMode == false? Registros.I : 0)
 #define program_counter (Registros.M + Registros.P)
-#define PANEL_PATH "panel/"
 
 typedef enum {A,B,C,D,E} t_registros_programacion;
 typedef enum {REGISTRO,NUMERO,DIRECCION} t_operandos;
