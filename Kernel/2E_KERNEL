@@ -1,0 +1,4 @@
+#!/bin/bash
+
+clear
+./bin/Kernel config/2E_KERNEL.conf

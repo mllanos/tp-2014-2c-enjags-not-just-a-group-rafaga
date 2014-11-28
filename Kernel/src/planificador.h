@@ -29,7 +29,7 @@ void *planificador(void *arg);
 /*
  * Algoritmo Boolean Priority Round Robin
  */
-void bprr_algorithm(void);
+void bprr_algorithm(char *reason);
 
 /*
  * Agregamos la nueva CPU a la lista de CPUs.
@@ -139,5 +139,6 @@ void sort_processes_by_bprr(void);
 t_hilo *find_thread_by_pid_tid(uint32_t pid, uint32_t tid, bool mutex_lock);
 t_hilo *find_process_by_ready(void);
 void log_blocked_processes_by_resource_id(char *key, t_list *queue_elements);
+bool new_processes_exist(void);
 
 #endif

@@ -1,7 +1,7 @@
 CC = gcc
 LIBS = -lcommons -lutiles -lansisop-panel
 OBJ = obj/cpu.o obj/execution_unit.o obj/set_instrucciones.o
-DIRS = bin/ obj/
+DIRS = bin/ obj/ panel/
 OUT = bin/CPU
 FLAGS = -g -Wall
 

@@ -87,6 +87,7 @@ typedef enum {
 	/****************** SERVICIOS EXPUESTOS A CPU: CREAR HILO. ******************/
 	CPU_CREA,					/* Pedido de nuevo hilo de proceso de CPU a Kernel. */
 	CREA_OK,					/* Respuesta de hilo creado. */
+	CREA_FAIL,					/* Respuesta de fallo al crear hilo. */
 
 	/****************** SERVICIOS EXPUESTOS A CPU: JOIN. ******************/
 	CPU_JOIN,					/* Pedido de unión a hilo de proceso de CPU a Kernel. */

@@ -13,7 +13,7 @@
 #include <commons/collections/list.h>
 #include <commons/collections/queue.h>
 #include <utiles/utiles.h>
-#include <panel/kernel_log.h>
+#include <panel/kernel.h>
 #include <pthread.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -104,7 +104,7 @@ void kill_kernel(int signo);
 
 /* Archivos de configuracion y log. */
 t_config *config;
-t_log *logger;
+t_log *logger_old;
 
 
 /* Listas. */
@@ -134,6 +134,7 @@ pthread_mutex_t console_list_mutex;
 pthread_mutex_t cpu_list_mutex;
 pthread_mutex_t process_list_mutex;
 pthread_mutex_t request_queue_mutex;
+pthread_mutex_t aborted_process_mutex;
 
 
 /* Semaphores. */

@@ -1,5 +1,0 @@
-#!/bin/bash
-
-cp -f ./Esquemas_de_Configuracion/Esquema2/lru.conf ./MSP/config/lru.conf
-cp -f ./Esquemas_de_Configuracion/Esquema2/clock.conf ./MSP/config/clock.conf
-cp -f ./Esquemas_de_Configuracion/Esquema2/kernel.conf ./Kernel/config/kernel.conf

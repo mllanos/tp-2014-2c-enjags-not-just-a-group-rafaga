@@ -1,0 +1,4 @@
+#!/bin/bash
+
+clear
+./bin/MSP config/CM_LRU.conf

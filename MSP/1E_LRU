@@ -1,0 +1,4 @@
+#!/bin/bash
+
+clear
+./bin/MSP config/1E_LRU.conf

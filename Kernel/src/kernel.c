@@ -17,7 +17,8 @@ void initialize(char *config_path)
 	thread_alive = true;
 	blocked_by_condition = false;
 	config = config_create(config_path);
-	logger = log_create(LOG_PATH, "Kernel", true, LOG_LEVEL_TRACE);
+	logger_old = log_create(LOG_PATH, "Kernel", false, LOG_LEVEL_TRACE);
+	inicializar_panel(KERNEL, PANEL_PATH);
 	process_list = list_create();
 	console_list = list_create();
 	cpu_list = list_create();
@@ -35,43 +36,42 @@ void initialize(char *config_path)
 	pthread_mutex_init(&process_list_mutex, NULL);
 	pthread_mutex_init(&unique_id_mutex[CONSOLE_ID], NULL);
 	pthread_mutex_init(&unique_id_mutex[CPU_ID], NULL);
+	pthread_mutex_init(&aborted_process_mutex, NULL);
 	sem_init(&sem_loader, 0, 0);
 	sem_init(&sem_planificador, 0, 0);
-	inicializar_panel(KERNEL, PANEL_PATH);
+	pthread_mutex_lock(&aborted_process_mutex);
 	pthread_create(&loader_th, NULL, loader, NULL);
 	pthread_create(&planificador_th, NULL, planificador, NULL);
 
 	msp_fd = client_socket(MSP_IP(), MSP_PORT());
 	if (msp_fd < 0) {
-		log_error(logger, "No se pudo conectar con la MSP.");
+		log_error(logger_old, "No se pudo conectar con la MSP.");
 		exit(EXIT_FAILURE);
 	}
 
-	log_trace(logger, "Inicializando el proceso Kernel.");
+	log_trace(logger_old, "Inicializando el proceso Kernel.");
 }
 
 
 void boot_kernel(void)
 {
-	log_trace(logger, "Reservando memoria para el el hilo de Kernel.");
+	log_trace(logger_old, "Reservando memoria para el el hilo de Kernel.");
 
 	klt_tcb = malloc(sizeof *klt_tcb);
-	klt_tcb->pid = 0;
-	klt_tcb->tid = 0;
+	memset(klt_tcb, 0, sizeof *klt_tcb);
 	klt_tcb->kernel_mode = true;
 	klt_tcb->cola = BLOCK;
-	memset(klt_tcb->registros, 0, sizeof klt_tcb->registros);
 
 	klt_tcb = reservar_memoria(klt_tcb, beso_message(INIT_CONSOLE, SYSCALL_PATH(), 0));
 	if (klt_tcb == NULL) {
 		/* Couldn't allocate memory. */
-		log_error(logger, "No se pudo reservar memoria para el hilo de Kernel.");
+		log_error(logger_old, "No se pudo reservar memoria para el hilo de Kernel.");
 		errno = ENOMEM;
 		perror("boot_kernel");
 		exit(EXIT_FAILURE);
 	}
 
-	log_trace(logger, "[BOOT]: (PID %u, TID %u, %s) => BLOCK.", klt_tcb->pid, klt_tcb->tid, KM_STRING(klt_tcb));
+	log_trace(logger_old, "[BOOT]: (PID %u, TID %u, %s) => BLOCK.", klt_tcb->pid, klt_tcb->tid, KM_STRING(klt_tcb));
 
 	list_add(process_list, klt_tcb);
 }
@@ -86,7 +86,7 @@ void receive_messages_epoll(void)
 
 	int sfd = server_socket(KERNEL_PORT());
 	if (sfd < 0) {
-		log_error(logger, "No se pudo crear socket escucha.");
+		log_error(logger_old, "No se pudo crear socket escucha.");
 		perror("receive_messages_epoll");
 		exit(EXIT_FAILURE);
 	}
@@ -169,7 +169,7 @@ void receive_messages_select(void)
 	/* Create the socket and set it up to accept connections. */
 	int listener = server_socket(KERNEL_PORT());
 	if (listener < 0) {
-		log_error(logger, "No se pudo crear socket escucha.");
+		log_error(logger_old, "No se pudo crear socket escucha.");
 		perror("receive_messages_select");
 		exit(EXIT_FAILURE);
 	}
@@ -245,8 +245,9 @@ void finalize(void)
 	pthread_mutex_destroy(&process_list_mutex);
 	pthread_mutex_destroy(&unique_id_mutex[CONSOLE_ID]);
 	pthread_mutex_destroy(&unique_id_mutex[CPU_ID]);
+	pthread_mutex_destroy(&aborted_process_mutex);
 	config_destroy(config);
-	log_destroy(logger);
+	log_destroy(logger_old);
 	list_destroy_and_destroy_elements(process_list, (void *) free);
 	list_destroy_and_destroy_elements(console_list, (void *) free);
 	list_destroy_and_destroy_elements(cpu_list, (void *) free);
@@ -266,7 +267,7 @@ void interpret_message(int sock_fd, t_msg *recibido)
 
 	//print_msg(recibido);
 	char *id = id_string(recibido->header.id);
-	log_debug(logger, "[MESSAGE @ INTERPRET_MESSAGE]: [ ID: %s ].", id);
+	log_debug(logger_old, "[MESSAGE @ INTERPRET_MESSAGE]: [ ID: %s ].", id);
 	free(id);
 
 	switch (recibido->header.id) {
@@ -332,16 +333,20 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 	message[0] = argv_message(CREATE_SEGMENT, 2, tcb->pid, msg->header.length);
 	message[1] = argv_message(CREATE_SEGMENT, 2, tcb->pid, STACK_SIZE());
 
+	for (i = 0; i < 2; i++) {
+		status[i] = NULL;
+	}
+
 	for (i = 0; i < 2 && cont; i++) {
 		if (enviar_mensaje(msp_fd, message[i]) == -1) {
-			log_error(logger, "[LOST_CONNECTION @ RESERVAR_MEMORIA]: MSP.");
-			exit(0);
+			log_error(logger_old, "[LOST_CONNECTION @ RESERVAR_MEMORIA]: MSP.");
+			exit(EXIT_FAILURE);
 		}
 
 		status[i] = recibir_mensaje(msp_fd);
 		if (status[i] == NULL) {
-			log_error(logger, "[LOST_CONNECTION @ RESERVAR_MEMORIA]: MSP.");
-			exit(0);
+			log_error(logger_old, "[LOST_CONNECTION @ RESERVAR_MEMORIA]: MSP.");
+			exit(EXIT_FAILURE);
 		}
 
 		if (MSP_RESERVE_FAILURE(status[i])) {
@@ -353,20 +358,24 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 			perror("reservar_memoria");
 			exit(EXIT_FAILURE);
 		}
+
+		char *id = id_string(status[i]->header.id);
+		log_trace(logger_old, "[RECEIVED @ RESERVAR_MEMORIA]: [CREATE_SEGMENT (%s)]: %s.", i == 0 ? "CODE" : "STACK", id);
+		free(id);
 	}
 
 	if (cont) {
 		message[2] = remake_message(WRITE_MEMORY, msg, 2, tcb->pid, status[0]->argv[0]);
 
 		if (enviar_mensaje(msp_fd, message[2]) == -1) {
-			log_error(logger, "[LOST_CONNECTION @ RESERVAR_MEMORIA]: MSP.");
-			exit(0);
+			log_error(logger_old, "[LOST_CONNECTION @ RESERVAR_MEMORIA]: MSP.");
+			exit(EXIT_FAILURE);
 		}
 
 		status[2] = recibir_mensaje(msp_fd);
 		if (status[2] == NULL) {
-			log_error(logger, "[LOST_CONNECTION @ RESERVAR_MEMORIA]: MSP.");
-			exit(0);
+			log_error(logger_old, "[LOST_CONNECTION @ RESERVAR_MEMORIA]: MSP.");
+			exit(EXIT_FAILURE);
 		}
 
 		if (MSP_WRITE_FAILURE(status[2])) {
@@ -377,6 +386,10 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 			perror("reservar_memoria");
 			exit(EXIT_FAILURE);
 		}
+
+		char *id = id_string(status[i]->header.id);
+		log_trace(logger_old, "[RECEIVED @ RESERVAR_MEMORIA]: [WRITE_MEMORY (CODE)]: [%s].", id);
+		free(id);
 
 		if (tcb != NULL) {
 			tcb->segmento_codigo = status[0]->argv[0];
@@ -392,7 +405,8 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 
 	for (i = 0; i < 2; i++) {
 		destroy_message(message[i]);
-		destroy_message(status[i]);
+		if (status[i] != NULL)
+			destroy_message(status[i]);
 	}
 
 	return tcb;
@@ -407,17 +421,19 @@ int remove_from_lists(uint32_t sock_fd)
 	t_cpu *out_cpu = remove_cpu_by_sock_fd(sock_fd);
 
 	if (out_console != NULL) {
-		//desconexion_consola(out_console->console_id);
+		desconexion_consola(out_console->pid);
 
-		log_trace(logger, "[DISCONNECTION @ REMOVE_FROM_LISTS]: (CONSOLE_ID %u, CONSOLE_SOCK %u).", out_console->pid, out_console->sock_fd);
+		log_trace(logger_old, "[DISCONNECTION @ REMOVE_FROM_LISTS]: (CONSOLE_ID %u, CONSOLE_SOCK %u).", out_console->pid, out_console->sock_fd);
 
 		finalize_process_by_pid(out_console->pid);
 
 		free(out_console);
-	} else if (out_cpu != NULL) {
-		//desconexion_cpu(out_cpu->cpu_id);
 
-		log_trace(logger, "[DISCONNECTION @ REMOVE_FROM_LISTS]: (CPU_ID %u, CPU_SOCK %u).", out_cpu->cpu_id, out_cpu->sock_fd);
+		pthread_mutex_unlock(&aborted_process_mutex);
+	} else if (out_cpu != NULL) {
+		desconexion_cpu(out_cpu->cpu_id);
+
+		log_trace(logger_old, "[DISCONNECTION @ REMOVE_FROM_LISTS]: (CPU_ID %u, CPU_SOCK %u).", out_cpu->cpu_id, out_cpu->sock_fd);
 
 		if (out_cpu->ocupado == true) {
 			/* La CPU saliente tiene un hilo ejecutando. */
@@ -429,14 +445,14 @@ int remove_from_lists(uint32_t sock_fd)
 					t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: CPU saliente.", 0);
 					if (enviar_mensaje(out_cons->sock_fd, msg) == -1) {
 						remove_console_by_sock_fd(out_cons->sock_fd);
-						log_warning(logger, "[LOST_CONNECTION @ REMOVE_FROM_LISTS]: (CONSOLE_ID %u).", out_cons->pid);
+						log_warning(logger_old, "[LOST_CONNECTION @ REMOVE_FROM_LISTS]: (CONSOLE_ID %u).", out_cons->pid);
 						free(out_cons);
 					}
 					destroy_message(msg);
 				}
 			} else {
 				/* Es el KLT. Liberar recursos y salir del programa. */
-				log_trace(logger, "Finalizando Kernel por aborto de CPU con KLT.");
+				log_trace(logger_old, "Finalizando Kernel por aborto de CPU con KLT.");
 				result = -1;
 			}
 		} else {
@@ -489,7 +505,7 @@ void kill_kernel(int signo)
 {
 	switch(signo) {
 		case SIGINT:
-			log_trace(logger, "Finalizando Kernel por SIGINT.");
+			log_trace(logger_old, "Finalizando Kernel por SIGINT.");
 			alive = false;
 			break;
 		default:

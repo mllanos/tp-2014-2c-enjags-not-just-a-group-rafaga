@@ -1,7 +1,7 @@
 CC = gcc
 LIBS = -lcommons -lutiles -lpthread -lansisop-panel
 OBJ = obj/kernel.o obj/loader.o obj/planificador.o
-DIRS = bin/ obj/ panel/ log/
+DIRS = bin/ obj/ log/ panel/
 OUT = bin/Kernel
 FLAGS = -g -Wall
 

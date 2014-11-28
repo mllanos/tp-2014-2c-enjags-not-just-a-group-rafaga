@@ -368,12 +368,18 @@ void crea (void) {
 
 	destroy_message(msg);
 
-	if((msg = recibir_mensaje(Kernel)) == NULL || msg->header.id != CREA_OK) {
+	if((msg = recibir_mensaje(Kernel)) == NULL || !(msg->header.id == CREA_OK || msg->header.id == CREA_FAIL)) {
 		puts("ERROR: No se pudo solicitar el servicio requerido al Kernel.");
 		exit(EXIT_FAILURE);
 	}
 
-	registro(A) = msg->argv[0];
+	if(msg->header.id == CREA_OK)
+		registro(A) = msg->argv[0];
+	else {
+		Quantum = 0;
+		KernelMode = false;
+		Execution_State = FINISHED_THREAD;
+	}
 
 	destroy_message(msg);
 }

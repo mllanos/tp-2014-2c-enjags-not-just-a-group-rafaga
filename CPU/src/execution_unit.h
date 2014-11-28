@@ -15,7 +15,7 @@
 #include <commons/string.h>
 #include <commons/collections/list.h>
 #include <commons/collections/dictionary.h>
-#include <panel/cpu_log.h>
+#include <panel/cpu.h>
 
 #define MAX_SHIF 31
 #define PID Registros.I
@@ -24,9 +24,11 @@
 #define stack_size (Registros.S - Registros.X)
 #define PIDKM (KernelMode == false? Registros.I : 0)
 #define program_counter (Registros.M + Registros.P)
+#define PANEL_PATH "panel/"
 
 typedef enum {A,B,C,D,E} t_registros_programacion;
 typedef enum {REGISTRO,NUMERO,DIRECCION} t_operandos;
+
 
 /*Variables Globales*/
 int MSP;

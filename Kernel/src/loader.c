@@ -17,16 +17,20 @@ void *loader(void *arg)
 
 		t_console *console = new_console(recibido->argv[0]);
 
-		//conexion_consola(console->console_id);
-		log_trace(logger, "[NEW_CONNECTION @ LOADER]: (CONSOLE_ID %u, CONSOLE_SOCK %u).", console->pid, console->sock_fd);
+		pthread_mutex_lock(&console_list_mutex);
+		list_add(console_list, console);
+		pthread_mutex_unlock(&console_list_mutex);
+
+		conexion_consola(console->pid);
+		log_trace(logger_old, "[NEW_CONNECTION @ LOADER]: (CONSOLE_ID %u, CONSOLE_SOCK %u).", console->pid, console->sock_fd);
 
 		t_hilo *new_tcb = reservar_memoria(ult_tcb(console->pid), recibido);
 		if (new_tcb == NULL) {
-			log_warning(logger, "No se pudo cargar a memoria el hilo principal de la Consola %u.", console->pid);
+			log_warning(logger_old, "No se pudo cargar a memoria el hilo principal de la Consola %u.", console->pid);
 
 			t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: no hay espacio suficiente en MSP.", 0);
 			if(enviar_mensaje(console->sock_fd, msg) == -1) {
-				log_warning(logger, "Se perdio la conexion con la consola %u.", console->pid);
+				log_warning(logger_old, "Se perdio la conexion con la consola %u.", console->pid);
 				remove_console_by_sock_fd(console->sock_fd);
 			}
 			destroy_message(msg);
@@ -35,11 +39,7 @@ void *loader(void *arg)
 			list_add(process_list, new_tcb);
 			pthread_mutex_unlock(&process_list_mutex);
 
-			log_trace(logger, "[LOADER]: (PID %u, TID %u) => NEW.", new_tcb->pid, new_tcb->tid);
-
-			pthread_mutex_lock(&console_list_mutex);
-			list_add(console_list, console);
-			pthread_mutex_unlock(&console_list_mutex);
+			log_trace(logger_old, "[LOADER]: (PID %u, TID %u) => NEW.", new_tcb->pid, new_tcb->tid);
 
 			sem_post(&sem_planificador);
 		}
@@ -51,11 +51,10 @@ void *loader(void *arg)
 
 t_hilo *ult_tcb(uint32_t pid)
 {
-	t_hilo *new = malloc(sizeof *new);	
+	t_hilo *new = malloc(sizeof *new);
+	memset(new, 0, sizeof *new);
 	new->pid = pid;
-	new->tid = 0;
 	new->kernel_mode = false;
-	memset(new->registros, 0, sizeof new->registros);
 	new->cola = NEW;
 
 	return new;
@@ -109,7 +108,7 @@ void inform_consoles_without_active_processes(void)
 		if (list_count_satisfying(process_list, (void *) _find_active_by_pid) == 0) {
 			t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: fin de ejecucion.", 0);
 			if(enviar_mensaje(a_cnsl->sock_fd, msg) == -1)
-				log_warning(logger, "Se perdio la conexion con la Consola %u.", a_cnsl->pid);
+				log_warning(logger_old, "Se perdio la conexion con la Consola %u.", a_cnsl->pid);
 			destroy_message(msg);
 		}
 	}

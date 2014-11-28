@@ -11,6 +11,7 @@ int main(int argc, char **argv) {
 	char *operation_code;
 
 	inicializar_CPU(argv[1],&retardo);
+	inicializar_panel(CPU, PANEL_PATH);
 
 	while(true) {
 
