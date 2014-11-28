@@ -49,7 +49,7 @@ void (*Instruccion)(void);
 /*FIN_Variables Globales*/
 
 /* Funciones Macro */
-#define registro(n) *((int*) MapRegistros[n])
+#define registro(n) *((int32_t*) MapRegistros[n])
 
 #define fetch_registro() fetch_operand(REGISTRO) - 'A'
 #define fetch_numero() (int32_t) fetch_operand(NUMERO)

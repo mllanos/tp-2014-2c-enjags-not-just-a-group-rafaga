@@ -51,5 +51,7 @@ Consola/BESO
 MSP/swap
 MSP/log
 Kernel/log
+Kernel/panel
+CPU/panel
 /libs/commons-library/src/build
 Ensamblador/build

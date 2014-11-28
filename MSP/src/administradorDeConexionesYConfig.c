@@ -93,7 +93,7 @@ void *atenderConsola(void *parametro) {
 			}
 			else {
 				error = id_string(msg_id);
-				log_error(Logger, "No se pudo crear el segmento %u del proceso %u: %s.", segmento(direccionLogica), pid, error);
+				log_warning(Logger, "No se pudo crear el segmento %u del proceso %u: %s.", segmento(direccionLogica), pid, error);
 				pthread_mutex_unlock(&LogMutex);
 
 				printf("ERROR: %s.\n", error);
@@ -296,7 +296,7 @@ void *atenderProceso(void *parametro) {
 					else {
 						error = id_string(msg->header.id);
 
-						log_error(Logger, "No se pudo crear el segmento %u del proceso %u: %s.", segmento(direccionLogica), pid, error);
+						log_warning(Logger, "No se pudo crear el segmento %u del proceso %u: %s.", segmento(direccionLogica), pid, error);
 						pthread_mutex_unlock(&LogMutex);
 
 						//free(error); por alguna razon no puedo liberar este espacio de memoria. Pasa lo mismo con el string Algoritmo de config.
@@ -323,7 +323,7 @@ void *atenderProceso(void *parametro) {
 						pthread_mutex_unlock(&LogMutex);
 					}
 					else {
-						log_error(Logger, "No se pudo destruir el segmento %u del proceso %u.", segmento(baseSegmento), pid);
+						log_warning(Logger, "No se pudo destruir el segmento %u del proceso %u.", segmento(baseSegmento), pid);
 						pthread_mutex_unlock(&LogMutex);
 					}
 
@@ -354,12 +354,12 @@ void *atenderProceso(void *parametro) {
 					break;
 				default:
 					pthread_mutex_lock(&LogMutex);
-					log_error(Logger, "Recepción de solicitud inválida.");
+					log_warning(Logger, "Recepción de solicitud inválida.");
 					pthread_mutex_unlock(&LogMutex);
 			}
 		}
 		else {
-			log_error(Logger, "Desconexión de un proceso.");
+			log_warning(Logger, "Desconexión de un proceso.");
 			break;
 		}
 

@@ -236,7 +236,9 @@ void take (void) {
 	char *buffer = solicitar_memoria(PID,stack_top-size,size);
 
 	if(buffer != NULL) {
+
 		memcpy(&registro(fetch_registro()),buffer,size);
+
 		Registros.S -= size;
 		free(buffer);
 	}

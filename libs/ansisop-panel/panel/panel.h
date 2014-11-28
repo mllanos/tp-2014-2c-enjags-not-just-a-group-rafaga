@@ -24,7 +24,7 @@
 		uint32_t cursor_stack;
 		int32_t registros[5];
 		t_cola cola;
-	} t_hilo;
+	} __attribute__ ((__packed__)) t_hilo;
 
 	t_log *logger;
 

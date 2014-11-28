@@ -12,7 +12,7 @@ void inicializarMSP(void) {
 	int i;
 
 	CantPaginasEnSwapMax = MaxSwap / PAG_SIZE;
-	CantPaginasEnSwapDisponibles = CantPaginasEnSwapMax - 1; 					/* Dejo un lugar disponible para hacer los intercambios */
+	CantPaginasEnSwapDisponibles = CantPaginasEnSwapMax == 0 ? 0 : CantPaginasEnSwapMax - 1; 					/* Dejo un lugar disponible para hacer los intercambios */
 	CantPaginasEnMemoriaDisponibles = CantidadMarcosTotal = MaxMem / PAG_SIZE;
 	CantPaginasDisponibles = CantPaginasEnMemoriaDisponibles + CantPaginasEnSwapDisponibles;
 
