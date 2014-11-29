@@ -1,0 +1,3 @@
+#!/bin/bash
+
+valgrind --leak-check=full --track-origins=yes bin/CPU config/cpu.conf > valgrind.log 2>&1

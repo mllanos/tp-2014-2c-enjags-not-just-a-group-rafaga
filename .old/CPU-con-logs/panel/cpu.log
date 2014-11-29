@@ -1,0 +1,185 @@
+[INFO] 22:00:51:128 CPU/(5362:5362): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 22:00:55:130 CPU/(5362:5362): La CPU empieza a estar iddle
+[INFO] 22:00:55:131 CPU/(5362:5362): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 22:00:59:134 CPU/(5362:5362): La CPU empieza a estar iddle
+[INFO] 22:00:59:172 CPU/(5362:5362): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 22:01:03:175 CPU/(5362:5362): La CPU empieza a estar iddle
+[INFO] 22:01:03:212 CPU/(5362:5362): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 22:01:05:213 CPU/(5362:5362): La CPU empieza a estar iddle
+[INFO] 22:01:31:863 CPU/(5387:5387): Comienza a ejecutar el hilo { PID: 2, TID: 0 }
+[INFO] 22:01:35:866 CPU/(5387:5387): La CPU empieza a estar iddle
+[INFO] 22:01:35:867 CPU/(5387:5387): Comienza a ejecutar el hilo { PID: 2, TID: 0 }
+[INFO] 22:01:39:869 CPU/(5387:5387): La CPU empieza a estar iddle
+[INFO] 22:01:39:908 CPU/(5387:5387): Comienza a ejecutar el hilo { PID: 2, TID: 0 }
+[INFO] 22:01:43:911 CPU/(5387:5387): La CPU empieza a estar iddle
+[INFO] 22:01:43:948 CPU/(5387:5387): Comienza a ejecutar el hilo { PID: 2, TID: 0 }
+[INFO] 22:01:45:948 CPU/(5387:5387): La CPU empieza a estar iddle
+[INFO] 22:01:50:327 CPU/(5387:5387): Comienza a ejecutar el hilo { PID: 3, TID: 0 }
+[INFO] 22:01:54:330 CPU/(5387:5387): La CPU empieza a estar iddle
+[INFO] 22:01:54:330 CPU/(5387:5387): Comienza a ejecutar el hilo { PID: 3, TID: 0 } en modo kernel
+[INFO] 22:02:02:10 CPU/(5387:5387): La CPU empieza a estar iddle
+[INFO] 22:02:02:11 CPU/(5387:5387): Comienza a ejecutar el hilo { PID: 3, TID: 0 }
+[INFO] 22:02:06:13 CPU/(5387:5387): La CPU empieza a estar iddle
+[INFO] 22:02:06:52 CPU/(5387:5387): Comienza a ejecutar el hilo { PID: 3, TID: 0 }
+[INFO] 22:02:10:54 CPU/(5387:5387): La CPU empieza a estar iddle
+[INFO] 22:02:10:92 CPU/(5387:5387): Comienza a ejecutar el hilo { PID: 3, TID: 0 } en modo kernel
+[INFO] 22:02:16:698 CPU/(5387:5387): La CPU empieza a estar iddle
+[INFO] 22:02:16:699 CPU/(5387:5387): Comienza a ejecutar el hilo { PID: 3, TID: 0 }
+[INFO] 22:02:20:701 CPU/(5387:5387): La CPU empieza a estar iddle
+[INFO] 22:02:20:740 CPU/(5387:5387): Comienza a ejecutar el hilo { PID: 3, TID: 0 }
+[INFO] 22:02:24:742 CPU/(5387:5387): La CPU empieza a estar iddle
+[INFO] 22:02:24:780 CPU/(5387:5387): Comienza a ejecutar el hilo { PID: 3, TID: 0 } en modo kernel
+[INFO] 22:02:30:698 CPU/(5387:5387): La CPU empieza a estar iddle
+[INFO] 22:02:30:699 CPU/(5387:5387): Comienza a ejecutar el hilo { PID: 3, TID: 0 }
+[INFO] 22:02:34:702 CPU/(5387:5387): La CPU empieza a estar iddle
+[INFO] 22:02:34:740 CPU/(5387:5387): Comienza a ejecutar el hilo { PID: 3, TID: 0 }
+[INFO] 22:02:35:740 CPU/(5387:5387): La CPU empieza a estar iddle
+[INFO] 22:02:35:780 CPU/(5387:5387): Comienza a ejecutar el hilo { PID: 3, TID: 0 } en modo kernel
+[INFO] 22:02:43:782 CPU/(5387:5387): La CPU empieza a estar iddle
+[INFO] 22:02:43:783 CPU/(5387:5387): Comienza a ejecutar el hilo { PID: 3, TID: 0 }
+[INFO] 22:02:47:785 CPU/(5387:5387): La CPU empieza a estar iddle
+[INFO] 22:02:47:824 CPU/(5387:5387): Comienza a ejecutar el hilo { PID: 3, TID: 0 } en modo kernel
+[INFO] 22:02:55:826 CPU/(5387:5387): La CPU empieza a estar iddle
+[INFO] 22:02:55:827 CPU/(5387:5387): Comienza a ejecutar el hilo { PID: 3, TID: 0 }
+[INFO] 22:02:59:830 CPU/(5387:5387): La CPU empieza a estar iddle
+[INFO] 22:02:59:868 CPU/(5387:5387): Comienza a ejecutar el hilo { PID: 3, TID: 0 } en modo kernel
+[INFO] 22:03:07:870 CPU/(5387:5387): La CPU empieza a estar iddle
+[INFO] 22:03:07:871 CPU/(5387:5387): Comienza a ejecutar el hilo { PID: 3, TID: 0 }
+[INFO] 22:03:08:871 CPU/(5387:5387): La CPU empieza a estar iddle
+[INFO] 22:08:45:796 CPU/(5516:5516): Comienza a ejecutar el hilo { PID: 4, TID: 0 }
+[INFO] 22:15:23:953 CPU/(5636:5636): Comienza a ejecutar el hilo { PID: 5, TID: 0 }
+[INFO] 22:15:23:995 CPU/(5636:5636): La CPU empieza a estar iddle
+[INFO] 22:15:23:996 CPU/(5636:5636): Comienza a ejecutar el hilo { PID: 5, TID: 0 } en modo kernel
+[INFO] 22:15:56:849 CPU/(5915:5915): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 22:15:56:892 CPU/(5915:5915): La CPU empieza a estar iddle
+[INFO] 22:15:56:892 CPU/(5915:5915): Comienza a ejecutar el hilo { PID: 1, TID: 0 } en modo kernel
+[INFO] 22:18:29:936 CPU/(5971:5971): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 22:21:18:974 CPU/(6019:6019): Comienza a ejecutar el hilo { PID: 2, TID: 0 }
+[INFO] 22:21:19:17 CPU/(6019:6019): La CPU empieza a estar iddle
+[INFO] 22:21:19:17 CPU/(6019:6019): Comienza a ejecutar el hilo { PID: 2, TID: 0 } en modo kernel
+[INFO] 22:21:56:95 CPU/(6050:6050): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 22:27:30:173 CPU/(6174:6174): Comienza a ejecutar el hilo { PID: 2, TID: 0 }
+[INFO] 22:29:19:563 CPU/(6235:6235): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 22:33:02:587 CPU/(6300:6300): Comienza a ejecutar el hilo { PID: 2, TID: 0 }
+[INFO] 22:33:30:217 CPU/(6585:6585): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 22:36:17:736 CPU/(6630:6630): Comienza a ejecutar el hilo { PID: 2, TID: 0 }
+[INFO] 22:36:17:779 CPU/(6630:6630): La CPU empieza a estar iddle
+[INFO] 22:36:17:779 CPU/(6630:6630): Comienza a ejecutar el hilo { PID: 2, TID: 0 } en modo kernel
+[INFO] 22:36:27:67 CPU/(6630:6630): La CPU empieza a estar iddle
+[INFO] 22:36:27:67 CPU/(6630:6630): Comienza a ejecutar el hilo { PID: 2, TID: 0 }
+[INFO] 22:36:27:110 CPU/(6630:6630): La CPU empieza a estar iddle
+[INFO] 22:36:27:147 CPU/(6630:6630): Comienza a ejecutar el hilo { PID: 2, TID: 0 }
+[INFO] 22:36:27:190 CPU/(6630:6630): La CPU empieza a estar iddle
+[INFO] 22:36:27:228 CPU/(6630:6630): Comienza a ejecutar el hilo { PID: 2, TID: 0 } en modo kernel
+[INFO] 22:36:28:638 CPU/(6630:6630): La CPU empieza a estar iddle
+[INFO] 22:36:28:638 CPU/(6630:6630): Comienza a ejecutar el hilo { PID: 2, TID: 0 }
+[INFO] 22:36:28:680 CPU/(6630:6630): La CPU empieza a estar iddle
+[INFO] 22:36:28:720 CPU/(6630:6630): Comienza a ejecutar el hilo { PID: 2, TID: 0 }
+[INFO] 22:36:28:761 CPU/(6630:6630): La CPU empieza a estar iddle
+[INFO] 22:36:28:800 CPU/(6630:6630): Comienza a ejecutar el hilo { PID: 2, TID: 0 } en modo kernel
+[INFO] 22:36:30:62 CPU/(6630:6630): La CPU empieza a estar iddle
+[INFO] 22:36:30:62 CPU/(6630:6630): Comienza a ejecutar el hilo { PID: 2, TID: 0 }
+[INFO] 22:36:30:105 CPU/(6630:6630): La CPU empieza a estar iddle
+[INFO] 22:36:30:144 CPU/(6630:6630): Comienza a ejecutar el hilo { PID: 2, TID: 0 }
+[INFO] 22:36:30:186 CPU/(6630:6630): La CPU empieza a estar iddle
+[INFO] 22:36:30:224 CPU/(6630:6630): Comienza a ejecutar el hilo { PID: 2, TID: 0 } en modo kernel
+[INFO] 22:36:32:334 CPU/(6630:6630): La CPU empieza a estar iddle
+[INFO] 22:36:32:335 CPU/(6630:6630): Comienza a ejecutar el hilo { PID: 2, TID: 0 }
+[INFO] 22:36:32:377 CPU/(6630:6630): La CPU empieza a estar iddle
+[INFO] 22:36:32:416 CPU/(6630:6630): Comienza a ejecutar el hilo { PID: 2, TID: 0 }
+[INFO] 22:36:32:458 CPU/(6630:6630): La CPU empieza a estar iddle
+[INFO] 22:36:32:496 CPU/(6630:6630): Comienza a ejecutar el hilo { PID: 2, TID: 0 } en modo kernel
+[INFO] 22:36:34:46 CPU/(6630:6630): La CPU empieza a estar iddle
+[INFO] 22:36:34:46 CPU/(6630:6630): Comienza a ejecutar el hilo { PID: 2, TID: 0 }
+[INFO] 22:36:34:88 CPU/(6630:6630): La CPU empieza a estar iddle
+[INFO] 22:36:34:128 CPU/(6630:6630): Comienza a ejecutar el hilo { PID: 2, TID: 0 }
+[INFO] 22:36:34:138 CPU/(6630:6630): La CPU empieza a estar iddle
+[INFO] 22:36:34:176 CPU/(6630:6630): Comienza a ejecutar el hilo { PID: 2, TID: 0 } en modo kernel
+[INFO] 22:36:34:258 CPU/(6630:6630): La CPU empieza a estar iddle
+[INFO] 22:36:34:264 CPU/(6630:6630): Comienza a ejecutar el hilo { PID: 2, TID: 0 }
+[INFO] 22:36:34:306 CPU/(6630:6630): La CPU empieza a estar iddle
+[INFO] 22:36:34:344 CPU/(6630:6630): Comienza a ejecutar el hilo { PID: 2, TID: 0 } en modo kernel
+[INFO] 22:36:34:426 CPU/(6630:6630): La CPU empieza a estar iddle
+[INFO] 22:36:34:432 CPU/(6630:6630): Comienza a ejecutar el hilo { PID: 2, TID: 0 }
+[INFO] 22:36:34:474 CPU/(6630:6630): La CPU empieza a estar iddle
+[INFO] 22:36:34:512 CPU/(6630:6630): Comienza a ejecutar el hilo { PID: 2, TID: 0 } en modo kernel
+[INFO] 22:36:34:594 CPU/(6630:6630): La CPU empieza a estar iddle
+[INFO] 22:36:34:600 CPU/(6630:6630): Comienza a ejecutar el hilo { PID: 2, TID: 0 }
+[INFO] 22:36:34:642 CPU/(6630:6630): La CPU empieza a estar iddle
+[INFO] 22:36:34:680 CPU/(6630:6630): Comienza a ejecutar el hilo { PID: 2, TID: 0 } en modo kernel
+[INFO] 22:36:34:762 CPU/(6630:6630): La CPU empieza a estar iddle
+[INFO] 22:36:34:768 CPU/(6630:6630): Comienza a ejecutar el hilo { PID: 2, TID: 0 }
+[INFO] 22:36:34:809 CPU/(6630:6630): La CPU empieza a estar iddle
+[INFO] 22:36:34:848 CPU/(6630:6630): Comienza a ejecutar el hilo { PID: 2, TID: 0 } en modo kernel
+[INFO] 22:36:34:930 CPU/(6630:6630): La CPU empieza a estar iddle
+[INFO] 22:36:34:936 CPU/(6630:6630): Comienza a ejecutar el hilo { PID: 2, TID: 0 }
+[INFO] 22:36:34:946 CPU/(6630:6630): La CPU empieza a estar iddle
+[INFO] 00:00:22:470 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 00:00:22:492 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:00:22:492 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 00:00:22:513 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:00:22:552 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 } en modo kernel
+[INFO] 00:00:55:531 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:00:55:531 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 00:00:55:553 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:00:55:592 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 00:00:55:613 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:00:55:652 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 00:00:55:673 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:00:55:712 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 00:00:55:733 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:00:55:772 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 } en modo kernel
+[INFO] 00:00:56:859 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:00:56:859 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 00:00:56:881 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:00:56:920 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 00:00:56:941 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:00:56:980 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 00:00:56:1 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:00:57:40 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 00:00:57:61 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:00:57:100 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 } en modo kernel
+[INFO] 00:00:58:107 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:00:58:107 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 00:00:58:129 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:00:58:168 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 00:00:58:189 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:00:58:228 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 00:00:58:249 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:00:58:288 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 00:00:58:309 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:00:58:348 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 } en modo kernel
+[INFO] 00:01:00:475 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:01:00:475 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 00:01:00:497 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:01:00:536 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 00:01:00:557 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:01:00:596 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 00:01:00:606 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:01:00:644 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 } en modo kernel
+[INFO] 00:01:00:726 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:01:00:736 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 00:01:00:757 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:01:00:796 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 00:01:00:817 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:01:00:856 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 } en modo kernel
+[INFO] 00:01:00:938 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:01:00:944 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 00:01:00:965 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:01:01:4 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 00:01:01:25 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:01:01:64 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 } en modo kernel
+[INFO] 00:01:01:146 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:01:01:156 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 00:01:01:177 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:01:01:216 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 00:01:01:237 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:01:01:276 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 } en modo kernel
+[INFO] 00:01:01:358 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:01:01:368 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 1, TID: 0 }
+[INFO] 00:01:01:378 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:01:06:182 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 2, TID: 0 }
+[INFO] 00:01:06:203 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:01:06:203 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 2, TID: 0 }
+[INFO] 00:01:06:224 CPU/(7254:7254): La CPU empieza a estar iddle
+[INFO] 00:01:06:264 CPU/(7254:7254): Comienza a ejecutar el hilo { PID: 2, TID: 0 } en modo kernel
