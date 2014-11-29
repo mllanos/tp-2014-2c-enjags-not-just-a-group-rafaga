@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ./build/so-ensamblador -o syscalls.bc systemCalls.txt
-mv -f syscalls.bc ../Kernel/config/syscalls.bc
+mv -f syscalls.bc ../Kernel/syscalls.bc
 
 for f in $(find ./ESO/* -name '*.txt' -print); do
 	echo $f $(./build/so-ensamblador -o ${f%.txt}.bc $f)

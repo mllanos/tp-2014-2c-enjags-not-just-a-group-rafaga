@@ -760,26 +760,26 @@ void kill_child_processes(void)
 void destroy_segments_on_exit_or_condition(bool kill_all)
 {
 	void _destroy_stack_segments_on_exit_or_condition(t_hilo *a_tcb) {
-		if (a_tcb->cola == EXIT || kill_all) {
-			t_msg *destroy_stack = argv_message(DESTROY_SEGMENT, 2, a_tcb->kernel_mode ? 0 : a_tcb->pid, a_tcb->base_stack);
-			if (enviar_mensaje(msp_fd, destroy_stack) == -1) {
-				log_error(logger_old, "[LOST_CONNECTION @ DESTROY_STACK]: MSP.");
-				exit(EXIT_FAILURE);
-			}
-			t_msg *status = recibir_mensaje(msp_fd);
-			if (status == NULL) {
-				log_error(logger_old, "[LOST_CONNECTION @ DESTROY_STACK]: MSP.");
-				exit(EXIT_FAILURE);
-			}
-			log_trace(logger_old, "[%s @ DESTROY_STACK]: (PID %u, TID %u, DIR %u).", 
-				MSP_DESTROY_SUCCESS(status) ? "SUCCESS" : "FAILURE", a_tcb->kernel_mode ? 0 : a_tcb->pid, a_tcb->kernel_mode ? 0 : a_tcb->tid, a_tcb->base_stack);
-			destroy_message(status);
-			destroy_message(destroy_stack);
+		if ((a_tcb->cola == EXIT || kill_all) && a_tcb->base_stack != -1) {
+				t_msg *destroy_stack = argv_message(DESTROY_SEGMENT, 2, a_tcb->kernel_mode ? 0 : a_tcb->pid, a_tcb->base_stack);
+				if (enviar_mensaje(msp_fd, destroy_stack) == -1) {
+					log_error(logger_old, "[LOST_CONNECTION @ DESTROY_STACK]: MSP.");
+					exit(EXIT_FAILURE);
+				}
+				t_msg *status = recibir_mensaje(msp_fd);
+				if (status == NULL) {
+					log_error(logger_old, "[LOST_CONNECTION @ DESTROY_STACK]: MSP.");
+					exit(EXIT_FAILURE);
+				}
+				log_trace(logger_old, "[%s @ DESTROY_STACK]: (PID %u, TID %u, DIR %u).", 
+					MSP_DESTROY_SUCCESS(status) ? "SUCCESS" : "FAILURE", a_tcb->kernel_mode ? 0 : a_tcb->pid, a_tcb->kernel_mode ? 0 : a_tcb->tid, a_tcb->base_stack);
+				destroy_message(status);
+				destroy_message(destroy_stack);
 		}
 	}
 
 	void _destroy_code_segments_on_exit_or_condition(t_hilo *a_tcb) {
-		if ((a_tcb->cola == EXIT || kill_all) && a_tcb->tid == 0) {
+		if ((a_tcb->cola == EXIT || kill_all) && a_tcb->tid == 0 && a_tcb->segmento_codigo != -1) {
 			t_msg *destroy_code = argv_message(DESTROY_SEGMENT, 2, a_tcb->kernel_mode ? 0 : a_tcb->pid, a_tcb->segmento_codigo);
 			if (enviar_mensaje(msp_fd, destroy_code) == -1) {
 				log_error(logger_old, "[LOST_CONNECTION @ DESTROY_CODE]: MSP.");

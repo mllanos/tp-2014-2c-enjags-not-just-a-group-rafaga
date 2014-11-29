@@ -24,9 +24,13 @@ void *loader(void *arg)
 		conexion_consola(console->pid);
 		log_trace(logger_old, "[NEW_CONNECTION @ LOADER]: (CONSOLE_ID %u, CONSOLE_SOCK %u).", console->pid, console->sock_fd);
 
-		t_hilo *new_tcb = reservar_memoria(ult_tcb(console->pid), recibido);
-		if (new_tcb == NULL) {
+		t_hilo *new_tcb = ult_tcb(console->pid);
+		int status = reservar_memoria(new_tcb, recibido);
+		if (status == -1) {
 			log_warning(logger_old, "No se pudo cargar a memoria el hilo principal de la Consola %u.", console->pid);
+			
+			new_tcb->cola = EXIT;
+			list_add(process_list, new_tcb);
 
 			t_msg *msg = string_message(KILL_CONSOLE, "Finalizando consola. Motivo: no hay espacio suficiente en MSP.", 0);
 			if(enviar_mensaje(console->sock_fd, msg) == -1) {

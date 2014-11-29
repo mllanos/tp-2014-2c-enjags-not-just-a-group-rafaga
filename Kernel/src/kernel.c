@@ -62,10 +62,13 @@ void boot_kernel(void)
 	klt_tcb->kernel_mode = true;
 	klt_tcb->cola = BLOCK;
 
-	klt_tcb = reservar_memoria(klt_tcb, beso_message(INIT_CONSOLE, SYSCALL_PATH(), 0));
-	if (klt_tcb == NULL) {
+	int status = reservar_memoria(klt_tcb, beso_message(INIT_CONSOLE, SYSCALL_PATH(), 0));
+	if (status == -1) {
 		/* Couldn't allocate memory. */
 		log_error(logger_old, "No se pudo reservar memoria para el hilo de Kernel.");
+		list_add(process_list, klt_tcb);
+		destroy_segments_on_exit_or_condition(true);
+		free(klt_tcb);
 		errno = ENOMEM;
 		perror("boot_kernel");
 		exit(EXIT_FAILURE);
@@ -324,9 +327,9 @@ void interpret_message(int sock_fd, t_msg *recibido)
 }
 
 
-t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
+int reservar_memoria(t_hilo *tcb, t_msg *msg)
 {
-	int i, cont = 1;
+	int i, cont = 1, result = 0;
 	t_msg *message[6];
 	t_msg **status = message + 3;
 
@@ -350,8 +353,11 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 		}
 
 		if (MSP_RESERVE_FAILURE(status[i])) {
-			free(tcb);
-			tcb = NULL;
+			if (i == 0)
+				tcb->segmento_codigo = -1;
+			else
+				tcb->base_stack = -1;
+			result = -1;
 			cont = 0;
 		} else if (!MSP_RESERVE_SUCCESS(status[i])) {
 			errno = EBADMSG;
@@ -379,8 +385,8 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 		}
 
 		if (MSP_WRITE_FAILURE(status[2])) {
-			free(tcb);
-			tcb = NULL;
+			cont = 0;
+			result = -1;
 		} else if (!MSP_WRITE_SUCCESS(status[2])) {
 			errno = EBADMSG;
 			perror("reservar_memoria");
@@ -391,7 +397,7 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 		log_trace(logger_old, "[RECEIVED @ RESERVAR_MEMORIA]: [WRITE_MEMORY (CODE)]: [%s].", id);
 		free(id);
 
-		if (tcb != NULL) {
+		if (cont) {
 			tcb->segmento_codigo = status[0]->argv[0];
 			tcb->segmento_codigo_size = message[2]->header.length;
 			tcb->puntero_instruccion = tcb->segmento_codigo;
@@ -409,7 +415,7 @@ t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg)
 			destroy_message(status[i]);
 	}
 
-	return tcb;
+	return result;
 }
 
 

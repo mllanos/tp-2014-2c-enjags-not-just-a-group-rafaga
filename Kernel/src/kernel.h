@@ -87,7 +87,7 @@ void interpret_message(int sock_fd, t_msg *recibido);
 /*
  * Se encarga de pedir memoria a MSP para un proceso inicial.
  */
-t_hilo *reservar_memoria(t_hilo *tcb, t_msg *msg);
+int reservar_memoria(t_hilo *tcb, t_msg *msg);
 
 /*
  * Se encarga de sacar de las listas a los CPUs y Consolas salientes.
