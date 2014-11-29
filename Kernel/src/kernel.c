@@ -36,10 +36,8 @@ void initialize(char *config_path)
 	pthread_mutex_init(&process_list_mutex, NULL);
 	pthread_mutex_init(&unique_id_mutex[CONSOLE_ID], NULL);
 	pthread_mutex_init(&unique_id_mutex[CPU_ID], NULL);
-	pthread_mutex_init(&aborted_process_mutex, NULL);
 	sem_init(&sem_loader, 0, 0);
 	sem_init(&sem_planificador, 0, 0);
-	pthread_mutex_lock(&aborted_process_mutex);
 	pthread_create(&loader_th, NULL, loader, NULL);
 	pthread_create(&planificador_th, NULL, planificador, NULL);
 
@@ -248,7 +246,6 @@ void finalize(void)
 	pthread_mutex_destroy(&process_list_mutex);
 	pthread_mutex_destroy(&unique_id_mutex[CONSOLE_ID]);
 	pthread_mutex_destroy(&unique_id_mutex[CPU_ID]);
-	pthread_mutex_destroy(&aborted_process_mutex);
 	config_destroy(config);
 	log_destroy(logger_old);
 	finalizar_panel();

@@ -134,7 +134,6 @@ pthread_mutex_t console_list_mutex;
 pthread_mutex_t cpu_list_mutex;
 pthread_mutex_t process_list_mutex;
 pthread_mutex_t request_queue_mutex;
-pthread_mutex_t aborted_process_mutex;
 
 
 /* Semaphores. */

@@ -128,6 +128,7 @@ void assign_processes(void)
 			tcb->cola = READY;
 			remove_cpu_by_sock_fd(cpu->sock_fd);
 			free(cpu);
+			destroy_message(msg);
 			continue;
 		}
 		destroy_message(msg);
@@ -212,7 +213,7 @@ void cpu_abort(uint32_t sock_fd, t_hilo *tcb)
 
 void attend_next_syscall_request(void)
 {
-	if (queue_is_empty(syscall_queue) == false) {
+	if (!queue_is_empty(syscall_queue)) {
 
 		/* Todavia hay syscalls que atender. Cargar el proximo proceso bloqueado por syscalls. */
 		t_syscall *to_load = queue_peek(syscall_queue);
@@ -281,27 +282,30 @@ void finish_process(uint32_t sock_fd, t_hilo *tcb)
 		} else {
 			/* Recibido KLT, copiamos registros al proceso bloqueado por syscalls y lo encolamos a READY. */
 
-			t_syscall *syscall = queue_pop(syscall_queue);
+			if (!queue_is_empty(syscall_queue)) {
 
-			if (blocked_by_condition == true) {
-				/* Hilo encolado en syscalls fue bloqueado por join. */
-				log_trace(logger_old, "[BLOCKED_BY_CONDITION @ FINISH_PROCESS]: (PID %u, TID %u).", tcb->pid, tcb->tid);
-				blocked_by_condition = false;
-			} else {
-				memcpy(syscall->blocked->registros, tcb->registros, sizeof tcb->registros);
+				t_syscall *syscall = queue_pop(syscall_queue);
 
-				if (find_console_by_pid(syscall->blocked->pid) != NULL) {
-					syscall->blocked->cola = READY;
-					log_trace(logger_old, "[SYSCALL_END @ FINISH_PROCESS]: (PID %u, TID %u) => READY.", tcb->pid, tcb->tid);
+				if (blocked_by_condition == true) {
+					/* Hilo encolado en syscalls fue bloqueado por join. */
+					log_trace(logger_old, "[BLOCKED_BY_CONDITION @ FINISH_PROCESS]: (PID %u, TID %u).", tcb->pid, tcb->tid);
+					blocked_by_condition = false;
 				} else {
-					syscall->blocked->cola = EXIT;
-					log_warning(logger_old, "[CONSOLE_NOT_FOUND @ FINISH_PROCESS]: (CONSOLE_ID %u).", syscall->blocked->pid);
+					memcpy(syscall->blocked->registros, tcb->registros, sizeof tcb->registros);
+
+					if (find_console_by_pid(syscall->blocked->pid) != NULL) {
+						syscall->blocked->cola = READY;
+						log_trace(logger_old, "[SYSCALL_END @ FINISH_PROCESS]: (PID %u, TID %u) => READY.", tcb->pid, tcb->tid);
+					} else {
+						syscall->blocked->cola = EXIT;
+						log_warning(logger_old, "[CONSOLE_NOT_FOUND @ FINISH_PROCESS]: (CONSOLE_ID %u).", syscall->blocked->pid);
+					}
 				}
+
+				free(syscall);
+
+				attend_next_syscall_request();
 			}
-
-			free(syscall);
-
-			attend_next_syscall_request();
 		}
 	} else
 		log_warning(logger_old, "[CPU_NOT_FOUND @ FINISH_PROCESS]: (CPU_SOCK %u).", sock_fd);
@@ -739,7 +743,7 @@ void kill_child_processes(void)
 	void _kill_child_processes(t_hilo *a_tcb) {
 		if (a_tcb->tid == 0 && a_tcb->cola == EXIT) {
 			void _set_child_to_exit(t_hilo *b_tcb) {
-				if (b_tcb->pid == a_tcb->pid && b_tcb->tid > 0 && b_tcb->cola != EXIT) {
+				if (b_tcb->pid == a_tcb->pid && b_tcb->tid > 0 && b_tcb->cola != EXIT && !b_tcb->kernel_mode) {
 					b_tcb->cola = EXIT;
 					log_trace(logger_old, "[KILL_CHILD_THREADS]: (PID %u, TID %u) => EXIT.", b_tcb->pid, b_tcb->tid);
 				}
@@ -808,11 +812,17 @@ void remove_processes_on_exit(void)
 		return a_tcb->cola == EXIT;
 	}
 
-	void _remove_on_exit(char *key, t_queue *a_queue) {
+	void _remove_from_dict_on_exit(char *key, t_queue *a_queue) {
 		list_remove_by_condition(a_queue->elements, (void *) _on_exit);
 	}
 
-	dictionary_iterator(resource_dict, (void *) _remove_on_exit);
+	dictionary_iterator(resource_dict, (void *) _remove_from_dict_on_exit);
+
+	bool _remove_from_syscalls_on_exit(t_syscall *a_syscall) {
+		return a_syscall->blocked->cola == EXIT;
+	}
+
+	list_remove_and_destroy_by_condition(syscall_queue->elements, (void *) _remove_from_syscalls_on_exit, (void *) free);
 
 	pthread_mutex_lock(&process_list_mutex);
 	list_remove_and_destroy_by_condition(process_list, (void *) _on_exit, (void *) free);

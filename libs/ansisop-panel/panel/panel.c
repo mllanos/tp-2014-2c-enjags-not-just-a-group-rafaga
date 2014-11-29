@@ -35,8 +35,8 @@ void inicializar_panel(t_tipo_proceso tipo_proceso, char* path){
 void finalizar_panel(void)
 {
 	if(proceso_tipo == KERNEL) {
-		list_destroy(kernel_cpus_conectadas);
-		list_destroy(kernel_consolas_conectadas);
+		list_destroy_and_destroy_elements(kernel_cpus_conectadas, (void *) free);
+		list_destroy_and_destroy_elements(kernel_consolas_conectadas, (void *) free);
 	}
 
 	log_destroy(logger);

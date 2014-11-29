@@ -357,8 +357,10 @@ int enviar_mensaje(int sock_fd, t_msg *msg)
  	/* Send message(s). */
 	while (total < pending) {
 		int sent = send(sock_fd, buffer, msg->header.length + sizeof msg->header + msg->header.argc * sizeof(uint32_t), MSG_NOSIGNAL);
-		if (sent < 0)
+		if (sent < 0) {
+			free(buffer);
 			return -1;
+		}
 		total += sent;
 		pending -= sent;
 	}
