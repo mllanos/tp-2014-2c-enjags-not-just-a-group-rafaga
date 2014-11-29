@@ -2,6 +2,8 @@
 #include "kernel.h"
 #include "cpu.h"
 
+t_tipo_proceso proceso_tipo;
+
 void inicializar_panel(t_tipo_proceso tipo_proceso, char* path){
 	char* tipo_proceso_str;
 
@@ -11,6 +13,8 @@ void inicializar_panel(t_tipo_proceso tipo_proceso, char* path){
 		tipo_proceso_str = "cpu";
 	else
 		tipo_proceso_str = "?";
+
+	proceso_tipo = tipo_proceso;
 
 	char* logFile = string_duplicate(path);
 	string_append(&logFile, tipo_proceso_str);
@@ -25,4 +29,15 @@ void inicializar_panel(t_tipo_proceso tipo_proceso, char* path){
 
 	kernel_cpus_conectadas = list_create();
 	kernel_consolas_conectadas = list_create();
+}
+
+
+void finalizar_panel(void)
+{
+	if(proceso_tipo == KERNEL) {
+		list_destroy(kernel_cpus_conectadas);
+		list_destroy(kernel_consolas_conectadas);
+	}
+
+	log_destroy(logger);
 }

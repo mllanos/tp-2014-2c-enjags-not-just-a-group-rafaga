@@ -43,5 +43,6 @@
 	 *               generar archivos de log libremente. El directorio debe existir.
 	 **/
 	void inicializar_panel(t_tipo_proceso tipo_proceso, char* path);
+	void finalizar_panel(void);
 
 #endif

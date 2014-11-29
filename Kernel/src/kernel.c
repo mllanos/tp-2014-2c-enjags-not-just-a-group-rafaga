@@ -251,6 +251,7 @@ void finalize(void)
 	pthread_mutex_destroy(&aborted_process_mutex);
 	config_destroy(config);
 	log_destroy(logger_old);
+	finalizar_panel();
 	list_destroy_and_destroy_elements(process_list, (void *) free);
 	list_destroy_and_destroy_elements(console_list, (void *) free);
 	list_destroy_and_destroy_elements(cpu_list, (void *) free);
