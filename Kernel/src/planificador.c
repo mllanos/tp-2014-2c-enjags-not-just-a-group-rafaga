@@ -19,8 +19,8 @@ void *planificador(void *arg)
 			recibido = queue_pop(planificador_queue);
 			pthread_mutex_unlock(&planificador_mutex);
 		} else {
+			bprr_algorithm();
 			if (!list_is_empty(cpu_list)) {
-				bprr_algorithm("There are processes in NEW");
 				assign_processes();
 			}
 			continue;
@@ -32,7 +32,7 @@ void *planificador(void *arg)
 				break;
 			case CPU_TCB:
 				cpu_queue(recibido->argv[0]);
-				bprr_algorithm("A CPU requested a process");
+				bprr_algorithm();
 				assign_processes();
 				break;
 			case RETURN_TCB:
@@ -45,8 +45,6 @@ void *planificador(void *arg)
 				break;
 			case CPU_ABORT:
 				cpu_abort(recibido->argv[0], retrieve_tcb(recibido));
-				pthread_mutex_lock(&aborted_process_mutex);
-				bprr_algorithm("A CPU aborted a process");
 				break;
 			case CPU_INTERRUPT:
 				syscall_start(recibido->argv[0], retrieve_tcb(recibido));
@@ -93,9 +91,9 @@ void *planificador(void *arg)
 }
 
 
-void bprr_algorithm(char *reason)
+void bprr_algorithm(void)
 {
-	log_trace(logger_old, "[EXECUTING @ BPRR_ALGORITHM]: %s.", reason);
+	log_trace(logger_old, "[EXECUTING @ BPRR_ALGORITHM]");
 	log_processes("[BEFORE @ BPRR_ALGORITHM]");	
 	new_processes_to_ready();
 	unlock_joined_processes();

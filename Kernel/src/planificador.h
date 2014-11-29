@@ -29,7 +29,7 @@ void *planificador(void *arg);
 /*
  * Algoritmo Boolean Priority Round Robin
  */
-void bprr_algorithm(char *reason);
+void bprr_algorithm(void);
 
 /*
  * Agregamos la nueva CPU a la lista de CPUs.

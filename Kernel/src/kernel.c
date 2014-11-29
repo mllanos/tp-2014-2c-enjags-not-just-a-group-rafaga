@@ -436,7 +436,11 @@ int remove_from_lists(uint32_t sock_fd)
 
 		free(out_console);
 
-		pthread_mutex_unlock(&aborted_process_mutex);
+		if (sem_post(&sem_planificador) == -1) {
+			perror("remove_from_lists");
+			exit(EXIT_FAILURE);
+		}
+
 	} else if (out_cpu != NULL) {
 		desconexion_cpu(out_cpu->cpu_id);
 
