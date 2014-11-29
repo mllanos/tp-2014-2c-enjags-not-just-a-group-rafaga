@@ -1,0 +1,4 @@
+#!/bin/bash
+
+clear
+./bin/CPU config/cpu.conf
